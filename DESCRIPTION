@@ -1,0 +1,51 @@
+Package: cascadeR
+Title: Shiny App to Explore Single-Cell Analysis
+Version: 1.0
+Authors@R:
+    person("Apratim", "Mitra", , "apratim.mitra@nih.gov", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0003-3279-0054"))
+Description: Interactive dashboard for scRNA-Seq and spatial (Visium) data.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports:
+    anndata,
+    ape,
+    clustree,
+    colorspace,
+    data.table,
+    dplyr,
+    DT,
+    ggplot2,
+    ggraph,
+    graphics,
+    grid,
+    htmltools,
+    Matrix,
+    methods,
+    plotly,
+    RColorBrewer,
+    readr,
+    reshape2,
+    reticulate,
+    rintrojs,
+    rlang,
+    scales,
+    Seurat,
+    SeuratObject,
+    shiny,
+    shinyBS,
+    shinycssloaders,
+    shinyjs,
+    shinythemes,
+    shinyWidgets,
+    sortable,
+    stats,
+    tidyr,
+    UpSetR,
+    utils,
+    viridis,
+    yaml
+Suggests:
+    shinymanager

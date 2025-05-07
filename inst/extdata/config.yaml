@@ -1,0 +1,209 @@
+# custom CSS styles used in the app
+style:
+  global: >
+    body, label, input, button, select, strong {
+      font-family: "Tahoma";
+    }
+
+    #sidebar {
+      background-color: #ffffff;
+      border-color: #e6e6e6;
+      border-width: 0px 3px 0px 0px;
+      min-width: 75px;
+      max-width: 75px;
+    }
+
+    div.panel-default {
+      border-color: #c1c1c1;
+      border-width: thin 2px 2px thin;
+      #text-align: center;
+    }
+
+    .div-cells-card {
+      border: 1px #c1c1c1 solid;
+      border-radius: 8px;
+      box-shadow: 3px 4px 5px 0px rgba(0, 0, 0, 0.3);
+      margin-bottom: 10px;
+      padding-left: 10px;
+      padding-top: 3px;
+      padding-bottom: 10px;
+      #background-color: #fbddd2;
+    }
+
+    .div-stats-card {
+      #border: 1px #c1c1c1;
+      border-radius: 8px;
+      box-shadow: 3px 4px 5px 0px rgba(0, 0, 0, 0.3);
+      margin-bottom: 10px;
+      padding-left: 10px;
+      padding-top: 3px;
+      padding-bottom: 10px;
+      background-color: #ebecf0;
+    }
+
+    #shiny-notification-panel {
+      width: 100%;
+      max-width: 450px;
+    }
+
+    .bucket-list-container.custom-sortable {
+      margin-left: 0px;
+      margin-right: 0px;
+      margin-top: -20px;
+      margin-bottom: -5px
+    }
+
+    .rank-list-container.custom-sortable {
+      background-color: #d0d0d0;
+      width: fit-content;
+    }
+
+    .dload-buttons {
+      padding-top: 2px;
+      padding-bottom: 2px;
+      padding-left: 5px;
+      padding-right: 5px;
+      margin-bottom: 10px;
+      font-style: bold;
+    }
+
+    .help-buttons {
+      border-radius: 50%;
+      padding-top: 2px;
+      padding-bottom: 2px;
+      padding-left: 5px;
+      padding-right: 5px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      font-style: bold;
+    }
+
+    .select-buttons {
+      padding-top: 3px;
+      padding-bottom: 3px;
+      padding-left: 7px;
+      padding-right: 7px;
+      margin-top: 0px;
+      margin-bottom: 0px;
+      font-style: bold;
+    }
+
+server:
+  # this string can used to match and filter RDS files
+  # from data areas
+  # - specified pattern is attached to ".rds/.h5ad" extension
+  #   and searched from the end of the filename. The remainder
+  #   of the file name is used as the analysis label.
+  #
+  #   For example,
+  #
+  #   pattern: 'cascade'
+  #
+  #   will match files ending in 'cascade.rds'.
+  #
+  #   Note that, pattern: '' (default), will match all RDS/h5ad files.
+  #
+  pattern: ''
+
+  # this project group will be shown for all users
+  demo_lab: example
+
+  # this group will be considered 'admin'
+  admin_group: admin
+
+  # default user
+  # - this user name is used for single-user operation
+  default_user: admin
+
+  # subdirectory name to hold staged datasets
+  staging_dir: staged
+
+  # max number of levels in metadata column
+  max_col_levels: 200
+
+  # max number of levels for splitting variable
+  max_split_levels: 25
+
+  # columns used for grouping (cluster/split/color)
+  # NOTE:
+  # - 'regex' matches will be used specifically for clustering columns
+  #   and for showing different resolutions.
+  # - 'regex' patterns must match metadata columns unambiguously
+  # - after removing regex matches from column names, the remaining string must be numeric
+  grouping_column:
+    cols:
+      - seurat_clusters
+      - idents
+      - orig.ident
+      - leiden
+      - louvain
+    regex:
+      - '.+_res\.'
+      - '^leiden_'
+      - '^scvi_leiden_'
+      - '^louvain_'
+
+  max_var_genes: 5000
+
+  markers:
+    # these cols will be dropped from all tables
+    cols.to.drop:
+      - geneid
+
+    # this column will be used as the gene name
+    gene_column:
+      - gene
+      - names
+
+    # these columns (if present) will have filter controls
+    filter_cols:
+      - assay
+      - resolution
+      - comparison
+      - group
+
+    # these columns will be used as adjust p-value
+    # NOTE: exact matches needed here
+    padj:
+      - p_val_adj # seurat all markers & de markers
+      - max_pval  # seurat cons markers
+      - pvals_adj # scanpy markers
+      - padj # DESeq2
+    lfc:
+      - avg_log2FC # seurat all, cons & de markers
+      - avg_logFC
+      - logfoldchanges # scanpy markers
+      - log2FoldChange # DESeq2
+
+    format_significant:
+      # columns matching this regex will be formatted
+      # to have specified significant digits
+      column_regex:
+        - pval
+        - p_val
+        - log2FC
+        - logFC
+        - logfoldchanges
+        - scores
+      digits: 4
+
+  plots:
+    dimplt:
+      base_ht: 700
+    dotplt:
+      base_ht: 800
+      max_genes: 30 # if split, this is groups*genes
+    vlnplt:
+      base_ht: 800
+      max_genes: 5
+    ftrplt:
+      base_ht: 800
+      max_genes: 3
+    coexplt:
+      base_ht: 700
+    spatial_featureplt:
+      base_ht: 800
+      max_genes: 3
+    spatial_coexplt:
+      base_ht: 700
+

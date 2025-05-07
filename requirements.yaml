@@ -1,0 +1,35 @@
+name: carnation-env
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - r-curl
+  - r-devtools
+  - r-seurat
+  - r-shiny
+  - r-shinybs
+  - r-yaml
+  - r-dt
+  - r-magrittr
+  - r-dplyr
+  - r-shinycssloaders
+  - r-ggplot2
+  - r-markdown
+  - r-clustree
+  - r-ape
+  - r-shinyjs
+  - r-upsetr
+  - r-plotly
+  - r-sortable
+  - r-shinymanager
+  - r-shinywidgets
+  - r-shinythemes
+  - r-readr
+  - r-anndata
+  - r-rintrojs
+  - r-rsconnect
+  - r-dynamictreecut
+  - anndata
+  - plotly
+  - python-kaleido
+
