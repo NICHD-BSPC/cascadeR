@@ -1,8 +1,6 @@
-^requirements\.txt$
 ^requirements\.yaml$
 ^requirements-pinned\.yaml$
-^env$
 ^\.Rprofile$
-^\.gitlab-ci\.yml$
 ^SUMMARY.md$
 ^LICENSE\.md$
+^\.github$
