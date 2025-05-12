@@ -32,6 +32,25 @@ get_limits <- function(gq,
   return(c(min_gq, max_gq))
 }
 
+#' Sanitize strings
+#'
+#' This function removes special characters from strings.
+#' Meant to be used to sanitize column names of a data frame
+#' before plotting.
+#'
+#' @param cnames columns to sanitize
+sanitize_colnames <- function(cnames,
+                              bad_char='(\\-|\\+|\\/|\\*|\\:|\\-|\\.)',
+                              repl='_'){
+
+  sanitized_names <- sapply(1:length(cnames),
+                       function(x) gsub(bad_char, repl, cnames[x])
+                     )
+
+  return(sanitized_names)
+}
+
+
 #' Interactive umap plot
 #'
 #' @param df data.frame with plotting data
@@ -75,13 +94,14 @@ umap_ly <- function(df, xcol, ycol,
   if(inherits(df, 'data.table')) df <- as.data.frame(df)
 
   # sanitize plotting column names
-  bad_char <- '(-|\\+|\\/|\\*|:|-|\\.)'
   cols_to_sanitize <- c(xcol, ycol, color)
+  new_names <- sanitize_colnames(cols_to_sanitize)
+
   cidx <- which(colnames(df) %in% cols_to_sanitize)
-  colnames(df)[cidx] <- gsub(bad_char, '_', colnames(df)[cidx])
-  xcol <- gsub(bad_char, '_', xcol)
-  ycol <- gsub(bad_char, '_', ycol)
-  color <- gsub(bad_char, '_', color)
+  colnames(df)[cidx] <- new_names
+  xcol <- new_names[1]
+  ycol <- new_names[2]
+  color <- new_names[3]
 
   xlims <- range(df[, xcol])
   ylims <- range(df[, ycol])
@@ -792,14 +812,14 @@ feature_ly <- function(df, xcol, ycol,
   }
 
   # sanitize plotting column names
-  # TODO: mv to config/separate function?
-  bad_char <- '(-|\\+|\\/|\\*|:|-|\\.)'
   cols_to_sanitize <- c(xcol, ycol, color)
+  new_names <- sanitize_colnames(cols_to_sanitize)
+
   cidx <- which(colnames(df) %in% cols_to_sanitize)
-  colnames(df)[cidx] <- gsub(bad_char, '_', colnames(df)[cidx])
-  xcol <- gsub(bad_char, '_', xcol)
-  ycol <- gsub(bad_char, '_', ycol)
-  color <- gsub(bad_char, '_', color)
+  colnames(df)[cidx] <- new_names
+  xcol <- new_names[1]
+  ycol <- new_names[2]
+  color <- new_names[3]
 
   if(reorder) df <- df[order(df[, color]),]
   if(is.null(split)){
