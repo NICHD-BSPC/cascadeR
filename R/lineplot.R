@@ -283,7 +283,7 @@ linePlotServer <- function(id, app_object, filtered, genes_to_plot,
 
         p <- p +
           geom_boxplot(aes(group=.data$variable), outliers=FALSE, alpha=0.3) +
-          stat_summary(fun=median, geom='line', linetype='dashed', size=0.5)
+          stat_summary(fun=median, geom='line', linetype='dashed', linewidth=0.5)
 
         if(autoscale) p <- p + ylim(range(df_melt$value))
 
