@@ -125,7 +125,12 @@ get_limits <- function(gq,
 #' Meant to be used to sanitize column names of a data frame
 #' before plotting.
 #'
-#' @param cnames columns to sanitize
+#' @param cnames column names to sanitize
+#' @param bad_char regex with characters to be replaced with 'repl'
+#' @param repl replacement character
+#'
+#' @return sanitized string vector
+#'
 sanitize_colnames <- function(cnames,
                               bad_char='(\\-|\\+|\\/|\\*|\\:|\\-|\\.)',
                               repl='_'){
