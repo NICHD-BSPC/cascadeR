@@ -1,14 +1,101 @@
-#' Get config
+#' Create access yaml
 #'
-#' This function reads the config.yaml and
-#' returns the list
+#' This function creates an access yaml file.
+#' This is primarily intended for the first run.
 #'
-#' @return list containing config items
-get_config <- function(){
-  cfg_path <- system.file('extdata', 'config.yaml',
-                          package=packageName())
-  cfg <- read_yaml(cfg_path)
-  cfg
+#' @param user User name
+#' @param user_group User group
+#' @param data_area Path to data area containing RDS files
+#'
+#' @export
+create_access_yaml <- function(user, user_group, data_area){
+    ug <- setNames(as.list(user_group), user)
+    da <- setNames(as.list(data_area), user_group)
+
+    path <- get_access_path()
+
+    write_yaml(list(user_group=ug, data_area=da),
+               path)
+}
+
+#' Read access yaml with user groups and data areas
+#'
+#' This function reads the access yaml file and
+#' returns user groups and data areas
+#' as a list of data frames.
+#'
+#' @export
+read_access_yaml <- function(){
+    # figure out access file based on host
+    f <- get_access_path()
+
+    # check if yaml exists
+    if(!file.exists(f)){
+        stop('Access yaml not found. Have you run "create_access_yaml()" yet?')
+    }
+
+    al <- read_yaml(f)
+
+    return(al)
+}
+
+#' Save access yaml to file
+#'
+#' This function saves access details (user groups
+#' and data areas) to the designated access yaml file.
+#'
+#' @param lst list of data frames with user_groups and
+#'  data_areas
+#'
+#' @export
+save_access_yaml <- function(lst){
+    # get access file
+    f <- get_access_path()
+
+    write_yaml(list(user_group=lst$user_group,
+                    data_area=lst$data_area), f)
+}
+
+#' Get project name from path
+#'
+#' This function takes in a path to an RDS file and returns
+#' a string to be used as project name
+#'
+#' So if the path is: /path/to/project/test/clustered.Rds
+#' and depth=2 & end_offset=0
+#' this returns: project/test
+#'
+#' @param x character path to RDS file
+#' @param depth integer how many levels below path to look?
+#' @param end_offset integer how far from the end of path to end?
+#' @param staging_dir name of staging directory
+#' @param fsep file separator to split path with
+#'
+#' @return project name
+#'
+#' @export
+#'
+get_project_name_from_path <- function(x,
+                                       depth=2, end_offset=0,
+                                       staging_dir='staged',
+                                       fsep=.Platform$file.sep){
+  d <- dirname(x)
+
+  # split path by fsep
+  tok <- unlist(strsplit(d, fsep))
+
+  # if path contains staging_dir, increase depth
+  if(any(tok == staging_dir)){
+    depth <- depth + 1
+  }
+
+  # join upto 'level' elements from the end
+  end_idx <- length(tok) - end_offset
+  start_idx <- length(tok) - depth + 1
+
+  p <- paste(tok[start_idx:end_idx], collapse=fsep)
+
+  p
 }
 
 #' Get limits of numeric vector
@@ -31,6 +118,30 @@ get_limits <- function(gq,
 
   return(c(min_gq, max_gq))
 }
+
+#' Sanitize strings
+#'
+#' This function removes special characters from strings.
+#' Meant to be used to sanitize column names of a data frame
+#' before plotting.
+#'
+#' @param cnames column names to sanitize
+#' @param bad_char regex with characters to be replaced with 'repl'
+#' @param repl replacement character
+#'
+#' @return sanitized string vector
+#'
+sanitize_colnames <- function(cnames,
+                              bad_char='(\\-|\\+|\\/|\\*|\\:|\\-|\\.)',
+                              repl='_'){
+
+  sanitized_names <- sapply(1:length(cnames),
+                       function(x) gsub(bad_char, repl, cnames[x])
+                     )
+
+  return(sanitized_names)
+}
+
 
 #' Interactive umap plot
 #'
@@ -75,13 +186,14 @@ umap_ly <- function(df, xcol, ycol,
   if(inherits(df, 'data.table')) df <- as.data.frame(df)
 
   # sanitize plotting column names
-  bad_char <- '(-|\\+|\\/|\\*|:|-|\\.)'
   cols_to_sanitize <- c(xcol, ycol, color)
+  new_names <- sanitize_colnames(cols_to_sanitize)
+
   cidx <- which(colnames(df) %in% cols_to_sanitize)
-  colnames(df)[cidx] <- gsub(bad_char, '_', colnames(df)[cidx])
-  xcol <- gsub(bad_char, '_', xcol)
-  ycol <- gsub(bad_char, '_', ycol)
-  color <- gsub(bad_char, '_', color)
+  colnames(df)[cidx] <- new_names
+  xcol <- new_names[1]
+  ycol <- new_names[2]
+  color <- new_names[3]
 
   xlims <- range(df[, xcol])
   ylims <- range(df[, ycol])
@@ -792,14 +904,14 @@ feature_ly <- function(df, xcol, ycol,
   }
 
   # sanitize plotting column names
-  # TODO: mv to config/separate function?
-  bad_char <- '(-|\\+|\\/|\\*|:|-|\\.)'
   cols_to_sanitize <- c(xcol, ycol, color)
+  new_names <- sanitize_colnames(cols_to_sanitize)
+
   cidx <- which(colnames(df) %in% cols_to_sanitize)
-  colnames(df)[cidx] <- gsub(bad_char, '_', colnames(df)[cidx])
-  xcol <- gsub(bad_char, '_', xcol)
-  ycol <- gsub(bad_char, '_', ycol)
-  color <- gsub(bad_char, '_', color)
+  colnames(df)[cidx] <- new_names
+  xcol <- new_names[1]
+  ycol <- new_names[2]
+  color <- new_names[3]
 
   if(reorder) df <- df[order(df[, color]),]
   if(is.null(split)){

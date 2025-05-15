@@ -1,0 +1,6 @@
+^requirements\.yaml$
+^requirements-pinned\.yaml$
+^\.Rprofile$
+^SUMMARY.md$
+^LICENSE\.md$
+^\.github$
