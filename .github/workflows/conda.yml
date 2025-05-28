@@ -82,10 +82,10 @@ jobs:
           cd .. && mkdir tmp && cd tmp
 
           # build, check
-          R CMD build --no-build-vignettes --no-manual ../carnation
-          R CMD check --as-cran --no-manual --no-build-vignettes carnation_${VERSION}.tar.gz
+          R CMD build --no-build-vignettes --no-manual ../cascadeR
+          R CMD check --as-cran --no-manual --no-build-vignettes cascadeR_${VERSION}.tar.gz
 
-          mv carnation_${VERSION}.tar.gz ${WORKDIR}/carnation.tar.gz
+          mv cascadeR_${VERSION}.tar.gz ${WORKDIR}/cascadeR.tar.gz
 
       - name: env tarball
         uses: actions/upload-artifact@v4
