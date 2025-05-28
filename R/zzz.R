@@ -5,7 +5,7 @@ cascade <- "r-cascade"
   reticulate::use_virtualenv(cascade, required=FALSE)
 }
 
-#' Create carnation python environment
+#' Create cascade python environment
 #'
 #' This function installs 'plotly' and 'kaleido' python packages
 #' in an environment to allow PDF downloads from plotly plots,
