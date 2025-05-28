@@ -4,7 +4,6 @@ channels:
   - bioconda
 dependencies:
   - r-curl
-  - r-devtools
   - r-seurat
   - r-shiny
   - r-shinybs
