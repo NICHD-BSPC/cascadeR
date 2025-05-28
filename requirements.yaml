@@ -24,6 +24,7 @@ dependencies:
   - r-shinywidgets
   - r-shinythemes
   - r-readr
+  - r-remotes
   - r-anndata
   - r-rintrojs
   - r-rsconnect
