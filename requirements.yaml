@@ -1,4 +1,4 @@
-name: carnation-env
+name: cascade-env
 channels:
   - conda-forge
   - bioconda
