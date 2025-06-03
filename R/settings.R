@@ -110,8 +110,8 @@ settingsUI <- function(id, panel, username){
                    fluidRow(
                      column(10,
                        DTOutput(ns('data_areas'))
-                     ),  # column
-                     column(2, align='left',
+                     ), # column
+                     column(1, align='left',
                        helpButtonUI(ns('settings_help'))
                      ) # column
                    )    # fluidRow
