@@ -883,8 +883,8 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
       l <- unlist(lapply(unique(d$data_area),
               function(x) list.files(x,
                               pattern=paste0(pattern(), '\\.(rds|h5ad)$'),
-                              recursive=TRUE,
                               ignore.case=TRUE,
+                              recursive=TRUE,
                               full.names = TRUE)))
 
       if(is.null(l) | length(l) == 0){
