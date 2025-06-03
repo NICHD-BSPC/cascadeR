@@ -851,8 +851,10 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
 
       if(is.null(d)){
         # single-user mode
-        if(is.null(username())){
-          no_projects_modal()
+        if(is.null(u)){
+          showModal(
+            no_projects_modal()
+          )
         } else {
           # don't show if in shinymanager admin view
           if(!shinyadmin){
@@ -866,7 +868,9 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
                 )
               )
             } else {
-              no_projects_modal()
+              showModal(
+                no_projects_modal()
+              )
             }
           }
         }
