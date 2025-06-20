@@ -7,6 +7,7 @@
 #' @param panel context for generating ui elements ('sidebar' or 'main')
 #' @param username user name
 #'
+#' @export
 settingsUI <- function(id, panel, username){
   ns <- NS(id)
 
@@ -38,11 +39,11 @@ settingsUI <- function(id, panel, username){
                    )  # fluidRow
                  ) # tabPanel
 
-    msg <- 'Add/edit cascadeR data & user settings here'
+    msg <- paste('Add/edit', packageName(), 'data & user settings here')
   } else {
     user_settings <- tagList()
     user_main <- tabPanel(title=NULL)
-    msg <- 'Add/edit cascadeR data settings here'
+    msg <- paste('Add/edit', packageName(), 'data settings here')
   }
 
   if(panel == 'sidebar'){
@@ -109,8 +110,8 @@ settingsUI <- function(id, panel, username){
                    fluidRow(
                      column(10,
                        DTOutput(ns('data_areas'))
-                     ),  # column
-                     column(2, align='left',
+                     ), # column
+                     column(1, align='left',
                        helpButtonUI(ns('settings_help'))
                      ) # column
                    )    # fluidRow
@@ -134,6 +135,7 @@ settingsUI <- function(id, panel, username){
 #' @param assay_fun function to parse assay names from file path
 #' @param config reactive list with config settings
 #'
+#' @export
 settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
   moduleServer(
     id,
@@ -842,13 +844,20 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
                                admin=admin_group())
       }
 
+      # var to detect if in shinymanager admin view
+      if(is.null(details()$where)) shinyadmin <- FALSE
+      else if(details()$where != 'admin') shinyadmin <- FALSE
+      else shinyadmin <- TRUE
+
       if(is.null(d)){
         # single-user mode
-        if(is.null(username())){
-          no_projects_modal()
+        if(is.null(u)){
+          showModal(
+            no_projects_modal()
+          )
         } else {
-          # don't show this in admin view
-          if(details()$where != 'admin'){
+          # don't show if in shinymanager admin view
+          if(!shinyadmin){
             if(!is_admin){
               showModal(
                 modalDialog(
@@ -859,7 +868,9 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
                 )
               )
             } else {
-              no_projects_modal()
+              showModal(
+                no_projects_modal()
+              )
             }
           }
         }
@@ -872,13 +883,13 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
       l <- unlist(lapply(unique(d$data_area),
               function(x) list.files(x,
                               pattern=paste0(pattern(), '\\.(rds|h5ad)$'),
-                              recursive=TRUE,
                               ignore.case=TRUE,
+                              recursive=TRUE,
                               full.names = TRUE)))
 
       if(is.null(l) | length(l) == 0){
         # don't show modal if in admin panel
-        if(details()$where != 'admin'){
+        if(!shinyadmin){
           showModal(
             no_projects_modal()
           ) # showModal
@@ -974,7 +985,15 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
 
         # read project descriptions if file exists
         if(file.exists(pd_path)){
-          project_descriptions[[ name ]] <- read_yaml(pd_path)
+          tmp_desc <- read_yaml(pd_path)
+
+          # if not admin, filter out staged data
+          if(!is_admin){
+            idx <- grep(staging_dir(), names(tmp_desc))
+            tmp_desc <- tmp_desc[ -idx ]
+          }
+
+          project_descriptions[[ name ]] <- tmp_desc
         }
       }
 
