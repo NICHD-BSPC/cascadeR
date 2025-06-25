@@ -855,6 +855,7 @@ get_coexp_legend <- function(colors,
 #' @param reorder should be sort cells in ascending order of expression?
 #' @param width width of plot in pixels
 #' @param height height of plot in pixels
+#' @param source name of source to return data from
 #'
 #' @return plotly handle
 feature_ly <- function(df, xcol, ycol,
@@ -873,6 +874,7 @@ feature_ly <- function(df, xcol, ycol,
                        reorder=TRUE, # sort df in ascending order of expr
                        width=NULL,
                        height=NULL){
+                       source='A'){
 
   if(inherits(df, 'data.table')) df <- as.data.frame(df)
 
@@ -916,6 +918,7 @@ feature_ly <- function(df, xcol, ycol,
   if(reorder) df <- df[order(df[, color]),]
   if(is.null(split)){
     p <- plot_ly(df,
+                 source=source,
                  x=as.formula(paste('~', xcol)),
                  y=as.formula(paste('~', ycol)),
                  type='scattergl',
@@ -1018,6 +1021,7 @@ feature_ly <- function(df, xcol, ycol,
            }
 
            p <- plot_ly(ddf[idx, ],
+                       source=source,
                        x=as.formula(paste('~', xcol)),
                        y=as.formula(paste('~', ycol)),
                        type='scattergl',
