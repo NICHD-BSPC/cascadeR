@@ -981,7 +981,26 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
 
         # read project descriptions if file exists
         if(file.exists(pd_path)){
-          project_descriptions[[ name ]] <- read_yaml(pd_path)
+          tmp_desc <- tryCatch(
+                        read_yaml(pd_path),
+                        error = function(e){ e }
+                      ) # tryCatch
+
+          if(inherits(tmp_desc, 'error')){
+            showNotification(
+              paste0('Error reading project description for project "',
+                     name, '": ', tmp_desc),
+              type='warning'
+            )
+          } else {
+            # if not admin, filter out staged data
+            if(!is_admin){
+              idx <- grep(staging_dir(), names(tmp_desc))
+              tmp_desc <- tmp_desc[ -idx ]
+            }
+
+            project_descriptions[[ name ]] <- tmp_desc
+          }
         }
       }
 
