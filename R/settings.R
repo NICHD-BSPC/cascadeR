@@ -842,13 +842,20 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
                                admin=admin_group())
       }
 
+      # var to detect if in shinymanager admin view
+      if(is.null(details()$where)) shinyadmin <- FALSE
+      else if(details()$where != 'admin') shinyadmin <- FALSE
+      else shinyadmin <- TRUE
+
       if(is.null(d)){
         # single-user mode
-        if(is.null(username())){
-          no_projects_modal()
+        if(is.null(u)){
+          showModal(
+            no_projects_modal()
+          )
         } else {
-          # don't show this in admin view
-          if(details()$where != 'admin'){
+          # don't show if in shinymanager admin view
+          if(!shinyadmin){
             if(!is_admin){
               showModal(
                 modalDialog(
@@ -878,7 +885,7 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
 
       if(is.null(l) | length(l) == 0){
         # don't show modal if in admin panel
-        if(details()$where != 'admin'){
+        if(!shinyadmin){
           showModal(
             no_projects_modal()
           ) # showModal
