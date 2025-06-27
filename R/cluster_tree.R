@@ -717,9 +717,6 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
         withProgress(
           {
 
-            # make sure ggraph edge_colourbar is registered
-            ggraph::guide_edge_colourbar()
-
             p <- clustree(mdata,
                           prefix=rep,
                           prop_filter=min_in_prop,
