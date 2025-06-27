@@ -720,8 +720,7 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
                           prefix=rep,
                           prop_filter=min_in_prop,
                           node_text_size=3,
-                          node_alpha=0.9) +
-                 guides(edge_colourbar='none')
+                          node_alpha=0.9)
           },
           message='Generating cluster tree'
         )
