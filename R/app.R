@@ -397,12 +397,16 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     #################### authentication ####################
 
     # check_credentials directly on sqlite db
-    res_auth <- shinymanager::secure_server(
-      check_credentials = shinymanager::check_credentials(
-          db=credentials,
-          passphrase=passphrase
+    if(!is.null(credentials)){
+      res_auth <- shinymanager::secure_server(
+        check_credentials = shinymanager::check_credentials(
+            db=credentials,
+            passphrase=passphrase
+        )
       )
-    )
+    } else {
+      res_auth <- NULL
+    }
 
     user_details <- reactiveValues(username=NULL, admin=FALSE)
 
