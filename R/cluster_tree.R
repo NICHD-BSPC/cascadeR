@@ -718,9 +718,7 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
           {
 
             # make sure ggraph edge_colourbar is registered
-            if (!"edge_colourbar" %in% names(ggplot2:::guides_dict)) {
-              ggraph::guide_edge_colourbar()
-            }
+            ggraph::guide_edge_colourbar()
 
             p <- clustree(mdata,
                           prefix=rep,
