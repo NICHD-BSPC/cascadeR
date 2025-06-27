@@ -775,7 +775,8 @@ dimredServer <- function(id, obj,
         validate(
           need(!is.null(app_object()$rds), '')
         )
-        event_data('plotly_selected', source='umaply')
+        req(umap_obj$df)
+        event_data('plotly_selected', source=umap_obj$df$source)
       })
 
       observeEvent(get_umap_selected(), {
@@ -1172,14 +1173,16 @@ dimredServer <- function(id, obj,
         validate(
           need(!is.null(app_object()$rds), '')
         )
-        event_data('plotly_click', source='dimplt')
+        req(spatial_obj$df)
+        event_data('plotly_click', source=spatial_obj$df$source)
       })
 
       get_selection <- reactive({
         validate(
           need(!is.null(app_object()$rds), '')
         )
-        event_data('plotly_selected', source='dimplt')
+        req(spatial_obj$df)
+        event_data('plotly_selected', source=spatial_obj$df$source)
       })
 
       observeEvent(c(get_clicks(), get_selection()), {

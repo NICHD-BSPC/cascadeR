@@ -855,6 +855,10 @@ get_coexp_legend <- function(colors,
 #' @param reorder should be sort cells in ascending order of expression?
 #' @param width width of plot in pixels
 #' @param height height of plot in pixels
+#' @param title_mode string specifying how axes should be titled. If 'color' (default),
+#'        the y-axis is titled with the coloring variable; if 'xy', xcol and ycol are
+#'        used as labels.
+#' @param source name of source to return data from
 #'
 #' @return plotly handle
 feature_ly <- function(df, xcol, ycol,
@@ -872,7 +876,9 @@ feature_ly <- function(df, xcol, ycol,
                        free_axes=FALSE,
                        reorder=TRUE, # sort df in ascending order of expr
                        width=NULL,
-                       height=NULL){
+                       height=NULL,
+                       title_mode='color',
+                       source='A'){
 
   if(inherits(df, 'data.table')) df <- as.data.frame(df)
 
@@ -915,7 +921,16 @@ feature_ly <- function(df, xcol, ycol,
 
   if(reorder) df <- df[order(df[, color]),]
   if(is.null(split)){
+    if(title_mode == 'color'){
+      xtitle <- ''
+      ytitle <- ''
+    } else if(title_mode == 'xy'){
+      xtitle <- xcol
+      ytitle <- ycol
+    }
+
     p <- plot_ly(df,
+                 source=source,
                  x=as.formula(paste('~', xcol)),
                  y=as.formula(paste('~', ycol)),
                  type='scattergl',
@@ -935,33 +950,36 @@ feature_ly <- function(df, xcol, ycol,
                              showscale=showscale)) %>%
          layout(
             xaxis=list(range=xrange,
-                       title='',
+                       title=xtitle,
                        showline=TRUE, linewidth=1,
                        showticklabels=showticklabels,
                        showgrid=FALSE, zeroline=FALSE),
             yaxis=list(range=yrange,
-                       title='',
+                       title=ytitle,
                        showline=TRUE, linewidth=1,
                        showticklabels=showticklabels,
                        showgrid=FALSE, zeroline=FALSE),
             dragmode='lasso')
 
 
-    axis_titles <- list(
-                      # color variable (gene name)
-                      list(x=-margin,
-                           y=0.5,
-                           xref='paper',
-                           yref='paper',
-                           xanchor='left',
-                           yanchor='center',
-                           textangle=-90,
-                           showarrow=FALSE,
-                           font=list(size=17),
-                           text=paste('<b>', color,'<b>'))
-                   )
+    if(title_mode == 'color'){
+      axis_titles <- list(
+                        # color variable (gene name)
+                        list(x=-margin,
+                             y=0.5,
+                             xref='paper',
+                             yref='paper',
+                             xanchor='left',
+                             yanchor='center',
+                             textangle=-90,
+                             showarrow=FALSE,
+                             font=list(size=17),
+                             text=paste('<b>', color,'<b>'))
+                     )
 
-    p <- p %>% layout(annotations=axis_titles)
+      p <- p %>% layout(annotations=axis_titles)
+    }
+
   } else {
 
     ddf <- df %>%
@@ -1018,6 +1036,7 @@ feature_ly <- function(df, xcol, ycol,
            }
 
            p <- plot_ly(ddf[idx, ],
+                       source=source,
                        x=as.formula(paste('~', xcol)),
                        y=as.formula(paste('~', ycol)),
                        type='scattergl',

@@ -842,13 +842,20 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
                                admin=admin_group())
       }
 
+      # var to detect if in shinymanager admin view
+      if(is.null(details()$where)) shinyadmin <- FALSE
+      else if(details()$where != 'admin') shinyadmin <- FALSE
+      else shinyadmin <- TRUE
+
       if(is.null(d)){
         # single-user mode
-        if(is.null(username())){
-          no_projects_modal()
+        if(is.null(u)){
+          showModal(
+            no_projects_modal()
+          )
         } else {
-          # don't show this in admin view
-          if(details()$where != 'admin'){
+          # don't show if in shinymanager admin view
+          if(!shinyadmin){
             if(!is_admin){
               showModal(
                 modalDialog(
@@ -878,7 +885,7 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
 
       if(is.null(l) | length(l) == 0){
         # don't show modal if in admin panel
-        if(details()$where != 'admin'){
+        if(!shinyadmin){
           showModal(
             no_projects_modal()
           ) # showModal
@@ -974,7 +981,26 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
 
         # read project descriptions if file exists
         if(file.exists(pd_path)){
-          project_descriptions[[ name ]] <- read_yaml(pd_path)
+          tmp_desc <- tryCatch(
+                        read_yaml(pd_path),
+                        error = function(e){ e }
+                      ) # tryCatch
+
+          if(inherits(tmp_desc, 'error')){
+            showNotification(
+              paste0('Error reading project description for project "',
+                     name, '": ', tmp_desc),
+              type='warning'
+            )
+          } else {
+            # if not admin, filter out staged data
+            if(!is_admin){
+              idx <- grep(staging_dir(), names(tmp_desc))
+              tmp_desc <- tmp_desc[ -idx ]
+            }
+
+            project_descriptions[[ name ]] <- tmp_desc
+          }
         }
       }
 
