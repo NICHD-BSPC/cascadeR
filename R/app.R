@@ -1136,6 +1136,10 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     observeEvent(apply_filters(), {
       bc <- apply_filters()
 
+      validate(
+        need(all(bc %in% rownames(app_object$metadata)), '')
+      )
+
       # subset metadata levels
       idx <- which(rownames(app_object$metadata) %in% bc)
       mdata.dt <- data.table::as.data.table(app_object$metadata, keep.rownames=T)
