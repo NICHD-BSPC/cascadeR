@@ -6,7 +6,7 @@
 #' @importFrom dplyr mutate relocate select filter any_of "%>%" rename inner_join add_count count group_by all_of
 #' @importFrom DT renderDT DTOutput datatable formatStyle formatSignif dataTableProxy selectRows styleEqual
 #' @import ggplot2
-#' @importFrom ggraph guide_edge_colourbar
+#' @importFrom ggraph guide_edge_colourbar geom_edge_link scale_edge_colour_continuous
 #' @importFrom graphics par hist
 #' @importFrom grDevices col2rgb dev.off pdf rgb
 #' @importFrom grid unit rasterGrob
