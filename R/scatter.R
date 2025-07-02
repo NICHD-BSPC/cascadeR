@@ -138,6 +138,41 @@ scatterPlotUI <- function(id, panel){
       ) # fluidRow
 
     ) # tagList
+  } else if(panel == 'selection'){
+    tagList(
+      fluidRow(
+        column(6,
+          strong('Point selection')
+        ), # column
+        column(6, align='right',
+          helpButtonUI(ns('umap_ptselect_help'))
+        ) # column
+      ), # fluidRow
+
+      uiOutput(ns('pt_selected')),
+
+      fluidRow(
+        column(12,
+          align='center',
+          style='margin-bottom: 10px;',
+          actionButton(ns('show_selection'),
+                       label='Show selection')
+        ),
+        column(12,
+          align='center',
+          style='margin-bottom: 10px;',
+          downloadButton(ns('dload_clicks'),
+                         label='Download selection')
+        ),
+        column(12,
+          align='center',
+          style='margin-bottom: 10px;',
+          actionButton(ns('reset_clicks'),
+                       label='Reset selection',
+                       class='btn-primary')
+        )
+      ) # fluidRow
+    )
   } else if(panel == 'main'){
     tabPanel('Gene-gene Scatter',
       br(),
@@ -197,6 +232,14 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
 
       global_args <- reactiveValues(grp_by=NULL)
 
+      # keep track of point selection here
+      selected_points <- reactiveValues(full=list(),
+                                        current=list())
+      #show_selection <- reactiveVal(0)
+      plot_obj <- reactiveValues(metadata=NULL,
+                                 gene=NULL)
+      plot_labeled <- reactiveVal(FALSE)
+
       observeEvent(gene_choices(), {
         updateSelectizeInput(session, 'plt_genes',
                              choices=gene_choices(),
@@ -239,6 +282,11 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
       })
 
       observeEvent(app_object()$metadata_levels, {
+        # reset data
+        plot_obj$metadata <- NULL
+        plot_obj$gene <- NULL
+        selected_points$full <- list()
+        selected_points$current <- list()
 
         obj_type <- app_object()$obj_type
         if(obj_type == 'seurat'){
@@ -377,6 +425,7 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
         if(!is.null(split_var)){
           df[[ split_var ]] <- factor(df[[ split_var ]],
                                   levels=plt_split_lvls())
+          num_split <- length(levels(df[[ split_var ]]))
         }
 
         # bin gene expressions & create size column
@@ -436,10 +485,6 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
           df$text <- paste0('n = ', binned)
         }
 
-
-        # only keep unique points
-        df <- df[!duplicated(gdat_chr), ]
-
         # pad the x & y axis ranges
         xrange <- range(df[, g[1]])
         xrange[1] <- xrange[1] - 0.1*diff(xrange)
@@ -481,9 +526,15 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
           if(length(plt_split_lvls()) == 2) ht <- 0.75*ht
         }
 
+        # add barcodes as rownames
+        # NOTE: this is needed for label traces to work
+        rownames(df) <- df[[ 'rn' ]]
+
         # if coloring by metadata/none, use umap_ly
         # otherwise, if coloring by gene, use feature_ly
         if(input$color_by != 'gene'){
+          source <- 'scatter_metadata'
+
           p <- umap_ly(df, xcol=g[1], ycol=g[2],
                        color='color', colors=colors,
                        split=split_var,
@@ -492,9 +543,27 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
                        alpha=alpha,
                        height=ht,
                        width=wd,
-                       marker_size=marker_size)
+                       marker_size=marker_size,
+                       source=source)
+
+          num_traces <- length(unique(df[[ 'color' ]]))
+          if(!is.null(split_var)) num_traces <- num_traces*num_split
+
+          # save plotted data
+          plot_obj$metadata <- list(data=df,
+                                    xcol=g[1],
+                                    ycol=g[2],
+                                    color='color',
+                                    colors=colors,
+                                    split=split_var,
+                                    marker_size=marker_size,
+                                    alpha=alpha,
+                                    source=source,
+                                    num_traces=num_traces)
+
         } else {
           crange <- range(df[[ input$grp_gene ]])
+          source <- 'scatter_gene'
 
           p <- feature_ly(df,
                           xcol=g[1],
@@ -511,9 +580,29 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
                           split=split_var,
                           height=ht,
                           width=wd,
-                          margin=0.05)
+                          margin=0.05,
+                          title_mode='xy',
+                          source=source)
+
+          if(!is.null(split_var)) num_traces <- num_split
+          else num_traces <- 1
+
+          # save plotted data
+          plot_obj$gene <- list(data=df,
+                                xcol=g[1],
+                                ycol=g[2],
+                                color=g[3],
+                                colors=colors,
+                                split=split_var,
+                                crange=range(df[[ g[3] ]]),
+                                marker_size=marker_size + 0.25*marker_size, # slightly increase marker size
+                                alpha=alpha,
+                                source=source,
+                                num_traces=num_traces)
 
         }
+
+        event_register(p, 'plotly_selected')
 
         p
 
@@ -523,7 +612,161 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
           get_scatter_plot()
       })
 
+      ##################### lasso selection ###########################
+
+      # proxy for plot
+      plotProxy <- plotlyProxy('scatterplt', session)
+
+      observeEvent(c(selected_points$full,
+                     input$show_selection), {
+
+        validate(
+          need(!is.null(app_object()$rds), '')
+        )
+
+        isolate({
+          split_var <- input$split_by
+        })
+
+        sel_pts <- unique(unlist(selected_points$full))
+
+        if(input$color_by == 'gene') plot_type <- 'gene'
+        else plot_type <- 'metadata'
+
+        if(split_var == 'none'){
+          if(length(sel_pts) > 0){
+            new_trace <- get_label_trace(plot_obj[[ plot_type ]],
+                                         sel_pts)
+            num_traces <- plot_obj[[ plot_type ]]$num_traces
+
+            # remove last trace
+            # NOTE: this is 0-based indexed
+            if(plot_labeled()){
+              plotProxy %>%
+                plotlyProxyInvoke('deleteTraces', num_traces)
+            }
+
+            plotProxy %>%
+              plotlyProxyInvoke('addTraces', new_trace)
+
+            plot_labeled(TRUE)
+          } else if(plot_labeled()){
+            num_traces <- plot_obj[[ plot_type ]]$num_traces
+            plotProxy %>%
+              plotlyProxyInvoke('deleteTraces', num_traces)
+            plot_labeled(FALSE)
+          }
+        }
+      })
+
+      get_selected <- reactive({
+        validate(
+          need(!is.null(app_object()$rds), '')
+        )
+
+        if(input$color_by == 'gene'){
+          req(plot_obj$gene)
+          source <- plot_obj$gene$source
+        } else {
+          req(plot_obj$metadata)
+          source <- plot_obj$metadata$source
+        }
+        event_data('plotly_selected', source=source)
+      })
+
+      observeEvent(get_selected(), {
+        validate(
+          need(!is.null(app_object()$rds), '')
+        )
+
+        df <- get_selected()
+
+        # get points by matching coords & key
+        keys <- paste(df$x, df$y)
+
+        # plot data
+        if(input$color_by == 'gene') name <- 'gene'
+        else name <- 'metadata'
+
+        data_df <- plot_obj[[ name ]]$data
+        xcol <- plot_obj[[ name ]]$xcol
+        ycol <- plot_obj[[ name ]]$ycol
+
+        # fix names if starting with number
+        if(grepl('^\\d', xcol)) xcol <- make.names(xcol)
+        if(grepl('^\\d', ycol)) ycol <- make.names(ycol)
+
+        data_keys <- paste(data_df[, xcol],
+                           data_df[, ycol])
+
+        new <- unique(data_df$rn[which(data_keys %in% keys)])
+
+        curr <- unique(unlist(selected_points$full))
+
+        # only add new points
+        if(!all(new %in% curr)){
+          new_idx <- which(!new %in% curr)
+          showNotification(
+              paste0('Adding ', length(new_idx), ' points to selection')
+          )
+
+          selected_points$full[[ length(selected_points$full) + 1 ]] <- new[new_idx]
+        } else if(length(new) > 0){
+          showNotification(
+              paste0('All selected points already in selection'),
+              type='warning'
+          )
+        }
+      })
+
+      # dynamic UI to show number of points selected
+      output$pt_selected <- renderUI({
+        np <- length(unique(unlist(selected_points$full)))
+
+        tagList(
+          fluidRow(
+            column(12, style='margin-bottom: 10px;',
+
+              paste(np, 'points selected')
+            )
+          )
+        )
+      })
+
+      # download handler for selected cells
+      output$dload_clicks <- downloadHandler(
+        filename = function(){
+          paste0('clicked-points.tsv')
+        },
+        content = function(file){
+          bc <- unique(unlist(selected_points$full))
+
+          # only output unique barcodes
+          mdata <- data.table::as.data.table(app_object()$metadata, keep.rownames=T)
+          idx <- mdata$rn %in% bc
+
+          mdata_sel <- as.data.frame(mdata[idx,])
+          rn_idx <- which(colnames(mdata_sel) == 'rn')
+          colnames(mdata_sel)[rn_idx] <- 'barcodes'
+
+          write.table(mdata_sel, file=file, sep='\t', quote=FALSE,
+                      row.names=FALSE)
+        }
+      )
+
+      # observer to reset clicks
+      observeEvent(input$reset_clicks, {
+        np <- length(unique(unlist(selected_points$full)))
+        showNotification(
+            paste0('Clearing ', np,
+                   ' points from selection')
+        )
+        selected_points$full <- list()
+      })
+
+
       helpButtonServer('scatterplt_help', size='l')
+      helpButtonServer('umap_ptselect_help', size='l')
       downloadPlotServer('plt_dload', get_scatter_plot, 'scatter_plot')
 
     } # function

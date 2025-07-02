@@ -256,7 +256,11 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                 markerTableUI('marker_tbl_tab', panel='selection')
               ), # conditionalPanel
 
-              conditionalPanel("input.mode != 'Cell Embeddings' && input.mode != 'Cell Markers'",
+              conditionalPanel("input.mode == 'Marker Plots'",
+                markerPlotUI('mrkrplt_tab', panel='selection')
+              ), # conditionalPanel
+
+              conditionalPanel("input.mode != 'Cell Embeddings' && input.mode != 'Cell Markers' && input.mode != 'Marker Plots'",
                 'No selection settings available for this tab'
               ) # conditionalPanel
             ), # tagList
@@ -393,12 +397,16 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     #################### authentication ####################
 
     # check_credentials directly on sqlite db
-    res_auth <- shinymanager::secure_server(
-      check_credentials = shinymanager::check_credentials(
-          db=credentials,
-          passphrase=passphrase
+    if(!is.null(credentials)){
+      res_auth <- shinymanager::secure_server(
+        check_credentials = shinymanager::check_credentials(
+            db=credentials,
+            passphrase=passphrase
+        )
       )
-    )
+    } else {
+      res_auth <- NULL
+    }
 
     user_details <- reactiveValues(username=NULL, admin=FALSE)
 
@@ -549,6 +557,26 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
       l <- assay_list$l
 
       assay_choices <- l[[input$proj]]
+
+      # if project description exists, order assay choices by description names
+      proj_desc <- project_info$descriptions[[ input$proj ]]
+      if(!is.null(proj_desc)){
+        # names from proj desc, that are in assay choices
+        # are moved to the front
+        pnames <- intersect(names(proj_desc), names(assay_choices))
+
+        if(length(pnames) != length(proj_desc)){
+          pmissing <- setdiff(names(proj_desc), names(assay_choices))
+          showNotification(
+            paste0("Warning - Some datasets in project description not found in 'Available analyses': ",
+                   paste(pmissing, collapse=', ')),
+            type='warning'
+          )
+        }
+        anames <- c(pnames, setdiff(names(assay_choices), pnames))
+        assay_choices <- assay_choices[anames]
+      }
+
       if(length(assay_choices) == 1){
         updateSelectizeInput(session, 'analysis',
                              choices=assay_choices)
@@ -571,10 +599,35 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     output$analysis_desc <- renderDT({
       req(input$proj)
 
-      df <- data.frame(
-        'analysis_name'=names(project_info$descriptions[[ input$proj ]]),
-        'description'=unname(unlist(project_info$descriptions[[ input$proj ]]))
-      )
+      proj_desc <- project_info$descriptions[[ input$proj ]]
+
+      # check fields present in descriptions
+      field_names <- unique(unlist(lapply(proj_desc, names)))
+
+      if(is.null(field_names)){
+        # here entries are a single string description
+        df <- data.frame(
+          'analysis_name'=names(proj_desc),
+          'description'=unname(unlist(proj_desc))
+        )
+      } else {
+        # here we handle multiple fields for each entry
+        df.i <- lapply(proj_desc, function(x){
+                 if(all(field_names %in% names(x))) x
+                 else {
+                   # check for missing fields and add NAs
+                   ff <- setdiff(field_names, names(x))
+                   ff <- c(x, setNames(rep(NA, length(ff)), ff))
+
+                   # reorder
+                   ff <- ff[ field_names ]
+                 }
+               })
+        df <- as.data.frame(do.call('rbind', df.i))
+        cnames <- colnames(df)
+        df$analysis_name <- rownames(df)
+        df <- df[, c('analysis_name', cnames)]
+      }
 
       datatable(df,
                 rownames=FALSE,
@@ -1102,6 +1155,10 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
     observeEvent(apply_filters(), {
       bc <- apply_filters()
+
+      validate(
+        need(all(bc %in% rownames(app_object$metadata)), '')
+      )
 
       # subset metadata levels
       idx <- which(rownames(app_object$metadata) %in% bc)

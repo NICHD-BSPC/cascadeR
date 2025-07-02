@@ -113,6 +113,19 @@ markerPlotUI <- function(id, panel){
         ) # column
       ) # fluidRow
     ) # tagList
+  } else if(panel == 'selection'){
+    tagList(
+      conditionalPanel(paste0('input["', ns('markerplt_type'), '"] == "Gene-gene Scatter"'),
+
+        scatterPlotUI(ns('scatter'), panel='selection')
+
+      ), # conditionalPanel
+      conditionalPanel(paste0('input["', ns('markerplt_type'), '"] != "Gene-gene Scatter"'),
+
+        'No selection settings available for this tab'
+
+      ) # conditionalPanel
+    )
   } else if(panel == 'main'){
     tagList(
       tabsetPanel(type='tabs', id=ns('markerplt_type'),
