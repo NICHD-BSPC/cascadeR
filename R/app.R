@@ -557,6 +557,26 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
       l <- assay_list$l
 
       assay_choices <- l[[input$proj]]
+
+      # if project description exists, order assay choices by description names
+      proj_desc <- project_info$descriptions[[ input$proj ]]
+      if(!is.null(proj_desc)){
+        # names from proj desc, that are in assay choices
+        # are moved to the front
+        pnames <- intersect(names(proj_desc), names(assay_choices))
+
+        if(length(pnames) != length(proj_desc)){
+          pmissing <- setdiff(names(proj_desc), names(assay_choices))
+          showNotification(
+            paste0("Warning - Some datasets in project description not found in 'Available analyses': ",
+                   paste(pmissing, collapse=', ')),
+            type='warning'
+          )
+        }
+        anames <- c(pnames, setdiff(names(assay_choices), pnames))
+        assay_choices <- assay_choices[anames]
+      }
+
       if(length(assay_choices) == 1){
         updateSelectizeInput(session, 'analysis',
                              choices=assay_choices)
