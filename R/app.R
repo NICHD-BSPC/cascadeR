@@ -1171,9 +1171,13 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
       # update numeric metadata
       for(mc in names(app_object$metadata_numeric$all)){
-        hh <- hist(mdata.dt[[ mc ]], breaks=20, plot=FALSE)
-        hist_df <- data.frame(mids=hh$mids, counts=hh$counts)
-        app_object$metadata_numeric$filtered[[ mc ]] <- hist_df
+        tmp <- mdata.dt[[ mc ]]
+        tmp <- tmp[!is.na(tmp)]
+        if(length(tmp) > 0 && !all(is.na(tmp))){
+          hh <- hist(tmp, breaks=20, plot=FALSE)
+          hist_df <- data.frame(mids=hh$mids, counts=hh$counts)
+          app_object$metadata_numeric$filtered[[ mc ]] <- hist_df
+        }
       }
     })
 
