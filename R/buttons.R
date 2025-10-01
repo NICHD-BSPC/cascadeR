@@ -55,6 +55,7 @@ helpButtonServer <- function(id, ...){
 #' @param title Title of modal dialog
 #' @param ... other params passed to modalDialog()
 #'
+#' @export
 helpModal <- function(mdfile, title=NULL, ...){
   modalDialog(
       title=title,

@@ -716,6 +716,7 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
 
         withProgress(
           {
+
             p <- clustree(mdata,
                           prefix=rep,
                           prop_filter=min_in_prop,

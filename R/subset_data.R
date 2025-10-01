@@ -374,10 +374,17 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
             current <- get_limits(gc)
 
             # get distributions
-            predist <- hist(g, breaks=20, plot=FALSE)
-            postdist <- hist(gc, breaks=predist$breaks, plot=FALSE)
-            filter_levels$gene$dist$full[[ input$filter_gene ]] <- data.frame(mids=postdist$mids, counts=postdist$counts)
-            filter_levels$gene$dist$current[[ input$filter_gene ]] <- filter_levels$gene$dist$full[[ input$filter_gene ]]
+            if(length(g) > 0 && !all(is.na(g))) {
+              predist <- hist(g, breaks=20, plot=FALSE)
+              if(length(gc) > 0 && !all(is.na(gc))) {
+                postdist <- hist(gc, breaks=predist$breaks, plot=FALSE)
+                filter_levels$gene$dist$full[[ input$filter_gene ]] <- data.frame(mids=postdist$mids, counts=postdist$counts)
+                filter_levels$gene$dist$current[[ input$filter_gene ]] <- filter_levels$gene$dist$full[[ input$filter_gene ]]
+              } else {
+                filter_levels$gene$dist$full[[ input$filter_gene ]] <- data.frame(mids=predist$mids, counts=predist$counts)
+                filter_levels$gene$dist$current[[ input$filter_gene ]] <- data.frame(mids=predist$mids, counts=rep(0, length(predist$mids)))
+              }
+            }
 
             # if this is a new gene, then add to filter_levels
             filter_levels$gene$full[[ input$filter_gene ]] <- full
@@ -641,12 +648,19 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
             }
 
             # save distribution
-            predist <- hist(g, breaks=20, plot=FALSE)
-            postdist <- hist(g[g > gcol[1] & g < gcol[2]],
-                             breaks=predist$breaks,
-                             plot=FALSE)
-            filter_levels$gene$dist$full[[ key ]] <- data.frame(mids=predist$mids, counts=predist$counts)
-            filter_levels$gene$dist$current[[ key ]] <- data.frame(mids=postdist$mids, counts=postdist$counts)
+            # Check if data is not empty before creating histograms
+            if(length(g) > 0 && !all(is.na(g))) {
+              predist <- hist(g, breaks=20, plot=FALSE)
+              filtered_g <- g[g > gcol[1] & g < gcol[2]]
+              if(length(filtered_g) > 0 && !all(is.na(filtered_g))) {
+                postdist <- hist(filtered_g, breaks=predist$breaks, plot=FALSE)
+                filter_levels$gene$dist$full[[ key ]] <- data.frame(mids=predist$mids, counts=predist$counts)
+                filter_levels$gene$dist$current[[ key ]] <- data.frame(mids=postdist$mids, counts=postdist$counts)
+              } else {
+                filter_levels$gene$dist$full[[ key ]] <- data.frame(mids=predist$mids, counts=predist$counts)
+                filter_levels$gene$dist$current[[ key ]] <- data.frame(mids=predist$mids, counts=rep(0, length(predist$mids)))
+              }
+            }
 
           } else if(key %in% names(fl$selection)){
             fs[[ key ]] <- key
@@ -1045,12 +1059,16 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
                 pretmp <- mdata[, col, with=FALSE]
 
                 # update distributions
-                predist <- hist(pretmp, breaks=20, plot=FALSE)
-                postdist <- hist(tmp, breaks=predist$breaks,
-                                 plot=FALSE)
-                df <- data.frame(mids=postdist$mids,
-                                 counts=postdist$counts)
-                filter_levels[[ type ]]$dist[[ col ]] <- df
+                # Check if data is not empty before creating histograms
+                if(length(pretmp) > 0 && !all(is.na(pretmp))) {
+                  predist <- hist(pretmp, breaks=20, plot=FALSE)
+                  if(length(tmp) > 0 && !all(is.na(tmp))) {
+                    postdist <- hist(tmp, breaks=predist$breaks, plot=FALSE)
+                    df <- data.frame(mids=postdist$mids,
+                                     counts=postdist$counts)
+                    filter_levels[[ type ]]$dist[[ col ]] <- df
+                  }
+                }
               }
             } else if(type == 'gene'){
               if(obj_type == 'seurat'){
@@ -1074,11 +1092,15 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
               }
 
               # update distributions
-              predist <- hist(pretmp, breaks=20, plot=FALSE)
-              postdist <- hist(tmp, breaks=predist$breaks,
-                               plot=FALSE)
-              filter_levels$gene$dist$current[[ col ]] <- data.frame(mids=postdist$mids,
-                                                                     counts=postdist$counts)
+              # Check if data is not empty before creating histograms
+              if(length(pretmp) > 0 && !all(is.na(pretmp))) {
+                predist <- hist(pretmp, breaks=20, plot=FALSE)
+                if(length(tmp) > 0 && !all(is.na(tmp))) {
+                  postdist <- hist(tmp, breaks=predist$breaks, plot=FALSE)
+                  filter_levels$gene$dist$current[[ col ]] <- data.frame(mids=postdist$mids,
+                                                                         counts=postdist$counts)
+                }
+              }
             }
 
             current <- filter_levels[[ type ]]$current[[ col ]]
