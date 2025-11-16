@@ -186,14 +186,12 @@ umap_ly <- function(df, xcol, ycol,
   if(inherits(df, 'data.table')) df <- as.data.frame(df)
 
   # sanitize plotting column names
-  cols_to_sanitize <- c(xcol, ycol, color)
-  new_names <- sanitize_colnames(cols_to_sanitize)
-
-  cidx <- which(colnames(df) %in% cols_to_sanitize)
-  colnames(df)[cidx] <- new_names
-  xcol <- new_names[1]
-  ycol <- new_names[2]
-  color <- new_names[3]
+  new_xcol <- sanitize_colnames(xcol)
+  new_ycol <- sanitize_colnames(ycol)
+  new_color <- sanitize_colnames(color)
+  colnames(df)[colnames(df) == xcol] <- new_xcol
+  colnames(df)[colnames(df) == ycol] <- new_ycol
+  colnames(df)[colnames(df) == color] <- new_color
 
   xlims <- range(df[, xcol])
   ylims <- range(df[, ycol])
@@ -912,14 +910,12 @@ feature_ly <- function(df, xcol, ycol,
   }
 
   # sanitize plotting column names
-  cols_to_sanitize <- c(xcol, ycol, color)
-  new_names <- sanitize_colnames(cols_to_sanitize)
-
-  cidx <- which(colnames(df) %in% cols_to_sanitize)
-  colnames(df)[cidx] <- new_names
-  xcol <- new_names[1]
-  ycol <- new_names[2]
-  color <- new_names[3]
+  new_xcol <- sanitize_colnames(xcol)
+  new_ycol <- sanitize_colnames(ycol)
+  new_color <- sanitize_colnames(color)
+  colnames(df)[colnames(df) == xcol] <- new_xcol
+  colnames(df)[colnames(df) == ycol] <- new_ycol
+  colnames(df)[colnames(df) == color] <- new_color
 
   if(reorder) df <- df[order(df[, color]),]
   if(is.null(split)){
@@ -1107,7 +1103,8 @@ feature_ly <- function(df, xcol, ycol,
                            text=paste('<b>', color,'<b>'))
                    )
 
-    p <- p %>% layout(annotations=c(axis_titles, subplt_titles))
+    p <- p %>% layout(annotations=c(axis_titles, subplt_titles),
+                      dragmode='lasso')
 
   }
   p
