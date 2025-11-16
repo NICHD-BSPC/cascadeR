@@ -13,7 +13,7 @@ dependencies:
   - r-magrittr
   - r-dplyr
   - r-shinycssloaders
-  - r-ggplot2
+  - r-ggplot2<4.0.0
   - r-markdown
   - r-clustree
   - r-ape
