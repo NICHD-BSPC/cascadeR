@@ -120,7 +120,34 @@ markerPlotUI <- function(id, panel){
         scatterPlotUI(ns('scatter'), panel='selection')
 
       ), # conditionalPanel
-      conditionalPanel(paste0('input["', ns('markerplt_type'), '"] != "Gene-gene Scatter"'),
+      conditionalPanel(
+        paste0('input["', ns('markerplt_type'), '"] == "Feature Plot" & ',
+               'input["', ns('ftrplt_type'), '"] == "UMAP"'),
+        featurePlotUI(ns('featureplot'), panel='selection')
+
+      ), # conditionalPanel
+      conditionalPanel(
+        paste0('input["', ns('markerplt_type'), '"] == "Feature Plot" & ',
+               'input["', ns('ftrplt_type'), '"] == "Spatial"'),
+        spatialFeaturePlotUI(ns('spatial_featureplot'), panel='selection')
+
+      ), # conditionalPanel
+      conditionalPanel(
+        paste0('input["', ns('markerplt_type'), '"] == "Coexpression Plot" & ',
+               'input["', ns('coexplt_type'), '"] == "UMAP"'),
+        coexpressionPlotUI(ns('coexpression_plot'), panel='selection')
+
+      ), # conditionalPanel
+      conditionalPanel(
+        paste0('input["', ns('markerplt_type'), '"] == "Coexpression Plot" & ',
+               'input["', ns('coexplt_type'), '"] == "Spatial"'),
+        spatialCoexpressionPlotUI(ns('spatial_coexpression_plot'), panel='selection')
+
+      ), # conditionalPanel
+      conditionalPanel(
+        paste0('input["', ns('markerplt_type'), '"] != "Gene-gene Scatter" & ',
+               'input["', ns('markerplt_type'), '"] != "Feature Plot" & ',
+               'input["', ns('markerplt_type'), '"] != "Coexpression Plot"'),
 
         'No selection settings available for this tab'
 

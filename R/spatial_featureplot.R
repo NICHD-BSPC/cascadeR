@@ -71,6 +71,41 @@ spatialFeaturePlotUI <- function(id, panel){
         ) # column
       ) # fluidRow
     )
+  } else if(panel == 'selection'){
+    tagList(
+      fluidRow(
+        column(6,
+          strong('Point selection')
+        ), # column
+        column(6, align='right',
+          helpButtonUI(ns('umap_ptselect_help'))
+        ) # column
+      ), # fluidRow
+
+      uiOutput(ns('pt_selected')),
+
+      fluidRow(
+        column(12,
+          align='center',
+          style='margin-bottom: 10px;',
+          actionButton(ns('show_selection'),
+                       label='Show selection')
+        ),
+        column(12,
+          align='center',
+          style='margin-bottom: 10px;',
+          downloadButton(ns('dload_clicks'),
+                         label='Download selection')
+        ),
+        column(12,
+          align='center',
+          style='margin-bottom: 10px;',
+          actionButton(ns('reset_clicks'),
+                       label='Reset selection',
+                       class='btn-primary')
+        )
+      ) # fluidRow
+    )
   } else if(panel == 'main'){
     tabPanel('Spatial',
       br(),
@@ -131,6 +166,13 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
     function(input, output, session){
       ns <- NS(id)
 
+      # keep track of point selection here
+      selected_points <- reactiveValues(full=list(),
+                                        current=list())
+
+      plot_obj <- reactiveValues(df=NULL)
+      plot_labeled <- reactiveVal(FALSE)
+
       observeEvent(gene_choices(), {
         updateSelectizeInput(session, 'plt_genes',
                              choices=gene_choices(),
@@ -155,6 +197,13 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
                                selected=selected,
                                server=TRUE)
         }
+      })
+
+      observeEvent(app_object()$metadata_levels, {
+        # reset data
+        plot_obj$df <- NULL
+        selected_points$full <- list()
+        selected_points$current <- list()
       })
 
       #################### Main plotting function ####################
@@ -219,7 +268,9 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
               type='warning'
             )
             idx <- c(which(!zero_rows), sample(which(zero_rows), 50000))
+            df <- data.table::as.data.table(df)
             df <- df[idx,]
+            df <- as.data.frame(df)
           } else {
             showNotification(
               'Number of empty cells very large! Consider downsampling for faster plotting',
@@ -260,11 +311,31 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
         if(length(curr_slices) > 1){
           split_var <- 'slice'
           df[[ split_var ]] <- factor(df[[ split_var ]], levels=curr_slices)
+          num_split <- length(curr_slices)
         } else {
           split_var <- NULL
         }
 
         free_axes <- ifelse(input$free_axes == 'yes', TRUE, FALSE)
+
+        source <- 'spatial_featureplot'
+
+        if(!is.null(split_var)) num_traces <- num_split
+        else num_traces <- 1
+
+        # save plotted data
+        plot_obj$df <- list(data=df,
+                            xcol='spatial1',
+                            ycol='spatial2',
+                            color=g,
+                            colors=colors,
+                            split=split_var,
+                            crange=crange,
+                            marker_size=marker_size + 0.25*marker_size, # slightly increase marker size
+                            alpha=alpha,
+                            free_axes=free_axes,
+                            source=source,
+                            num_traces=num_traces)
 
         # arrange multi-gene views into row
         if(length(g) > 1){
@@ -307,7 +378,8 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
                                      split=split_var,
                                      free_axes=free_axes,
                                      width=wd,
-                                     height=ht)
+                                     height=ht,
+                                     source=source)
                      p
                    })
 
@@ -341,9 +413,12 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
                           free_axes=free_axes,
                           width=wd,
                           height=ht,
-                          margin=0.05)
+                          margin=0.05,
+                          source=source)
 
         }
+
+        event_register(p, 'plotly_selected')
 
         p
       })
@@ -357,7 +432,152 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
         p
       })
 
+      ##################### lasso selection ###########################
+
+      # proxy for plot
+      plotProxy <- plotlyProxy('spatial_featureplt', session)
+
+      observeEvent(input$show_selection, {
+        if(length(input$plt_genes) > 1 | length(slice()) > 1){
+          showNotification(
+            'Cannot show selection in multi-gene or multi-slice view',
+            type='warning'
+          )
+        }
+      })
+
+      observeEvent(c(selected_points$full,
+                     input$show_selection), {
+
+        validate(
+          need(!is.null(app_object()$rds), '')
+        )
+
+        sel_pts <- unique(unlist(selected_points$full))
+
+        if(length(slice()) == 1){
+          if(length(sel_pts) > 0){
+            new_trace <- get_label_trace(plot_obj$df,
+                                         sel_pts)
+            num_traces <- plot_obj$df$num_traces
+
+            # remove last trace
+            # NOTE: this is 0-based indexed
+            if(plot_labeled()){
+              plotProxy %>%
+                plotlyProxyInvoke('deleteTraces', num_traces)
+            }
+
+            plotProxy %>%
+              plotlyProxyInvoke('addTraces', new_trace)
+
+            plot_labeled(TRUE)
+          } else if(plot_labeled()){
+            num_traces <- plot_obj$df$num_traces
+            plotProxy %>%
+              plotlyProxyInvoke('deleteTraces', num_traces)
+            plot_labeled(FALSE)
+          }
+        }
+      })
+
+      get_selected <- reactive({
+        validate(
+          need(!is.null(plot_obj$df), '')
+        )
+
+        event_data('plotly_selected', source=plot_obj$df$source)
+      })
+
+      observeEvent(get_selected(), {
+        validate(
+          need(!is.null(app_object()$rds), '')
+        )
+
+        df <- get_selected()
+
+        # get points by matching coords & key
+        keys <- paste(df$x, df$y)
+
+        # plot data
+        data_df <- as.data.frame(plot_obj$df$data)
+        xcol <- plot_obj$df$xcol
+        ycol <- plot_obj$df$ycol
+
+        # fix names if starting with number
+        if(grepl('^\\d', xcol)) xcol <- make.names(xcol)
+        if(grepl('^\\d', ycol)) ycol <- make.names(ycol)
+
+        data_keys <- paste(data_df[, xcol],
+                           data_df[, ycol])
+
+        new <- unique(data_df$rn[which(data_keys %in% keys)])
+
+        curr <- unique(unlist(selected_points$full))
+
+        # only add new points
+        if(!all(new %in% curr)){
+          new_idx <- which(!new %in% curr)
+          showNotification(
+              paste0('Adding ', length(new_idx), ' points to selection')
+          )
+
+          selected_points$full[[ length(selected_points$full) + 1 ]] <- new[new_idx]
+        } else if(length(new) > 0){
+          showNotification(
+              paste0('All selected points already in selection'),
+              type='warning'
+          )
+        }
+      })
+
+      # dynamic UI to show number of points selected
+      output$pt_selected <- renderUI({
+        np <- length(unique(unlist(selected_points$full)))
+
+        tagList(
+          fluidRow(
+            column(12, style='margin-bottom: 10px;',
+
+              paste(np, 'points selected')
+            )
+          )
+        )
+      })
+
+      # download handler for selected cells
+      output$dload_clicks <- downloadHandler(
+        filename = function(){
+          paste0('clicked-points.tsv')
+        },
+        content = function(file){
+          bc <- unique(unlist(selected_points$full))
+
+          # only output unique barcodes
+          mdata <- data.table::as.data.table(app_object()$metadata, keep.rownames=T)
+          idx <- mdata$rn %in% bc
+
+          mdata_sel <- as.data.frame(mdata[idx,])
+          rn_idx <- which(colnames(mdata_sel) == 'rn')
+          colnames(mdata_sel)[rn_idx] <- 'barcodes'
+
+          write.table(mdata_sel, file=file, sep='\t', quote=FALSE,
+                      row.names=FALSE)
+        }
+      )
+
+      # observer to reset clicks
+      observeEvent(input$reset_clicks, {
+        np <- length(unique(unlist(selected_points$full)))
+        showNotification(
+            paste0('Clearing ', np,
+                   ' points from selection')
+        )
+        selected_points$full <- list()
+      })
+
       helpButtonServer('spatial_featureplt_help', size='l')
+      helpButtonServer('umap_ptselect_help', size='l')
       downloadPlotServer('plt_dload', get_spatial_feature_plot, 'spatial_feature_plot')
 
     } # function

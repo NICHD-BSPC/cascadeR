@@ -129,6 +129,41 @@ coexpressionPlotUI <- function(id, panel){
         ) # column
       ) # fluidRow
     )
+  } else if(panel == 'selection'){
+    tagList(
+      fluidRow(
+        column(6,
+          strong('Point selection')
+        ), # column
+        column(6, align='right',
+          helpButtonUI(ns('umap_ptselect_help'))
+        ) # column
+      ), # fluidRow
+
+      uiOutput(ns('pt_selected')),
+
+      fluidRow(
+        column(12,
+          align='center',
+          style='margin-bottom: 10px;',
+          actionButton(ns('show_selection'),
+                       label='Show selection')
+        ),
+        column(12,
+          align='center',
+          style='margin-bottom: 10px;',
+          downloadButton(ns('dload_clicks'),
+                         label='Download selection')
+        ),
+        column(12,
+          align='center',
+          style='margin-bottom: 10px;',
+          actionButton(ns('reset_clicks'),
+                       label='Reset selection',
+                       class='btn-primary')
+        )
+      ) # fluidRow
+    )
   } else if(panel == 'main'){
     tabPanel('UMAP',
       br(),
@@ -203,6 +238,13 @@ coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
 
       plot_data <- reactiveValues(coexp_tbl=NULL)
 
+      # keep track of point selection here
+      selected_points <- reactiveValues(full=list(),
+                                        current=list())
+
+      plot_obj <- reactiveValues(df=NULL)
+      plot_labeled <- reactiveVal(FALSE)
+
       observeEvent(gene_choices(), {
         updateSelectizeInput(session, 'plt_genes',
                              choices=gene_choices(),
@@ -230,6 +272,10 @@ coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
       })
 
       observeEvent(app_object()$metadata_levels, {
+        # reset data
+        plot_obj$df <- NULL
+        selected_points$full <- list()
+        selected_points$current <- list()
 
         grouping_vars <- app_object()$grouping_vars
 
@@ -298,6 +344,7 @@ coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
 
           df[, split_var] <- factor(df[, split_var],
                                     levels=plt_split_lvls())
+          num_split <- length(levels(df[[ split_var ]]))
         }
 
         # save column names
@@ -346,23 +393,50 @@ coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
             ht <- 0.75*ht
         }
 
-        p <- feature_blend(df,
-                           xcol=df_cols[1],
-                           ycol=df_cols[2],
-                           blend_cols=g,
-                           colors=colors[2:4],
-                           split=split_var,
-                           col_threshold_1=input$thres_1/100,
-                           col_threshold_2=input$thres_2/100,
-                           neutral_color=colors[1],
-                           #bin_mode=input$bin,
-                           showlegend=TRUE,
-                           type='scattergl',
-                           marker_size=marker_size,
-                           alpha=alpha,
-                           free_axes=free_axes,
-                           height=ht,
-                           margin=0.05)
+        source <- 'coexpression_plot'
+
+        pp <- feature_blend(df,
+                            xcol=df_cols[1],
+                            ycol=df_cols[2],
+                            blend_cols=g,
+                            colors=colors[2:4],
+                            split=split_var,
+                            col_threshold_1=input$thres_1/100,
+                            col_threshold_2=input$thres_2/100,
+                            neutral_color=colors[1],
+                            #bin_mode=input$bin,
+                            showlegend=TRUE,
+                            type='scattergl',
+                            marker_size=marker_size,
+                            alpha=alpha,
+                            free_axes=free_axes,
+                            height=ht,
+                            margin=0.05,
+                            source=source)
+
+          # get list elements
+          p <- pp$plot
+          df <- pp$data
+
+          num_traces <- length(unique(df[[ 'color' ]]))
+          if(!is.null(split_var)) num_traces <- num_traces*num_split
+
+          # save plotted data
+          plot_obj$df <- list(data=df,
+                              xcol=df_cols[1],
+                              ycol=df_cols[2],
+                              color='color',
+                              blend_cols=g,
+                              colors=colors[2:4],
+                              split=split_var,
+                              col_threshold_1=input$thres_1/100,
+                              col_threshold_2=input$thres_2/100,
+                              neutral_color=colors[1],
+                              marker_size=marker_size,
+                              alpha=alpha,
+                              source=source,
+                              free_axes=free_axes,
+                              num_traces=num_traces)
 
         # save thresholds
         xlims <- get_limits(df[, g[1]])
@@ -382,6 +456,8 @@ coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
 
         plot_data$coexp_tbl <- list(tbl=pct_df,
                                     colors=colors)
+
+        event_register(p, 'plotly_selected')
 
         p
       })
@@ -460,7 +536,156 @@ coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
         input$plt_genes[2]
       })
 
+      ##################### lasso selection ###########################
+
+      # proxy for plot
+      plotProxy <- plotlyProxy('coexplt', session)
+
+      observeEvent(input$show_selection, {
+        if(input$split_by != 'none'){
+          showNotification(
+            'Cannot show selection in split view',
+            type='warning'
+          )
+        }
+      })
+
+      observeEvent(c(selected_points$full,
+                     input$show_selection), {
+
+        validate(
+          need(!is.null(app_object()$rds), '')
+        )
+
+        isolate({
+          split_var <- input$split_by
+        })
+
+        sel_pts <- unique(unlist(selected_points$full))
+
+        if(split_var == 'none'){
+          if(length(sel_pts) > 0){
+            new_trace <- get_label_trace(plot_obj$df,
+                                         sel_pts)
+            num_traces <- plot_obj$df$num_traces
+
+            # remove last trace
+            # NOTE: this is 0-based indexed
+            if(plot_labeled()){
+              plotProxy %>%
+                plotlyProxyInvoke('deleteTraces', num_traces)
+            }
+
+            plotProxy %>%
+              plotlyProxyInvoke('addTraces', new_trace)
+
+            plot_labeled(TRUE)
+          } else if(plot_labeled()){
+            num_traces <- plot_obj$df$num_traces
+            plotProxy %>%
+              plotlyProxyInvoke('deleteTraces', num_traces)
+            plot_labeled(FALSE)
+          }
+        }
+      })
+
+      get_selected <- reactive({
+        validate(
+          need(!is.null(plot_obj$df), '')
+        )
+
+        event_data('plotly_selected', source=plot_obj$df$source)
+      })
+
+      observeEvent(get_selected(), {
+        validate(
+          need(!is.null(app_object()$rds), '')
+        )
+
+        df <- get_selected()
+
+        # get points by matching coords & key
+        keys <- paste(df$x, df$y)
+
+        # plot data
+        data_df <- plot_obj$df$data
+        xcol <- plot_obj$df$xcol
+        ycol <- plot_obj$df$ycol
+
+        # fix names if starting with number
+        if(grepl('^\\d', xcol)) xcol <- make.names(xcol)
+        if(grepl('^\\d', ycol)) ycol <- make.names(ycol)
+
+        data_keys <- paste(data_df[, xcol],
+                           data_df[, ycol])
+
+        new <- unique(data_df$rn[which(data_keys %in% keys)])
+
+        curr <- unique(unlist(selected_points$full))
+
+        # only add new points
+        if(!all(new %in% curr)){
+          new_idx <- which(!new %in% curr)
+          showNotification(
+              paste0('Adding ', length(new_idx), ' points to selection')
+          )
+
+          selected_points$full[[ length(selected_points$full) + 1 ]] <- new[new_idx]
+        } else if(length(new) > 0){
+          showNotification(
+              paste0('All selected points already in selection'),
+              type='warning'
+          )
+        }
+      })
+
+      # dynamic UI to show number of points selected
+      output$pt_selected <- renderUI({
+        np <- length(unique(unlist(selected_points$full)))
+
+        tagList(
+          fluidRow(
+            column(12, style='margin-bottom: 10px;',
+
+              paste(np, 'points selected')
+            )
+          )
+        )
+      })
+
+      # download handler for selected cells
+      output$dload_clicks <- downloadHandler(
+        filename = function(){
+          paste0('clicked-points.tsv')
+        },
+        content = function(file){
+          bc <- unique(unlist(selected_points$full))
+
+          # only output unique barcodes
+          mdata <- data.table::as.data.table(app_object()$metadata, keep.rownames=T)
+          idx <- mdata$rn %in% bc
+
+          mdata_sel <- as.data.frame(mdata[idx,])
+          rn_idx <- which(colnames(mdata_sel) == 'rn')
+          colnames(mdata_sel)[rn_idx] <- 'barcodes'
+
+          write.table(mdata_sel, file=file, sep='\t', quote=FALSE,
+                      row.names=FALSE)
+        }
+      )
+
+      # observer to reset clicks
+      observeEvent(input$reset_clicks, {
+        np <- length(unique(unlist(selected_points$full)))
+        showNotification(
+            paste0('Clearing ', np,
+                   ' points from selection')
+        )
+        selected_points$full <- list()
+      })
+
       helpButtonServer('coexplt_help', size='l')
+      helpButtonServer('umap_ptselect_help', size='l')
       downloadPlotServer('plt_dload', get_coexpression_plot, 'coexpression_plot')
 
     } # function

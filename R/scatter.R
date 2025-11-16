@@ -235,7 +235,7 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
       # keep track of point selection here
       selected_points <- reactiveValues(full=list(),
                                         current=list())
-      #show_selection <- reactiveVal(0)
+
       plot_obj <- reactiveValues(metadata=NULL,
                                  gene=NULL)
       plot_labeled <- reactiveVal(FALSE)

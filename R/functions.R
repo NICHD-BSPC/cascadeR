@@ -462,8 +462,9 @@ umap_ly <- function(df, xcol, ycol,
 #' @param free_axes should subplots have free axes?
 #' @param width width of plot in pixels. If NULL (default), plot is auto-sized.
 #' @param height height of plot in pixels. if NULL (default), plot is auto-sized.
+#' @param source name of source to return data from
 #'
-#' @return plotly handle
+#' @return list with plot data and plotly handle
 #'
 feature_blend <- function(df, xcol, ycol, blend_cols,
                           colors,
@@ -481,7 +482,8 @@ feature_blend <- function(df, xcol, ycol, blend_cols,
                           alpha=0.3,
                           free_axes=FALSE,
                           width=NULL,
-                          height=NULL){
+                          height=NULL,
+                          source='A'){
 
   if(inherits(df, 'data.table')) df <- as.data.frame(df)
 
@@ -528,10 +530,10 @@ feature_blend <- function(df, xcol, ycol, blend_cols,
                alpha=alpha,
                free_axes=free_axes,
                width=width,
-               height=height)
+               height=height,
+               source=source)
 
-  p
-
+  list(plot=p, data=df)
 }
 
 #' Get counts table based on coexpression
