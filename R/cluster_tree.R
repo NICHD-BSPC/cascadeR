@@ -752,6 +752,16 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
         } else if(app_object()$obj_type == 'anndata'){
           dr_choices_all <- names(app_object()$rds$obsm)
         }
+
+        if(length(dr_choices_all) == 0){
+          showNotification(
+            'No dimension reductions found in object!',
+            type='warning'
+          )
+        }
+        validate(
+          need(length(dr_choices_all) > 0, 'No dimension reductions found in object')
+        )
         dr_choices <- dr_choices_all[grep(tolower(input$clust_assay), dr_choices_all)]
 
         if(length(dr_choices) == 0) dr_choices <- dr_choices_all
