@@ -193,6 +193,16 @@ umap_ly <- function(df, xcol, ycol,
   colnames(df)[colnames(df) == ycol] <- new_ycol
   colnames(df)[colnames(df) == color] <- new_color
 
+  if(!is.null(label_cols)){
+    label_cols[label_cols == xcol] <- new_xcol
+    label_cols[label_cols == ycol] <- new_ycol
+    label_cols[label_cols == color] <- new_color
+  }
+
+  xcol <- new_xcol
+  ycol <- new_ycol
+  color <- new_color
+
   xlims <- range(df[, xcol])
   ylims <- range(df[, ycol])
 
@@ -916,6 +926,16 @@ feature_ly <- function(df, xcol, ycol,
   colnames(df)[colnames(df) == xcol] <- new_xcol
   colnames(df)[colnames(df) == ycol] <- new_ycol
   colnames(df)[colnames(df) == color] <- new_color
+
+  if(!is.null(label_cols)){
+    label_cols[label_cols == xcol] <- new_xcol
+    label_cols[label_cols == ycol] <- new_ycol
+    label_cols[label_cols == color] <- new_color
+  }
+
+  xcol <- new_xcol
+  ycol <- new_ycol
+  color <- new_color
 
   if(reorder) df <- df[order(df[, color]),]
   if(is.null(split)){
