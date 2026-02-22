@@ -589,6 +589,10 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
       helpButtonServer('umap_ptselect_help', size='l')
       downloadPlotServer('plt_dload', get_feature_plot, 'feature_plot')
 
+      # return selected points
+      return(
+        reactive({ selected_points$full })
+      )
     } # function
   ) # moduleServer
 } # featurePlotServer

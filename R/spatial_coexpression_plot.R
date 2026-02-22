@@ -643,6 +643,10 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
       helpButtonServer('umap_ptselect_help', size='l')
       downloadPlotServer('plt_dload', get_spatial_coexp_plot, 'spatial_coexpression_plot')
 
+      # return selected points
+      return(
+        reactive({ selected_points$full })
+      )
     } # function
   ) # moduleServer
 } # spatialCoexpressionPlotServer

@@ -423,7 +423,7 @@ markerPlotServer <- function(id, obj, filtered, genes_to_plot,
 
       ##################### Feature Plot ########################
 
-      featurePlotServer('featureplot',
+      ftrplt_selected <- featurePlotServer('featureplot',
                         app_object,
                         reactive({ obj_info$filtered }),
                         genes_to_plot,
@@ -435,7 +435,7 @@ markerPlotServer <- function(id, obj, filtered, genes_to_plot,
 
       ##################### Coexpression Plot ########################
 
-      coexpressionPlotServer('coexpression_plot',
+      coexplt_selected <- coexpressionPlotServer('coexpression_plot',
                              app_object,
                              reactive({ obj_info$filtered }),
                              genes_to_plot,
@@ -455,7 +455,7 @@ markerPlotServer <- function(id, obj, filtered, genes_to_plot,
 
       ##################### Spatial Feature Plot ###############
 
-      spatialFeaturePlotServer('spatial_featureplot',
+      spat_ftrplt_selected <- spatialFeaturePlotServer('spatial_featureplot',
                                app_object,
                                reactive({ obj_info$filtered }),
                                genes_to_plot,
@@ -468,7 +468,7 @@ markerPlotServer <- function(id, obj, filtered, genes_to_plot,
 
       ##################### Spatial Coexpression Plot ########################
 
-      spatialCoexpressionPlotServer('spatial_coexpression_plot',
+      spat_coexplt_selected <- spatialCoexpressionPlotServer('spatial_coexpression_plot',
                                     app_object,
                                     reactive({ obj_info$filtered }),
                                     genes_to_plot,
@@ -481,7 +481,7 @@ markerPlotServer <- function(id, obj, filtered, genes_to_plot,
 
       ##################### Gene-gene scatter ########################
 
-      scatterPlotServer('scatter',
+      scatter_selected <- scatterPlotServer('scatter',
                         app_object,
                         reactive({ obj_info$filtered }),
                         genes_to_plot,
@@ -503,10 +503,26 @@ markerPlotServer <- function(id, obj, filtered, genes_to_plot,
                      reactive({ input$plt_do }),
                      config)
 
+
       #################### Help buttons ####################
 
       helpButtonServer('mrkrplt_help', size='l')
 
+      # return selected points
+      return(
+        reactive({
+          ll <- list(
+            ftrplt=ftrplt_selected(),
+            coexplt=coexplt_selected(),
+            spat_ftrplt=spat_ftrplt_selected(),
+            spat_coexplt=spat_coexplt_selected()
+          )
+
+          # drop empty lists
+          nozero_idx <- which(unlist(lapply(ll, length)) > 0)
+          ll[nozero_idx]
+        })
+      )
     } # function
   ) # moduleServer
 } # markerPlotServer

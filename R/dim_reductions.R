@@ -1293,10 +1293,11 @@ dimredServer <- function(id, obj,
 
       return(
         reactive({
-          list(
-            umap=unique(unlist(selected_points$umap)),
-            spatial=unique(unlist(selected_points$spatial))
-          )
+          ll <- list()
+          if(length(selected_points$umap) > 0) ll$umap <- selected_points$umap
+          if(length(selected_points$spatial) > 0) ll$spatial <- selected_points$spatial
+
+          ll
         })
       )
     } # function

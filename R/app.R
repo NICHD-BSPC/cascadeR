@@ -509,8 +509,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                                  demarkers=NULL,
                                  cluster_colors=NULL,
                                  grouping_vars=NULL,
-                                 selected_points=list(umap=NULL,
-                                                      spatial=NULL))
+                                 selected_points=list())
 
     # var to stop app flow
     stop_flow <- reactiveVal(FALSE)
@@ -539,8 +538,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
       app_object$demarkers <- NULL
       app_object$cluster_colors <- NULL
       app_object$grouping_vars <- NULL
-      app_object$selected_points <- list(umap=NULL,
-                                         spatial=NULL)
+      app_object$selected_points <- list()
 
       # reset gene choices
       all_genes$choices <- NULL
@@ -1300,17 +1298,6 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                                     reload_global,
                                     config)
 
-    observeEvent(dimred_selected(), {
-      ll <- dimred_selected()
-
-      app_object$selected_points$umap <- ll$umap
-
-      if('spatial' %in% names(ll)){
-        app_object$selected_points$spatial <- ll$spatial
-      }
-
-    })
-
     ##################### Marker Plots ########################
 
     plot_args <- reactive({
@@ -1321,7 +1308,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
       )
     })
 
-    markerPlotServer('mrkrplt_tab',
+    marker_plt_selected <- markerPlotServer('mrkrplt_tab',
                      app_object,
                      apply_filters,
                      gene_scratchpad,
@@ -1329,6 +1316,29 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                      reactive({ all_genes$choices }),
                      reload_global,
                      config)
+
+    ################## handle point selection #################
+
+    observeEvent(c(dimred_selected(), marker_plt_selected()), {
+      dim_pts <- dimred_selected()
+      marker_pts <- marker_plt_selected()
+      comb <- c(dim_pts, marker_pts)
+
+      # flatten selections & give unique names
+      all_sel <- list()
+      for(i in seq_len(length(comb))){
+        elem <- comb[[i]]
+        names(elem) <- paste0(names(comb)[i], '_', seq_len(length(elem)))
+        all_sel <- c(all_sel, elem)
+      }
+
+      if(!all(all_sel %in% app_object$selected_points)){
+        delta <- setdiff(all_sel, app_object$selected_points)
+
+        app_object$selected_points <- c(app_object$selected_points, delta)
+      }
+
+    })
 
     ########################## Help #############################
 
