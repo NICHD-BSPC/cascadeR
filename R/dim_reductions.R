@@ -685,9 +685,10 @@ dimredServer <- function(id, obj,
       # proxy for the interactive umap plot
       umapProxy <- plotlyProxy('umapplt', session)
 
-      observeEvent(c(selected_points$umap,
-                     input$show_umap_selection), {
+      show_umap_selection <- reactive({ show_selection() })
 
+      # Show selection on plot using restyle
+      observeEvent(show_umap_selection(), {
         validate(
           need(!is.null(app_object()$rds) & args()$dimred != '',
                '')
@@ -697,80 +698,85 @@ dimredServer <- function(id, obj,
           split_var <- input$umap_split_by
         })
 
-        sel_pts <- unique(c(selected_points$umap,
-                            selected_points$spatial))
-        if(split_var == 'none'){
-          if(length(sel_pts) > 0){
-            new_trace <- get_label_trace(umap_obj$df,
-                                         sel_pts)
+        sel_barcodes <- unique(unlist(c(selected_points$umap, selected_points$spatial)))
 
-            num_traces <- umap_obj$df$num_traces
+        validate(
+          need(length(sel_barcodes) > 0, '')
+        )
 
-            # remove last trace
-            # NOTE: this is 0-based indexed
-            if(plot_labeled$umap){
-              umapProxy %>%
-                plotlyProxyInvoke('deleteTraces', num_traces)
-            }
+        # Create a vector indicating which points are selected
 
-            umapProxy %>%
-              plotlyProxyInvoke('addTraces', new_trace)
+        # Build vectors for marker styling
+        if(is.null(umap_obj$df$split)) {
+          marker_sizes <- rep(umap_obj$df$marker_size*0.5, nrow(umap_obj$df$data))
+        } else {
+          marker_sizes <- rep(umap_obj$df$marker_size*0.6, nrow(umap_obj$df$data))
+        }
+        marker_opacity <- rep(umap_obj$df$alpha, nrow(umap_obj$df$data))
 
-            plot_labeled$umap <- TRUE
-          } else if(plot_labeled$umap){
-            num_traces <- umap_obj$df$num_traces
-            umapProxy %>%
-              plotlyProxyInvoke('deleteTraces', num_traces)
-            plot_labeled$umap <- FALSE
-          }
+        color_levels <- levels(umap_obj$df$data[[umap_obj$df$color]])
 
-        #} else if(length(sel_pts) > 0){
-        #  showNotification(
-        #    'Warning: Cannot show selected points in split view',
-        #    type='warning'
-        #  )
+        # if not labeled, show, else hide selection
+        if(!plot_labeled$umap){
+          is_selected <- which(rownames(umap_obj$df$data) %in% sel_barcodes)
+          marker_sizes[is_selected] <- marker_sizes[is_selected] + 2
+          marker_opacity[is_selected] <- 1
+          color_levels_used <- as.character(unique(umap_obj$df$data[is_selected, umap_obj$df$color]))
+        } else {
+          color_levels_used <- color_levels
         }
 
-        # TODO: implement showing selection for split plot
-        # - add empty 'selected' trace to each subplot?
-        #   Then we could use append/prepend traces
-        # - alternatively, restyle
-        #} else {
-        #  if(length(selected_points$umap) > 0){
 
-        #    new_trace <- get_label_trace(umap_obj$df,
-        #                                 selected_points$umap,
-        #                                 split=TRUE)
+        if(is.null(umap_obj$df$split)) {
+          # Single plot view - restyle traces directly
 
-        #    num_traces <- umap_obj$df$num_traces
+          size_list <- split(marker_sizes, f=umap_obj$df$data[[ umap_obj$df$color ]])
+          opacity_list <- split(marker_opacity, f=umap_obj$df$data[[ umap_obj$df$color ]])
 
-        #    lvls <- unique(umap_obj$df$data[, umap_obj$df$split ])
+          # subset to keep colors used
+          #color_idx <- which(color_levels %in% color_levels_used)
 
-        #    # remove all label traces
-        #    # NOTE: this is 0-based indexed
-        #    if(plot_labeled$umap){
-        #      for(i in 1:length(lvls)){
-        #        umapProxy %>%
-        #          plotlyProxyInvoke('deleteTraces', num_traces)
-        #      }
-        #    }
+          #num_traces <- length(color_levels)
 
-        #    for(i in 1:length(new_trace)){
-        #      tmp <- new_trace[[i]]
-        #      print(tmp$pos)
-        #      print(str(tmp$trace))
-        #      umapProxy %>%
-        #        plotlyProxyInvoke('addTraces',
-        #                          tmp$trace)
-        #                          #-1)
-        #                          #tmp$pos)
-        #                          ##tmp$pos[2])
-        #    }
-        #    plot_labeled$umap <- TRUE
+        } else {
+          # NOTE: this is currently still not working as desired
 
-        #  }
-        #}
+          # Split plot view - need to handle multiple subplots
+          split_var <- umap_obj$df$split
+          split_levels <- levels(umap_obj$df$data[[split_var]])
 
+          # split attribute vectors by color & split *in that order*
+          # since this produces the correct trace order of:
+          #   split1-color1, split1-color2, ..., split2-color1, split2-color2, ...
+          size_list <- split(marker_sizes,
+                         f=list(umap_obj$df$data[[ umap_obj$df$color ]], umap_obj$df$data[[ split_var ]]))
+          opacity_list <- split(marker_opacity,
+                            f=list(umap_obj$df$data[[ umap_obj$df$color ]], umap_obj$df$data[[ split_var ]]))
+
+          color_idx <- match(umap_obj$df$trace_names, names(size_list))
+          color_idx <- color_idx[!is.na(color_idx)]
+
+          size_list <- size_list[color_idx]
+          opacity_list <- opacity_list[color_idx]
+        }
+
+        # subset before applying
+        #size_list <- size_list[ color_idx ]
+        #opacity_list <- opacity_list[ color_idx ]
+
+        restyle_args <- list(
+          'marker.size' = I(unname(size_list)),
+          'marker.opacity' = I(unname(opacity_list))
+        )
+
+        #trace_idx <- as.list(color_idx - 1)
+        trace_idx <- as.list(1:length(size_list) - 1)
+
+        umapProxy %>%
+          plotlyProxyInvoke('restyle', restyle_args, trace_idx)
+
+        # toggle
+        plot_labeled$umap <- !plot_labeled$umap
       })
 
       ##################### UMAP selection #########################
