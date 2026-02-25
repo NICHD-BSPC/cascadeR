@@ -185,42 +185,6 @@ dimredUI <- function(id, panel){
     )
   } else if(panel == 'selection'){
     tagList(
-      conditionalPanel(paste0('input["', ns('dimplt_type'), '"] == "UMAP"'),
-        fluidRow(
-          column(6,
-            strong('Point selection')
-          ), # column
-          column(6, align='right',
-            helpButtonUI(ns('umap_ptselect_help'))
-          ) # column
-        ), # fluidRow
-
-        uiOutput(ns('umap_selected')),
-
-        fluidRow(
-          column(12,
-            align='center',
-            style='margin-bottom: 10px;',
-            actionButton(ns('show_umap_selection'),
-                         label='Show selection')
-          ),
-          column(12,
-            align='center',
-            style='margin-bottom: 10px;',
-            downloadButton(ns('dload_umap_clicks'),
-                           label='Download selection')
-          ),
-          column(12,
-            align='center',
-            style='margin-bottom: 10px;',
-            actionButton(ns('reset_umap_clicks'),
-                         label='Reset selection',
-                         class='btn-primary')
-          )
-        ) # fluidRow
-
-      ), # conditionalPanel
-
       conditionalPanel(paste0('input["', ns('dimplt_type'), '"] == "Spatial Plot"'),
         fluidRow(
           column(6,
