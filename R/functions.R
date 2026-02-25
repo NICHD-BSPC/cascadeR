@@ -1398,7 +1398,12 @@ get_label_trace <- function(plot_data, labeled_pts,
 
   # subset plot data df to labeled barcodes
   bc <- unique(unlist(labeled_pts))
-  idx <- plot_data$data$barcode %in% bc
+
+  if(inherits(plot_data$data, 'data.table')){
+    idx <- plot_data$data$barcode %in% bc
+  } else {
+    idx <- rownames(plot_data$data) %in% bc
+  }
   ldf <- plot_data$data[idx, ]
 
   ldf <- as.data.frame(ldf)
