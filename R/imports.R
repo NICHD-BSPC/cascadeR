@@ -13,7 +13,7 @@
 #' @importFrom htmltools withTags tagAppendChild tagAppendChildren
 #' @importFrom Matrix t sparse.model.matrix colSums
 #' @importFrom methods slot slotNames
-#' @importFrom plotly plotlyOutput renderPlotly layout plot_ly add_trace add_markers toWebGL plotlyProxy event_data highlight_key highlight event_register subplot plotlyProxyInvoke plotly_empty hide_legend ggplotly kaleido
+#' @importFrom plotly plotlyOutput renderPlotly layout plot_ly add_trace add_markers toWebGL plotlyProxy event_data highlight_key highlight event_register subplot plotlyProxyInvoke plotly_empty hide_legend ggplotly kaleido plotly_build
 #' @importFrom RColorBrewer brewer.pal
 #' @importFrom readr write_tsv read_tsv
 #' @importFrom reshape2 melt
