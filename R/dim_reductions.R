@@ -665,6 +665,10 @@ dimredServer <- function(id, obj,
                      height=ht,
                      source=source)
 
+        # save trace names
+        trace_data <- plotly::plotly_build(p)$x$data
+        umap_obj$df$trace_names <- unlist(lapply(trace_data, function(x) unique(x$meta)))
+
         event_register(p, 'plotly_selected')
         event_register(p, 'plotly_click')
 
