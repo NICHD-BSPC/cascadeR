@@ -334,6 +334,8 @@ dimredUI <- function(id, panel){
 #' @param filtered barcodes to filter object
 #' @param args reactive list with global args, 'grp_by' for grouping variable
 #'        and 'dimred' for which dimension reduction to use
+#' @param show_selection reactive to show selection
+#' @param reset_selection reactive to reset selection
 #' @param reload_global reactive to trigger reload
 #' @param config reactive list with config settings
 #'
@@ -341,7 +343,8 @@ dimredUI <- function(id, panel){
 #'
 dimredServer <- function(id, obj,
                          filtered,
-                         args, reload_global, config){
+                         args, show_selection, reset_selection,
+                         reload_global, config){
   moduleServer(
     id,
 
@@ -857,7 +860,7 @@ dimredServer <- function(id, obj,
         }
       )
 
-      observeEvent(input$reset_umap_clicks, {
+      observeEvent(reset_selection(), {
         np <- length(unique(unlist(c(selected_points$umap,
                                      selected_points$spatial))))
         showNotification(

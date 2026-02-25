@@ -4,7 +4,16 @@
 \alias{dimredServer}
 \title{Cell embeddings module server}
 \usage{
-dimredServer(id, obj, filtered, args, reload_global, config)
+dimredServer(
+  id,
+  obj,
+  filtered,
+  args,
+  show_selection,
+  reset_selection,
+  reload_global,
+  config
+)
 }
 \arguments{
 \item{id}{Input id}
@@ -15,6 +24,10 @@ dimredServer(id, obj, filtered, args, reload_global, config)
 
 \item{args}{reactive list with global args, 'grp_by' for grouping variable
 and 'dimred' for which dimension reduction to use}
+
+\item{show_selection}{reactive to show selection}
+
+\item{reset_selection}{reactive to reset selection}
 
 \item{reload_global}{reactive to trigger reload}
 

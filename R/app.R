@@ -1295,6 +1295,8 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     dimred_selected <- dimredServer('dimred_tab', app_object,
                                     apply_filters,
                                     dimred_args,
+                                    reactive({ input$show_selection }),
+                                    reactive({ input$reset_clicks_do }),
                                     reload_global,
                                     config)
 
