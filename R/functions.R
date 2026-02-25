@@ -268,6 +268,7 @@ umap_ly <- function(df, xcol, ycol,
              x=as.formula(paste('~', xcol)),
              y=as.formula(paste('~', ycol)),
              type=type,
+             meta=as.formula(paste('~', color)),
              text=hover_text,
              mode='markers',
              hoverinfo='text',
@@ -369,15 +370,18 @@ umap_ly <- function(df, xcol, ycol,
                tmp[[color]] <- factor(tmp[[color]], levels=curr_lvls)
 
                hover_text_tmp <- rep('', nrow(missing_df))
-
              }
            }
+
+           # build vector of trace names
+           names <- paste0(tmp[[ color ]], '.', x)
 
            p <- plot_ly(tmp,
                        source=source,
                        x=as.formula(paste('~', xcol)),
                        y=as.formula(paste('~', ycol)),
                        type=type,
+                       meta=names,
                        text=c(hover_text[idx], hover_text_tmp),
                        mode='markers',
                        hoverinfo='text',
