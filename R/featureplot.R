@@ -447,54 +447,104 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
       # proxy for plot
       plotProxy <- plotlyProxy('featureplt', session)
 
-      observeEvent(input$show_selection, {
-        if(length(input$plt_genes) > 1 | input$split_by != 'none'){
-          showNotification(
-            'Cannot show selection in split or multi-gene view',
-            type='warning'
-          )
-        }
-      })
-
-      observeEvent(c(selected_points$full,
-                     input$show_selection), {
-
-        validate(
-          need(!is.null(app_object()$rds), '')
-        )
+      observeEvent(show_selection(), {
 
         isolate({
+          flag <- is.null(app_object()$rds)
           split_var <- input$split_by
         })
+
+        validate(
+          need(!flag, '')
+        )
+
         sel_pts <- unique(unlist(all_selected()))
 
+        validate(
+          need(length(sel_pts) > 0, '')
+        )
 
-        if(split_var == 'none'){
-          if(length(sel_pts) > 0){
-            new_trace <- get_label_trace(plot_obj$df,
-                                         sel_pts)
-            num_traces <- plot_obj$df$num_traces
-
-            # remove last trace
-            # NOTE: this is 0-based indexed
-            if(plot_labeled()){
-              if(length(plot_obj$color) == 1){
-                plotProxy %>%
-                  plotlyProxyInvoke('deleteTraces', num_traces)
-              }
-            }
-
-            plotProxy %>%
-              plotlyProxyInvoke('addTraces', new_trace)
-
-            plot_labeled(TRUE)
-          } else if(plot_labeled()){
-            num_traces <- plot_obj$df$num_traces
-            plotProxy %>%
-              plotlyProxyInvoke('deleteTraces', num_traces)
-            plot_labeled(FALSE)
-          }
+        # Check if plotting multiple genes or split view
+        if(length(plot_obj$df$color) > 1){
+          showNotification(
+            'Cannot show selection in multi-gene view',
+            type='warning'
+          )
+          return()
         }
+
+        # Build vectors for marker styling
+        is_selected <- plot_obj$df$data$rn %in% sel_pts
+
+        if(!plot_labeled()){
+          marker_opacity <- rep(plot_obj$df$alpha * 0.25, nrow(plot_obj$df$data))
+          marker_opacity[which(is_selected)] <- 1
+        } else {
+          marker_opacity <- rep(plot_obj$df$alpha * 1.75, nrow(plot_obj$df$data))
+        }
+
+        # For continuous color feature plots (single gene, no split)
+        if(split_var == 'none'){
+          # Single plot view - one trace for continuous color
+
+          restyle_args <- list(
+            'marker.opacity' = I(list(marker_opacity))
+          )
+
+          trace_idx <- list(0)
+
+        } else {
+          # Split plot view - one trace per split level
+          if(is.factor(plot_obj$df$data[[split_var]])) {
+            split_levels <- levels(plot_obj$df$data[[split_var]])
+          } else {
+            split_levels <- unique(plot_obj$df$data[[split_var]])
+          }
+
+          # Split attribute vectors by split variable only
+          opacity_list <- split(marker_opacity, f=plot_obj$df$data[[ split_var ]])
+
+          restyle_args <- list(
+            'marker.opacity' = I(unname(opacity_list))
+          )
+
+          num_traces <- length(split_levels)
+          trace_idx <- as.list(seq_len(num_traces) - 1)
+        }
+
+        plotProxy %>%
+          plotlyProxyInvoke('restyle', restyle_args, trace_idx)
+
+        current <- plot_labeled()
+        plot_labeled(!current)
+
+        ## OLD APPROACH USING addTraces/deleteTraces
+        # if(split_var == 'none'){
+        #   if(length(sel_pts) > 0){
+        #     new_trace <- get_label_trace(plot_obj$df,
+        #                                  sel_pts)
+        #     num_traces <- plot_obj$df$num_traces
+        #
+        #     # remove last trace
+        #     # NOTE: this is 0-based indexed
+        #     if(plot_labeled()){
+        #       if(length(plot_obj$df$color) == 1){
+        #         plotProxy %>%
+        #           plotlyProxyInvoke('deleteTraces', num_traces)
+        #       }
+        #     }
+        #
+        #     plotProxy %>%
+        #       plotlyProxyInvoke('addTraces', new_trace)
+        #
+        #     plot_labeled(TRUE)
+        #   } else if(plot_labeled()){
+        #     num_traces <- plot_obj$df$num_traces
+        #     plotProxy %>%
+        #       plotlyProxyInvoke('deleteTraces', num_traces)
+        #     plot_labeled(FALSE)
+        #   }
+        # }
       })
 
       get_selected <- reactive({
