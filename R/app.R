@@ -1340,8 +1340,14 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
         all_sel <- c(all_sel, elem)
       }
 
-      if(!all(all_sel %in% app_object$selected_points)){
-        delta <- setdiff(all_sel, app_object$selected_points)
+      if(!all(all_sel %in% selected_points$bc)){
+        delta <- setdiff(all_sel, selected_points$bc)
+
+        selected_points$bc <- c(selected_points$bc, delta)
+      }
+
+    })
+
     output$dload_clicks <- downloadHandler(
       filename = function(){
         paste0('clicked-points.tsv')
