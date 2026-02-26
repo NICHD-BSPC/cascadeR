@@ -672,39 +672,24 @@ dimredServer <- function(id, obj,
           need(length(sel_barcodes) > 0, '')
         )
 
-        # Create a vector indicating which points are selected
-
-        # Build vectors for marker styling
-        if(is.null(umap_obj$df$split)) {
-          marker_sizes <- rep(umap_obj$df$marker_size*0.5, nrow(umap_obj$df$data))
-        } else {
-          marker_sizes <- rep(umap_obj$df$marker_size*0.6, nrow(umap_obj$df$data))
-        }
         marker_opacity <- rep(umap_obj$df$alpha, nrow(umap_obj$df$data))
-
-        color_levels <- levels(umap_obj$df$data[[umap_obj$df$color]])
 
         # if not labeled, show, else hide selection
         if(!plot_labeled$umap){
+          # Create a vector indicating which points are selected
           is_selected <- which(rownames(umap_obj$df$data) %in% sel_barcodes)
-          marker_sizes[is_selected] <- marker_sizes[is_selected] + 2
-          marker_opacity[is_selected] <- 1
-          color_levels_used <- as.character(unique(umap_obj$df$data[is_selected, umap_obj$df$color]))
-        } else {
-          color_levels_used <- color_levels
-        }
 
+          marker_opacity <- marker_opacity*0.25
+          marker_opacity[is_selected] <- 1
+        } else {
+          # need to bump this up when hiding selection
+          marker_opacity <- marker_opacity*1.75
+        }
 
         if(is.null(umap_obj$df$split)) {
           # Single plot view - restyle traces directly
 
-          size_list <- split(marker_sizes, f=umap_obj$df$data[[ umap_obj$df$color ]])
           opacity_list <- split(marker_opacity, f=umap_obj$df$data[[ umap_obj$df$color ]])
-
-          # subset to keep colors used
-          #color_idx <- which(color_levels %in% color_levels_used)
-
-          #num_traces <- length(color_levels)
 
         } else {
           # NOTE: this is currently still not working as desired
@@ -716,29 +701,20 @@ dimredServer <- function(id, obj,
           # split attribute vectors by color & split *in that order*
           # since this produces the correct trace order of:
           #   split1-color1, split1-color2, ..., split2-color1, split2-color2, ...
-          size_list <- split(marker_sizes,
-                         f=list(umap_obj$df$data[[ umap_obj$df$color ]], umap_obj$df$data[[ split_var ]]))
           opacity_list <- split(marker_opacity,
                             f=list(umap_obj$df$data[[ umap_obj$df$color ]], umap_obj$df$data[[ split_var ]]))
 
-          color_idx <- match(umap_obj$df$trace_names, names(size_list))
+          color_idx <- match(umap_obj$df$trace_names, names(opacity_list))
           color_idx <- color_idx[!is.na(color_idx)]
 
-          size_list <- size_list[color_idx]
           opacity_list <- opacity_list[color_idx]
         }
 
-        # subset before applying
-        #size_list <- size_list[ color_idx ]
-        #opacity_list <- opacity_list[ color_idx ]
-
         restyle_args <- list(
-          'marker.size' = I(unname(size_list)),
           'marker.opacity' = I(unname(opacity_list))
         )
 
-        #trace_idx <- as.list(color_idx - 1)
-        trace_idx <- as.list(1:length(size_list) - 1)
+        trace_idx <- as.list(seq_len(length(opacity_list)) - 1)
 
         umapProxy %>%
           plotlyProxyInvoke('restyle', restyle_args, trace_idx)
