@@ -597,48 +597,6 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
         }
       })
 
-      # dynamic UI to show number of points selected
-      output$pt_selected <- renderUI({
-        np <- length(unique(unlist(selected_points$full)))
-
-        tagList(
-          fluidRow(
-            column(12, style='margin-bottom: 10px;',
-
-              paste(np, 'points selected')
-            )
-          )
-        )
-      })
-
-      # download handler for selected cells
-      output$dload_clicks <- downloadHandler(
-        filename = function(){
-          paste0('clicked-points.tsv')
-        },
-        content = function(file){
-          bc <- unique(unlist(selected_points$full))
-
-          # only output unique barcodes
-          mdata <- data.table::as.data.table(app_object()$metadata, keep.rownames=T)
-          idx <- mdata$rn %in% bc
-
-          mdata_sel <- as.data.frame(mdata[idx,])
-          rn_idx <- which(colnames(mdata_sel) == 'rn')
-          colnames(mdata_sel)[rn_idx] <- 'barcodes'
-
-          write.table(mdata_sel, file=file, sep='\t', quote=FALSE,
-                      row.names=FALSE)
-        }
-      )
-
-      # observer to reset clicks
-      observeEvent(input$reset_clicks, {
-        np <- length(unique(unlist(selected_points$full)))
-        showNotification(
-            paste0('Clearing ', np,
-                   ' points from selection')
-        )
       # observer to reset clicks and hide selection
       observeEvent(reset_selection(), {
         selected_points$full <- list()
