@@ -248,8 +248,39 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
         introBox(
           dropdownButton(
             tagList(
-              conditionalPanel("input.mode == 'Cell Embeddings'",
-                dimredUI('dimred_tab', panel='selection')
+              conditionalPanel("input.mode == 'Cell Embeddings' | input.mode == 'Marker Plots'",
+                fluidRow(
+                  column(6,
+                    strong('Point selection')
+                  ), # column
+                  column(6, align='right',
+                    helpButtonUI('ptselect_help')
+                  ) # column
+                ), # fluidRow
+
+                uiOutput('pt_selected'),
+
+                fluidRow(
+                  column(12,
+                    align='center',
+                    style='margin-bottom: 10px;',
+                    actionButton('show_selection',
+                                 label='Show/Hide selection')
+                  ),
+                  column(12,
+                    align='center',
+                    style='margin-bottom: 10px;',
+                    downloadButton('dload_clicks',
+                                   label='Download selection')
+                  ),
+                  column(12,
+                    align='center',
+                    style='margin-bottom: 10px;',
+                    actionButton('reset_clicks',
+                                 label='Reset selection',
+                                 class='btn-primary')
+                  )
+                ) # fluidRow
               ), # conditionalPanel
 
               conditionalPanel("input.mode == 'Cell Markers'",
