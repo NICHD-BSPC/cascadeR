@@ -9,6 +9,7 @@ dimredServer(
   obj,
   filtered,
   args,
+  all_selected,
   show_selection,
   reset_selection,
   reload_global,
@@ -24,6 +25,8 @@ dimredServer(
 
 \item{args}{reactive list with global args, 'grp_by' for grouping variable
 and 'dimred' for which dimension reduction to use}
+
+\item{all_selected}{reactive containing list of selected points}
 
 \item{show_selection}{reactive to show selection}
 

@@ -298,6 +298,7 @@ dimredUI <- function(id, panel){
 #' @param filtered barcodes to filter object
 #' @param args reactive list with global args, 'grp_by' for grouping variable
 #'        and 'dimred' for which dimension reduction to use
+#' @param all_selected reactive containing list of selected points
 #' @param show_selection reactive to show selection
 #' @param reset_selection reactive to reset selection
 #' @param reload_global reactive to trigger reload
@@ -306,8 +307,8 @@ dimredUI <- function(id, panel){
 #' @export
 #'
 dimredServer <- function(id, obj,
-                         filtered,
-                         args, show_selection, reset_selection,
+                         filtered, args,
+                         all_selected, show_selection, reset_selection,
                          reload_global, config){
   moduleServer(
     id,
@@ -665,7 +666,7 @@ dimredServer <- function(id, obj,
           split_var <- input$umap_split_by
         })
 
-        sel_barcodes <- unique(unlist(c(selected_points$umap, selected_points$spatial)))
+        sel_barcodes <- unique(unlist(all_selected()))
 
         validate(
           need(length(sel_barcodes) > 0, '')
@@ -771,7 +772,7 @@ dimredServer <- function(id, obj,
         data_keys <- paste(data_df[, xcol], data_df[, ycol])
 
         new <- rownames(data_df)[data_keys %in% keys]
-        curr <- unique(unlist(selected_points$umap))
+        curr <- unique(unlist(all_selected()))
 
         # only add new points
         if(!all(new %in% curr)){
@@ -1190,7 +1191,7 @@ dimredServer <- function(id, obj,
         data_keys <- paste(data_df$imagecol, data_df$imagerow)
 
         new <- data_df$barcode[which(data_keys %in% keys)]
-        curr <- unique(unlist(selected_points$spatial))
+        curr <- unique(unlist(all_selected()))
 
         # only add new points
         if(!all(new %in% curr)){
