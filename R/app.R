@@ -508,8 +508,10 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                                  consmarkers=NULL,
                                  demarkers=NULL,
                                  cluster_colors=NULL,
-                                 grouping_vars=NULL,
-                                 selected_points=list())
+                                 grouping_vars=NULL)
+
+    # save selected points
+    selected_points <- reactiveValues(bc=list())
 
     # var to stop app flow
     stop_flow <- reactiveVal(FALSE)
@@ -538,7 +540,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
       app_object$demarkers <- NULL
       app_object$cluster_colors <- NULL
       app_object$grouping_vars <- NULL
-      app_object$selected_points <- list()
+      selected_points$bc <- list()
 
       # reset gene choices
       all_genes$choices <- NULL
