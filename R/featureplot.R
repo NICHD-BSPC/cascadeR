@@ -639,6 +639,8 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
             paste0('Clearing ', np,
                    ' points from selection')
         )
+      # observer to reset clicks and hide selection
+      observeEvent(reset_selection(), {
         selected_points$full <- list()
       })
 
