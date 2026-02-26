@@ -1297,6 +1297,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     dimred_selected <- dimredServer('dimred_tab', app_object,
                                     apply_filters,
                                     dimred_args,
+                                    reactive({ selected_points$bc }),
                                     reactive({ input$show_selection }),
                                     reactive({ input$reset_clicks_do }),
                                     reload_global,
@@ -1318,6 +1319,9 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                      gene_scratchpad,
                      plot_args,
                      reactive({ all_genes$choices }),
+                     reactive({ selected_points$bc }),
+                     reactive({ input$show_selection }),
+                     reactive({ input$reset_clicks_do }),
                      reload_global,
                      config)
 
