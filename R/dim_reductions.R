@@ -644,8 +644,12 @@ dimredServer <- function(id, obj,
       })
 
       output$umapplt <- renderPlotly({
+        isolate({
+          flag <- is.null(app_object()$rds)
+        })
+
         validate(
-          need(!is.null(app_object()$rds), '')
+          need(!flag, '')
         )
         get_umap_plot()
       })
