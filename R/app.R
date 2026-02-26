@@ -1338,9 +1338,71 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
       if(!all(all_sel %in% app_object$selected_points)){
         delta <- setdiff(all_sel, app_object$selected_points)
+    output$dload_clicks <- downloadHandler(
+      filename = function(){
+        paste0('clicked-points.tsv')
+      },
+      content = function(file){
+        bc <- unique(unlist(selected_points$bc))
 
-        app_object$selected_points <- c(app_object$selected_points, delta)
+        # only output unique barcodes
+        mdata <- data.table::as.data.table(app_object$metadata, keep.rownames=T)
+        idx <- mdata$rn %in% bc
+
+        mdata_sel <- as.data.frame(mdata[idx,])
+        rn_idx <- which(colnames(mdata_sel) == 'rn')
+        colnames(mdata_sel)[rn_idx] <- 'barcodes'
+
+        write.table(mdata_sel, file=file, sep='\t', quote=FALSE,
+                    row.names=FALSE)
       }
+    )
+
+    # show modal first when resetting
+    observeEvent(input$reset_clicks, {
+      np <- length(unique(unlist(selected_points$bc)))
+
+      if(np > 0){
+        showModal(
+            modalDialog(
+                div(tags$b(
+                    paste0('Warning: This will remove ', np,
+                           ' points from selection & cannot be undone. Are you sure?'),
+                    style='color: red;')),
+                footer=tagList(
+                    modalButton('Cancel'),
+                    actionButton('reset_clicks_do', 'Yes')
+                )  # tagList
+            )  # modalDialog
+        )  # showModal
+      } else {
+        showNotification(
+            'No points selected!', type='warning'
+        )
+      }
+    })
+
+    observeEvent(input$reset_clicks_do, {
+      np <- length(unique(unlist(selected_points$bc)))
+      showNotification(
+          paste0('Clearing ', np,
+                 ' points from selection')
+      )
+      selected_points$bc <- list()
+      removeModal()
+    })
+
+    output$pt_selected <- renderUI({
+      np <- length(unique(unlist(selected_points$bc)))
+
+      tagList(
+        fluidRow(
+          column(12, style='margin-bottom: 10px;',
+
+            paste(np, 'points selected')
+          )
+        )
+      )
 
     })
 
