@@ -202,13 +202,18 @@ markerPlotUI <- function(id, panel){
 #'        'dimred' for which dimension reduction to use and
 #'        'grp_by' for grouping variable
 #' @param gene_choices reactive list with all genes present in object
+#' @param all_selected reactive containing list of selected points
+#' @param show_selection reactive to show selection
+#' @param reset_selection reactive to reset selection
 #' @param reload_global reactive to trigger reload
 #' @param config reactive list with config settings
 #'
 #' @export
 #'
 markerPlotServer <- function(id, obj, filtered, genes_to_plot,
-                             args, gene_choices, reload_global, config){
+                             args, gene_choices,
+                             all_selected, show_selection, reset_selection,
+                             reload_global, config){
   moduleServer(
     id,
 
@@ -429,6 +434,9 @@ markerPlotServer <- function(id, obj, filtered, genes_to_plot,
                         genes_to_plot,
                         reactive({ list(assay=input$assay, slot=obj_info$slot, dimred=args()$dimred) }),
                         gene_choices,
+                        all_selected,
+                        show_selection,
+                        reset_selection,
                         reload_global,
                         reactive({ input$plt_do }),
                         config)

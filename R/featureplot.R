@@ -166,6 +166,9 @@ featurePlotUI <- function(id, panel){
 #'        'dimred' for which dimension reduction to use and
 #'        'grp_by' for grouping variable
 #' @param gene_choices reactive list with all genes present in object
+#' @param all_selected reactive containing list of selected points
+#' @param show_selection reactive to show selection
+#' @param reset_selection reactive to reset selection
 #' @param reload_global reactive to trigger reload
 #' @param refresh reactive to trigger plot refresh from sidebar button
 #' @param config reactive list with config settings
@@ -173,7 +176,9 @@ featurePlotUI <- function(id, panel){
 #' @export
 #'
 featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
-                              args, gene_choices, reload_global, refresh, config){
+                              args, gene_choices,
+                              all_selected, show_selection, reset_selection,
+                              reload_global, refresh, config){
   moduleServer(
     id,
 
@@ -459,8 +464,8 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
         isolate({
           split_var <- input$split_by
         })
+        sel_pts <- unique(unlist(all_selected()))
 
-        sel_pts <- unique(unlist(selected_points$full))
 
         if(split_var == 'none'){
           if(length(sel_pts) > 0){
@@ -522,7 +527,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
 
         new <- unique(data_df$rn[which(data_keys %in% keys)])
 
-        curr <- unique(unlist(selected_points$full))
+        curr <- unique(unlist(all_selected()))
 
         # only add new points
         if(!all(new %in% curr)){
