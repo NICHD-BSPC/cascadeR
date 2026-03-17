@@ -1199,7 +1199,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
         bc <- obj_info$filtered
 
         # get metadata
-        idx <- mdata$rn %in% bc
+        idx <- which(mdata$rn %in% bc)
         df <- mdata[idx,]
 
         # extract reduction data if needed
