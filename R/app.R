@@ -791,7 +791,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
             coords_list <- lapply(names(obj@images), function(x){
                              coords <- obj@images[[ x ]]@boundaries$centroids@coords
                              tmp <- data.table::as.data.table(coords)
-                             colnames(tmp) <- c('imagerow', 'imagecol')
+                             colnames(tmp) <- c('imagecol', 'imagerow')
                              tmp$slice <- x
                              tmp$rn <- obj@images[[ x ]]@boundaries$centroids@cells
                              tmp
