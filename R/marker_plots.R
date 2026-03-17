@@ -597,8 +597,9 @@ get_marker_plot_data <- function(g, app_object, filtered, args,
 
       # get cell indices
       # - filter using coords if slice is specified
-      if(is.null(slice)) cidx <- which(rownames(app_object()$rds@assays[[ assay ]]@cells) %in% filtered)
-      else cidx <- which(rownames(app_object()$rds@assays[[ assay ]]@cells) %in% coords$rn)
+      cell_names <- rownames(app_object()$rds@assays[[ assay ]]@cells)
+      if(is.null(slice)) cidx <- which(cell_names %in% filtered)
+      else cidx <- which(cell_names %in% coords$rn)
 
       gdat <- app_object()$rds@assays[[ assay ]]@layers[[ selected_slot ]][ridx, cidx]
 
@@ -611,6 +612,17 @@ get_marker_plot_data <- function(g, app_object, filtered, args,
 
       # order by gene
       gdat <- gdat[,g]
+
+      # final set of cell ids
+      cidx <- cell_names[cidx]
+
+      # if spatial, order to match coords
+      if(!is.null(slice)){
+        idx <- match(coords$rn, cidx)
+        cidx <- cidx[idx]
+        if(length(ridx) == 1) gdat <- gdat[idx]
+        else gdat <- gdat[idx,]
+      }
     } else {
       # get cell indices
       # - filter using coords if slice is specified
@@ -624,8 +636,20 @@ get_marker_plot_data <- function(g, app_object, filtered, args,
       if(length(g) > 1) gdat <- t(gdat)
     }
 
+    # subset mdata by cidx with dimensions are different
+    if(nrow(df) != length(cidx)){
+      if(!is.null(slice)) midx <- which(coords$rn %in% cidx)
+      else midx <- which(df$rn %in% cidx)
+      df <- df[midx,]
+    }
+
     if(reduction){
-      dimred <- app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings[idx, ]
+      # for sketched umaps, mdata & cell.embeddings don't have identical
+      # rows, so subset both to common rows
+      drn <- rownames(app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings)
+      if(!is.null(slice)) didx <- match(coords$rn, drn)
+      else didx <- match(df$rn, drn)
+      dimred <- app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings[didx, ]
     }
   } else if(obj_type == 'anndata'){
     gdat <- app_object()$rds$X[idx, g]
