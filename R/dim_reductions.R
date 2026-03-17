@@ -530,8 +530,16 @@ dimredServer <- function(id, obj,
 
         # get dimred coordinates
         if(obj_type == 'seurat'){
-          df <- app_object()$rds@reductions[[ dimred ]]@cell.embeddings
-          df <- df[idx,]
+          # for sketched umaps, mdata & cell.embeddings don't have identical
+          # rows, so subset both to common rows
+          if(nrow(mdata) != nrow(app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings)){
+            didx <- which(rownames(app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings) %in% mdata$rn)
+            midx <- which(mdata$rn %in% rownames(app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings))
+            mdata <- mdata[midx,]
+            df <- app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings[didx,]
+          } else {
+            df <- app_object()$rds@reductions[[ dimred ]]@cell.embeddings[idx,]
+          }
         } else if(obj_type == 'anndata'){
           df <- app_object()$rds$obsm[[ dimred ]]
           df <- df[idx, 1:2]
