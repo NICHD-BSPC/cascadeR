@@ -1492,7 +1492,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
         colnames(df)[colnames(df) == 'imagerow'] <- 'spatial2'
 
         # get color range & set floor
-        crange <- c(min(df[[ var ]]), max(df[[ var ]]))
+        crange <- c(min(df[[ var ]], na.rm=TRUE), max(df[[ var ]], na.rm=TRUE))
         if(crange[1] < 0) crange[1] <- 0
 
         if(length(var) > 1){
