@@ -1451,6 +1451,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
     helpButtonServer('global_help', size='l')
     helpButtonServer('gene_scratchpad_help', size='l')
+    helpButtonServer('ptselect_help', size='l')
 
   } # server
 
