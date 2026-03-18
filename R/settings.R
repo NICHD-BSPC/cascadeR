@@ -7,6 +7,7 @@
 #' @param panel context for generating ui elements ('sidebar' or 'main')
 #' @param username user name
 #'
+#' @export
 settingsUI <- function(id, panel, username){
   ns <- NS(id)
 
@@ -38,11 +39,11 @@ settingsUI <- function(id, panel, username){
                    )  # fluidRow
                  ) # tabPanel
 
-    msg <- 'Add/edit cascadeR data & user settings here'
+    msg <- paste('Add/edit', packageName(), 'data & user settings here')
   } else {
     user_settings <- tagList()
     user_main <- tabPanel(title=NULL)
-    msg <- 'Add/edit cascadeR data settings here'
+    msg <- paste('Add/edit', packageName(), 'data settings here')
   }
 
   if(panel == 'sidebar'){
@@ -109,8 +110,8 @@ settingsUI <- function(id, panel, username){
                    fluidRow(
                      column(10,
                        DTOutput(ns('data_areas'))
-                     ),  # column
-                     column(2, align='left',
+                     ), # column
+                     column(1, align='left',
                        helpButtonUI(ns('settings_help'))
                      ) # column
                    )    # fluidRow
@@ -134,6 +135,7 @@ settingsUI <- function(id, panel, username){
 #' @param assay_fun function to parse assay names from file path
 #' @param config reactive list with config settings
 #'
+#' @export
 settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
   moduleServer(
     id,
@@ -866,7 +868,9 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
                 )
               )
             } else {
-              no_projects_modal()
+              showModal(
+                no_projects_modal()
+              )
             }
           }
         }
@@ -879,8 +883,8 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
       l <- unlist(lapply(unique(d$data_area),
               function(x) list.files(x,
                               pattern=paste0(pattern(), '\\.(rds|h5ad)$'),
-                              recursive=TRUE,
                               ignore.case=TRUE,
+                              recursive=TRUE,
                               full.names = TRUE)))
 
       if(is.null(l) | length(l) == 0){

@@ -60,13 +60,12 @@ Cascade expects a specific directory structure for data areas:
 
 #### Project Descriptions
 
-You can add descriptions to projects by creating a `project-description.yaml` file in the project directory:
+You can add descriptions to projects by creating a `project-description.yaml` file in the project directory. For example, for the
+above example, a `project-description.yaml` file in the `project1` directory could look like this:
 
 ```yaml
-description: "Brief project description shown in the Load data tab"
-analyses:
-  analysis1: "Description of analysis1"
-  analysis2: "Description of analysis2"
+analysis1: "Standard analysis of all samples using Seurat"
+analysis2: "Updated Seurat analysis without integration"
 ```
 
 #### Access Control

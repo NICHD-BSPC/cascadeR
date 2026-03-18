@@ -37,10 +37,12 @@ conda activate ./env
 
 Then install the package using one of these methods:
 
-**Option 1**: Using `devtools::install_github`
+**Option 1**: Using `remotes::install_github`
+
+Note that here we use `upgrade='never'` to leave the conda installed package versions unchanged.
 
 ```r
-devtools::install_github('NICHD-BSPC/cascadeR')
+remotes::install_github('NICHD-BSPC/cascadeR', upgrade='never')
 ```
 
 **Option 2**: Using `R CMD build` and `install.packages`:
@@ -50,14 +52,14 @@ R CMD build cascadeR/
 Rscript -e "install.packages('cascadeR_1.0.tar.gz', repos=NULL)"
 ```
 
-### devtools
+### remotes
 
-Alternatively, install directly with devtools:
+Alternatively, install directly with `remotes`:
 
 ```r
-install.packages('devtools')
+install.packages('remotes')
 setRepositories(ind=c(1,2,3,4,5))  # Get both CRAN and Bioconductor packages
-devtools::install_github('NICHD-BSPC/cascadeR')
+remotes::install_github('NICHD-BSPC/cascadeR')
 ```
 
 ## 🏁 Getting Started

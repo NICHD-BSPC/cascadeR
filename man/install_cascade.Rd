@@ -2,7 +2,7 @@
 % Please edit documentation in R/zzz.R
 \name{install_cascade}
 \alias{install_cascade}
-\title{Create carnation python environment}
+\title{Create cascade python environment}
 \usage{
 install_cascade(envname, ...)
 }
