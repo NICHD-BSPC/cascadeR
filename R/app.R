@@ -287,10 +287,6 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                 markerTableUI('marker_tbl_tab', panel='selection')
               ), # conditionalPanel
 
-              conditionalPanel("input.mode == 'Marker Plots'",
-                markerPlotUI('mrkrplt_tab', panel='selection')
-              ), # conditionalPanel
-
               conditionalPanel("input.mode != 'Cell Embeddings' && input.mode != 'Cell Markers' && input.mode != 'Marker Plots'",
                 'No selection settings available for this tab'
               ) # conditionalPanel
