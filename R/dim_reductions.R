@@ -1158,53 +1158,6 @@ dimredServer <- function(id, obj,
 
       })
 
-      output$spatial_selected <- renderUI({
-        np <- length(unique(unlist(c(selected_points$spatial,
-                                     selected_points$umap))))
-
-        tagList(
-          fluidRow(
-            column(12, style='margin-bottom: 10px;',
-
-              paste(np, 'points selected')
-            )
-          )
-        )
-
-      })
-
-      output$dload_clicks <- downloadHandler(
-        filename = function(){
-          paste0('clicked-points-spatial.tsv')
-        },
-        content = function(file){
-          bc <- unique(unlist(c(selected_points$umap,
-                                selected_points$spatial)))
-
-          # only output unique barcodes
-          mdata <- data.table::as.data.table(app_object()$metadata, keep.rownames=T)
-          idx <- mdata$rn %in% bc
-
-          mdata_sel <- as.data.frame(mdata[idx,])
-          rn_idx <- which(colnames(mdata_sel) == 'rn')
-          colnames(mdata_sel)[rn_idx] <- 'barcodes'
-
-          write.table(mdata_sel, file=file, sep='\t', quote=FALSE,
-                      row.names=FALSE)
-        }
-      )
-
-      observeEvent(input$reset_clicks, {
-        np <- length(unique(unlist(c(selected_points$spatial,
-                                     selected_points$umap))))
-        showNotification(
-            paste0('Clearing ', np,
-                   ' points from selection')
-        )
-        selected_points$spatial <- list()
-        selected_points$umap <- list()
-      })
-
       ######################### Help ####################
 
       helpButtonServer('dimred_help', size='l')
