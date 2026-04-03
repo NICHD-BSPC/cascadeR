@@ -216,6 +216,9 @@ scatterPlotUI <- function(id, panel){
 #'        'dimred' for which dimension reduction to use and
 #'        'grp_by' for grouping variable
 #' @param gene_choices reactive list with all genes present in object
+#' @param all_selected reactive containing list of selected points
+#' @param show_selection reactive to show selection
+#' @param reset_selection reactive to reset selection
 #' @param reload_global reactive to trigger reload
 #' @param refresh reactive to trigger plot refresh from sidebar button
 #' @param config reactive list with config settings
@@ -223,7 +226,9 @@ scatterPlotUI <- function(id, panel){
 #' @export
 #'
 scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
-                              args, gene_choices, reload_global, refresh, config){
+                              args, gene_choices,
+                              all_selected, show_selection, reset_selection,
+                              reload_global, refresh, config){
   moduleServer(
     id,
 
@@ -617,8 +622,7 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
       # proxy for plot
       plotProxy <- plotlyProxy('scatterplt', session)
 
-      observeEvent(c(selected_points$full,
-                     input$show_selection), {
+      observeEvent(show_selection(), {
 
         validate(
           need(!is.null(app_object()$rds), '')
@@ -628,7 +632,7 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
           split_var <- input$split_by
         })
 
-        sel_pts <- unique(unlist(selected_points$full))
+        sel_pts <- unique(unlist(all_selected()))
 
         if(input$color_by == 'gene') plot_type <- 'gene'
         else plot_type <- 'metadata'
@@ -701,7 +705,7 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
 
         new <- unique(data_df$rn[which(data_keys %in% keys)])
 
-        curr <- unique(unlist(selected_points$full))
+        curr <- unique(unlist(all_selected()))
 
         # only add new points
         if(!all(new %in% curr)){
@@ -719,48 +723,8 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
         }
       })
 
-      # dynamic UI to show number of points selected
-      output$pt_selected <- renderUI({
-        np <- length(unique(unlist(selected_points$full)))
-
-        tagList(
-          fluidRow(
-            column(12, style='margin-bottom: 10px;',
-
-              paste(np, 'points selected')
-            )
-          )
-        )
-      })
-
-      # download handler for selected cells
-      output$dload_clicks <- downloadHandler(
-        filename = function(){
-          paste0('clicked-points.tsv')
-        },
-        content = function(file){
-          bc <- unique(unlist(selected_points$full))
-
-          # only output unique barcodes
-          mdata <- data.table::as.data.table(app_object()$metadata, keep.rownames=T)
-          idx <- mdata$rn %in% bc
-
-          mdata_sel <- as.data.frame(mdata[idx,])
-          rn_idx <- which(colnames(mdata_sel) == 'rn')
-          colnames(mdata_sel)[rn_idx] <- 'barcodes'
-
-          write.table(mdata_sel, file=file, sep='\t', quote=FALSE,
-                      row.names=FALSE)
-        }
-      )
-
       # observer to reset clicks
-      observeEvent(input$reset_clicks, {
-        np <- length(unique(unlist(selected_points$full)))
-        showNotification(
-            paste0('Clearing ', np,
-                   ' points from selection')
-        )
+      observeEvent(reset_selection(), {
         selected_points$full <- list()
       })
 

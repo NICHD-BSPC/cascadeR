@@ -449,6 +449,9 @@ markerPlotServer <- function(id, obj, filtered, genes_to_plot,
                              genes_to_plot,
                              reactive({ list(assay=input$assay, slot=obj_info$slot, dimred=args()$dimred) }),
                              gene_choices,
+                             all_selected,
+                             show_selection,
+                             reset_selection,
                              reload_global,
                              reactive({ input$plt_do }),
                              config)
@@ -495,6 +498,9 @@ markerPlotServer <- function(id, obj, filtered, genes_to_plot,
                         genes_to_plot,
                         reactive({ list(grp_by=args()$grp_by, assay=input$assay, slot=obj_info$slot, assay_list=obj_info$assay_list) }),
                         gene_choices,
+                        all_selected,
+                        show_selection,
+                        reset_selection,
                         reload_global,
                         reactive({ input$plt_do }),
                         config)
@@ -523,7 +529,8 @@ markerPlotServer <- function(id, obj, filtered, genes_to_plot,
             ftrplt=ftrplt_selected(),
             coexplt=coexplt_selected(),
             spat_ftrplt=spat_ftrplt_selected(),
-            spat_coexplt=spat_coexplt_selected()
+            spat_coexplt=spat_coexplt_selected(),
+            scatter=scatter_selected()
           )
 
           # drop empty lists
