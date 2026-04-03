@@ -691,11 +691,11 @@ dimredServer <- function(id, obj,
           # Create a vector indicating which points are selected
           is_selected <- which(rownames(umap_obj$df$data) %in% sel_barcodes)
 
-          marker_opacity <- marker_opacity*0.25
+          marker_opacity <- marker_opacity*0.05
           marker_opacity[is_selected] <- 1
         } else {
           # need to bump this up when hiding selection
-          marker_opacity <- marker_opacity*1.75
+          marker_opacity <- marker_opacity*1.95
         }
 
         if(is.null(umap_obj$df$split)) {

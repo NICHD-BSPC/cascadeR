@@ -477,10 +477,10 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
         is_selected <- plot_obj$df$data$rn %in% sel_pts
 
         if(!plot_labeled()){
-          marker_opacity <- rep(plot_obj$df$alpha * 0.25, nrow(plot_obj$df$data))
+          marker_opacity <- rep(plot_obj$df$alpha * 0.05, nrow(plot_obj$df$data))
           marker_opacity[which(is_selected)] <- 1
         } else {
-          marker_opacity <- rep(plot_obj$df$alpha * 1.75, nrow(plot_obj$df$data))
+          marker_opacity <- rep(plot_obj$df$alpha * 1.95, nrow(plot_obj$df$data))
         }
 
         # For continuous color feature plots (single gene, no split)
