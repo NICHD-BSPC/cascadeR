@@ -1045,15 +1045,14 @@ dimredServer <- function(id, obj,
       # proxy for the interactive spatial plot
       spatialProxy <- plotlyProxy('spatial_dimplt2', session)
 
-      observeEvent(c(selected_points$spatial,
-                     input$show_spatial_selection), {
+      observeEvent(show_selection(), {
         validate(
           need(!is.null(app_object()$rds) & args()$dimred != '',
                '')
         )
 
-        sel_pts <- unique(c(selected_points$spatial,
-                            selected_points$umap))
+        sel_pts <- unique(unlist(all_selected()))
+
         # show selected points only if single slice is selected
         if(length(slice()) == 1){
           if(length(sel_pts) > 0){
