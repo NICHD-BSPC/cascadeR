@@ -272,6 +272,7 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
               type='warning'
             )
             idx <- c(which(!zero_rows), sample(which(zero_rows), 50000))
+            idx <- idx[order(idx)]
             df <- data.table::as.data.table(df)
             df <- df[idx,]
             df <- as.data.frame(df)
