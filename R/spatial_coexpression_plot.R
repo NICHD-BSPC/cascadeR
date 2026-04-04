@@ -200,6 +200,9 @@ spatialCoexpressionPlotUI <- function(id, panel){
 #'        'grp_by' for grouping variable
 #' @param gene_choices reactive list with all genes present in object
 #' @param slice reactive with slices to be used for plotting
+#' @param all_selected reactive containing list of selected points
+#' @param show_selection reactive to show selection
+#' @param reset_selection reactive to reset selection
 #' @param reload_global reactive to trigger reload
 #' @param refresh reactive to trigger plot refresh from sidebar button
 #' @param config reactive list with config settings
@@ -208,6 +211,7 @@ spatialCoexpressionPlotUI <- function(id, panel){
 #'
 spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
                                           args, gene_choices, slice,
+                                          all_selected, show_selection, reset_selection,
                                           reload_global, refresh, config){
   moduleServer(
     id,
@@ -500,7 +504,7 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
       # proxy for plot
       plotProxy <- plotlyProxy('spatial_coexplt', session)
 
-      observeEvent(input$show_selection, {
+      observeEvent(show_selection(), {
         if(length(slice()) > 1){
           showNotification(
             'Cannot show selection in split view',
@@ -509,14 +513,13 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
         }
       })
 
-      observeEvent(c(selected_points$full,
-                     input$show_selection), {
+      observeEvent(show_selection(), {
 
         validate(
           need(!is.null(app_object()$rds), '')
         )
 
-        sel_pts <- unique(unlist(selected_points$full))
+        sel_pts <- unique(unlist(all_selected()))
 
         if(length(slice()) == 1){
           if(length(sel_pts) > 0){
@@ -576,7 +579,7 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
 
         new <- unique(data_df$rn[which(data_keys %in% keys)])
 
-        curr <- unique(unlist(selected_points$full))
+        curr <- unique(unlist(all_selected()))
 
         # only add new points
         if(!all(new %in% curr)){
@@ -594,48 +597,8 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
         }
       })
 
-      # dynamic UI to show number of points selected
-      output$pt_selected <- renderUI({
-        np <- length(unique(unlist(selected_points$full)))
-
-        tagList(
-          fluidRow(
-            column(12, style='margin-bottom: 10px;',
-
-              paste(np, 'points selected')
-            )
-          )
-        )
-      })
-
-      # download handler for selected cells
-      output$dload_clicks <- downloadHandler(
-        filename = function(){
-          paste0('clicked-points.tsv')
-        },
-        content = function(file){
-          bc <- unique(unlist(selected_points$full))
-
-          # only output unique barcodes
-          mdata <- data.table::as.data.table(app_object()$metadata, keep.rownames=T)
-          idx <- mdata$rn %in% bc
-
-          mdata_sel <- as.data.frame(mdata[idx,])
-          rn_idx <- which(colnames(mdata_sel) == 'rn')
-          colnames(mdata_sel)[rn_idx] <- 'barcodes'
-
-          write.table(mdata_sel, file=file, sep='\t', quote=FALSE,
-                      row.names=FALSE)
-        }
-      )
-
       # observer to reset clicks
-      observeEvent(input$reset_clicks, {
-        np <- length(unique(unlist(selected_points$full)))
-        showNotification(
-            paste0('Clearing ', np,
-                   ' points from selection')
-        )
+      observeEvent(reset_selection(), {
         selected_points$full <- list()
       })
 
