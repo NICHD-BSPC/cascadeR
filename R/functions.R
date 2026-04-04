@@ -1407,6 +1407,17 @@ get_label_trace <- function(plot_data, labeled_pts,
     idx <- plot_data$data$barcode %in% bc
   } else {
     idx <- rownames(plot_data$data) %in% bc
+    # if no matches, try to match to 'barcode' column if present
+    if(sum(idx) == 0){
+      if('barcode' %in% colnames(plot_data$data)){
+        idx <- plot_data$data$barcode %in% bc
+      } else if('rn' %in% colnames(plot_data$data)){
+        idx <- plot_data$data$rn %in% bc
+      } else {
+        message('No matching barcodes found for label trace')
+      }
+
+    }
   }
   ldf <- plot_data$data[idx, ]
 
