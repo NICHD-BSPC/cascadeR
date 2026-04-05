@@ -451,8 +451,6 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
         }
       })
 
-      #observeEvent(c(selected_points$full,
-      #               input$show_selection), {
       observeEvent(show_selection(), {
 
         validate(
