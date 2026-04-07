@@ -1,19 +1,19 @@
 # Cascade
 
-🧬 **Unleash the power of your single-cell data** 🧬
+**Unleash the power of your single-cell data**
 
 Cascade is an interactive dashboard that transforms complex single-cell RNA-Seq and spatial transcriptomics data (Visium and Xenium) into beautiful, insightful visualizations. Designed for both computational and experimental biologists, Cascade makes exploring your data intuitive and exciting.
 
-## ✨ Key Features
+## Key Features
 
 - **Universal Compatibility**: Works seamlessly with Seurat (`.Rds`) and scanpy (`.h5ad`) objects
 - **Lightning-Fast Visualizations**: Interactive plots powered by `plotly` that respond in real-time
-  - 📊 Violin plots - Compare expression across clusters
-  - 🔵 Dot plots - Visualize expression prevalence and intensity
-  - 🗺️ Feature plots - Map gene expression onto UMAP or spatial coordinates
-  - 🧩 Co-expression plots - Discover genes with similar expression patterns
-  - 📈 Scatter plots - Explore relationships between genes
-  - 📉 Line plots - Track expression trends across conditions
+  - Violin plots - Compare expression across clusters
+  - Dot plots - Visualize expression prevalence and intensity
+  - Feature plots - Map gene expression onto UMAP or spatial coordinates
+  - Co-expression plots - Discover genes with similar expression patterns
+  - Scatter plots - Explore relationships between genes
+  - Line plots - Track expression trends across conditions
 - **Spatial Transcriptomics**: Visualize gene expression in tissue context with Visium and Xenium support
 - **Interactive Cell Selection**: Lasso select cells of interest directly on UMAP/spatial plots and export barcodes for downstream analysis
 - **Smart Filtering**: Filter cells based on metadata and gene expression with an intuitive interface
@@ -23,7 +23,7 @@ Cascade is an interactive dashboard that transforms complex single-cell RNA-Seq 
 - **Flexible Deployment**: Run locally for personal analysis or on a server to share with collaborators
 - **User Management**: Optional authentication system for controlled access in multi-user environments
 
-## 🚀 Installation
+## Installation
 
 ### conda (recommended)
 
@@ -62,7 +62,7 @@ setRepositories(ind=c(1,2,3,4,5))  # Get both CRAN and Bioconductor packages
 remotes::install_github('NICHD-BSPC/cascadeR')
 ```
 
-## 🏁 Getting Started
+## Getting Started
 
 ### Data Organization
 
@@ -106,7 +106,7 @@ run_cascade(options=list(port=12345, launch.browser=FALSE))
 
 Then access the app at `http://127.0.0.1:12345` through your SSH tunnel.
 
-## 🔒 Server Mode with Authentication
+## Server Mode with Authentication
 
 For multi-user environments, Cascade supports authentication:
 
@@ -130,7 +130,7 @@ shinymanager::create_db(
 run_cascade(credentials='credentials.sqlite', passphrase='admin_passphrase')
 ```
 
-## 🔍 Exploring Your Data
+## Exploring Your Data
 
 Once your data is loaded, Cascade offers multiple ways to explore:
 
@@ -142,14 +142,14 @@ Once your data is loaded, Cascade offers multiple ways to explore:
 - **Marker Plots**: Create beautiful visualizations of gene expression
 - **Settings**: Configure data directories and user access
 
-## 📚 Documentation
+## Documentation
 
 Each module includes comprehensive help documentation accessible through the help buttons throughout the interface.
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions to Cascade! Please feel free to submit issues or pull requests to the GitHub repository.
 
-## 📄 License
+## License
 
 Cascade is available under the MIT license.
