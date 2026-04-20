@@ -358,6 +358,9 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
         if(!is.null(split_var)) num_traces <- num_split
         else num_traces <- 1
 
+        # reorder by exp if 1 gene selected
+        if(length(g) == 1) df <- df[order(df[,g]),]
+
         # save plotted data
         plot_obj$df <- list(data=df,
                             xcol=df_cols[1],
@@ -425,7 +428,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
                           reversescale=reversescale,
                           marker_size=marker_size,
                           alpha=alpha,
-                          reorder=FALSE,
+                          reorder=FALSE, # df already sorted by exp
                           split=split_var,
                           free_axes=free_axes,
                           height=ht,
