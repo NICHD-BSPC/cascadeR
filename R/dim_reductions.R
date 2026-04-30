@@ -644,6 +644,7 @@ dimredServer <- function(id, obj,
         # save trace names
         trace_data <- plotly::plotly_build(p)$x$data
         umap_obj$df$trace_names <- unlist(lapply(trace_data, function(x) unique(x$meta)))
+        plot_labeled$umap <- FALSE
 
         event_register(p, 'plotly_selected')
         event_register(p, 'plotly_click')
@@ -667,16 +668,57 @@ dimredServer <- function(id, obj,
 
       show_umap_selection <- reactive({ show_selection() })
 
+      restyle_umap_selection <- function(marker_opacity){
+        if(is.null(umap_obj$df$split)){
+          color_values <- umap_obj$df$data[[ umap_obj$df$color ]]
+          if(is.factor(color_values)){
+            color_levels <- levels(droplevels(color_values))
+          } else {
+            color_levels <- unique(color_values)
+          }
+
+          opacity_list <- split(marker_opacity, f=color_values, drop=TRUE)
+          opacity_list <- opacity_list[as.character(color_levels)]
+          opacity_list <- opacity_list[!vapply(opacity_list, is.null, logical(1))]
+
+          trace_match <- match(umap_obj$df$trace_names, names(opacity_list))
+          trace_idx <- which(!is.na(trace_match)) - 1
+          opacity_list <- opacity_list[trace_match[!is.na(trace_match)]]
+          trace_idx <- as.list(trace_idx)
+        } else {
+          split_var <- umap_obj$df$split
+
+          # Split by color and split variable to match Plotly trace groups.
+          opacity_list <- split(marker_opacity,
+                                f=list(umap_obj$df$data[[ umap_obj$df$color ]],
+                                       umap_obj$df$data[[ split_var ]]),
+                                drop=TRUE)
+
+          trace_match <- match(umap_obj$df$trace_names, names(opacity_list))
+          trace_idx <- which(!is.na(trace_match)) - 1
+          opacity_list <- opacity_list[trace_match[!is.na(trace_match)]]
+          trace_idx <- as.list(trace_idx)
+        }
+
+        if(length(opacity_list) == 0) return(invisible(NULL))
+
+        restyle_args <- list(
+          'marker.opacity' = I(unname(opacity_list))
+        )
+
+        umapProxy %>%
+          plotlyProxyInvoke('restyle', restyle_args, trace_idx)
+      }
+
       # Show selection on plot using restyle
       observeEvent(show_umap_selection(), {
         validate(
           need(!is.null(app_object()$rds) & args()$dimred != '',
                '')
         )
-
-        isolate({
-          split_var <- input$umap_split_by
-        })
+        validate(
+          need(!is.null(umap_obj$df), '')
+        )
 
         sel_barcodes <- unique(unlist(all_selected()))
 
@@ -691,45 +733,21 @@ dimredServer <- function(id, obj,
           # Create a vector indicating which points are selected
           is_selected <- which(rownames(umap_obj$df$data) %in% sel_barcodes)
 
+          if(length(is_selected) == 0){
+            showNotification(
+              'No selected points found in current plot (data may have changed)',
+              type='warning'
+            )
+            return()
+          }
+
           marker_opacity <- marker_opacity*0.05
           marker_opacity[is_selected] <- 1
         } else {
-          # need to bump this up when hiding selection
           marker_opacity <- marker_opacity*1.95
         }
 
-        if(is.null(umap_obj$df$split)) {
-          # Single plot view - restyle traces directly
-
-          opacity_list <- split(marker_opacity, f=umap_obj$df$data[[ umap_obj$df$color ]])
-
-        } else {
-          # NOTE: this is currently still not working as desired
-
-          # Split plot view - need to handle multiple subplots
-          split_var <- umap_obj$df$split
-          split_levels <- levels(umap_obj$df$data[[split_var]])
-
-          # split attribute vectors by color & split *in that order*
-          # since this produces the correct trace order of:
-          #   split1-color1, split1-color2, ..., split2-color1, split2-color2, ...
-          opacity_list <- split(marker_opacity,
-                            f=list(umap_obj$df$data[[ umap_obj$df$color ]], umap_obj$df$data[[ split_var ]]))
-
-          color_idx <- match(umap_obj$df$trace_names, names(opacity_list))
-          color_idx <- color_idx[!is.na(color_idx)]
-
-          opacity_list <- opacity_list[color_idx]
-        }
-
-        restyle_args <- list(
-          'marker.opacity' = I(unname(opacity_list))
-        )
-
-        trace_idx <- as.list(seq_len(length(opacity_list)) - 1)
-
-        umapProxy %>%
-          plotlyProxyInvoke('restyle', restyle_args, trace_idx)
+        restyle_umap_selection(marker_opacity)
 
         # toggle
         plot_labeled$umap <- !plot_labeled$umap
@@ -780,6 +798,12 @@ dimredServer <- function(id, obj,
 
 
       observeEvent(reset_selection(), {
+        if(plot_labeled$umap & !is.null(umap_obj$df)){
+          marker_opacity <- rep(umap_obj$df$alpha, nrow(umap_obj$df$data))
+          restyle_umap_selection(marker_opacity)
+          plot_labeled$umap <- FALSE
+        }
+
         selected_points$umap <- list()
         selected_points$spatial <- list()
       })

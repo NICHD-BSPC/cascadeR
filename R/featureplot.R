@@ -451,11 +451,38 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
       # proxy for plot
       plotProxy <- plotlyProxy('featureplt', session)
 
+      restyle_selection <- function(marker_opacity){
+        split_var <- plot_obj$df$split
+
+        if(is.null(split_var)){
+          opacity_list <- list(marker_opacity)
+          trace_idx <- list(0)
+        } else {
+          split_values <- plot_obj$df$data[[ split_var ]]
+          if(is.factor(split_values)){
+            split_levels <- levels(droplevels(split_values))
+          } else {
+            split_levels <- unique(split_values)
+          }
+
+          opacity_list <- split(marker_opacity, f=split_values, drop=TRUE)
+          opacity_list <- opacity_list[as.character(split_levels)]
+          opacity_list <- opacity_list[!vapply(opacity_list, is.null, logical(1))]
+          trace_idx <- as.list(seq_along(opacity_list) - 1)
+        }
+
+        restyle_args <- list(
+          'marker.opacity' = I(unname(opacity_list))
+        )
+
+        plotProxy %>%
+          plotlyProxyInvoke('restyle', restyle_args, trace_idx)
+      }
+
       observeEvent(show_selection(), {
 
         isolate({
           flag <- is.null(app_object()$rds)
-          split_var <- input$split_by
         })
 
         validate(
@@ -487,37 +514,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
           marker_opacity <- rep(plot_obj$df$alpha * 1.95, nrow(plot_obj$df$data))
         }
 
-        # For continuous color feature plots (single gene, no split)
-        if(split_var == 'none'){
-          # Single plot view - one trace for continuous color
-
-          restyle_args <- list(
-            'marker.opacity' = I(list(marker_opacity))
-          )
-
-          trace_idx <- list(0)
-
-        } else {
-          # Split plot view - one trace per split level
-          if(is.factor(plot_obj$df$data[[split_var]])) {
-            split_levels <- levels(plot_obj$df$data[[split_var]])
-          } else {
-            split_levels <- unique(plot_obj$df$data[[split_var]])
-          }
-
-          # Split attribute vectors by split variable only
-          opacity_list <- split(marker_opacity, f=plot_obj$df$data[[ split_var ]])
-
-          restyle_args <- list(
-            'marker.opacity' = I(unname(opacity_list))
-          )
-
-          num_traces <- length(split_levels)
-          trace_idx <- as.list(seq_len(num_traces) - 1)
-        }
-
-        plotProxy %>%
-          plotlyProxyInvoke('restyle', restyle_args, trace_idx)
+        restyle_selection(marker_opacity)
 
         current <- plot_labeled()
         plot_labeled(!current)
@@ -603,6 +600,12 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
 
       # observer to reset clicks and hide selection
       observeEvent(reset_selection(), {
+        if(plot_labeled() & !is.null(plot_obj$df)){
+          marker_opacity <- rep(plot_obj$df$alpha, nrow(plot_obj$df$data))
+          restyle_selection(marker_opacity)
+          plot_labeled(FALSE)
+        }
+
         selected_points$full <- list()
       })
 
