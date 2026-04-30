@@ -475,6 +475,13 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
 
         if(!plot_labeled()){
           is_selected <- plot_obj$df$data$rn %in% sel_pts
+          if(!any(is_selected)){
+            showNotification(
+              'No selected points found in current plot',
+              type='warning'
+            )
+            return()
+          }
           marker_opacity <- rep(plot_obj$df$alpha * 0.05, nrow(plot_obj$df$data))
           marker_opacity[which(is_selected)] <- 1
         } else {
