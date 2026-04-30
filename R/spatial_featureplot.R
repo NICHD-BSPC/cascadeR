@@ -71,41 +71,6 @@ spatialFeaturePlotUI <- function(id, panel){
         ) # column
       ) # fluidRow
     )
-  } else if(panel == 'selection'){
-    tagList(
-      fluidRow(
-        column(6,
-          strong('Point selection')
-        ), # column
-        column(6, align='right',
-          helpButtonUI(ns('umap_ptselect_help'))
-        ) # column
-      ), # fluidRow
-
-      uiOutput(ns('pt_selected')),
-
-      fluidRow(
-        column(12,
-          align='center',
-          style='margin-bottom: 10px;',
-          actionButton(ns('show_selection'),
-                       label='Show selection')
-        ),
-        column(12,
-          align='center',
-          style='margin-bottom: 10px;',
-          downloadButton(ns('dload_clicks'),
-                         label='Download selection')
-        ),
-        column(12,
-          align='center',
-          style='margin-bottom: 10px;',
-          actionButton(ns('reset_clicks'),
-                       label='Reset selection',
-                       class='btn-primary')
-        )
-      ) # fluidRow
-    )
   } else if(panel == 'main'){
     tabPanel('Spatial',
       br(),
@@ -595,48 +560,7 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
         }
       })
 
-      ## dynamic UI to show number of points selected
-      #output$pt_selected <- renderUI({
-      #  np <- length(unique(unlist(selected_points$full)))
-
-      #  tagList(
-      #    fluidRow(
-      #      column(12, style='margin-bottom: 10px;',
-
-      #        paste(np, 'points selected')
-      #      )
-      #    )
-      #  )
-      #})
-
-      ## download handler for selected cells
-      #output$dload_clicks <- downloadHandler(
-      #  filename = function(){
-      #    paste0('clicked-points.tsv')
-      #  },
-      #  content = function(file){
-      #    bc <- unique(unlist(selected_points$full))
-
-      #    # only output unique barcodes
-      #    mdata <- data.table::as.data.table(app_object()$metadata, keep.rownames=T)
-      #    idx <- mdata$rn %in% bc
-
-      #    mdata_sel <- as.data.frame(mdata[idx,])
-      #    rn_idx <- which(colnames(mdata_sel) == 'rn')
-      #    colnames(mdata_sel)[rn_idx] <- 'barcodes'
-
-      #    write.table(mdata_sel, file=file, sep='\t', quote=FALSE,
-      #                row.names=FALSE)
-      #  }
-      #)
-
       # observer to reset clicks
-      #observeEvent(input$reset_clicks, {
-      #  np <- length(unique(unlist(selected_points$full)))
-      #  showNotification(
-      #      paste0('Clearing ', np,
-      #             ' points from selection')
-      #  )
       observeEvent(reset_selection(), {
         if(plot_labeled() & !is.null(plot_obj$df)){
           marker_opacity <- rep(plot_obj$df$alpha, nrow(plot_obj$df$data))
