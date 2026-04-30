@@ -283,6 +283,7 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
           num_split <- length(curr_slices)
         } else {
           split_var <- NULL
+          num_split <- 1
         }
 
         free_axes <- ifelse(input$free_axes == 'yes', TRUE, FALSE)
