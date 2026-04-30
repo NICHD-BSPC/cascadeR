@@ -447,9 +447,9 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
       plotProxy <- plotlyProxy('spatial_featureplt', session)
 
       observeEvent(input$show_selection, {
-        if(length(input$plt_genes) > 1 | length(slice()) > 1){
+        if(length(input$plt_genes) > 1){
           showNotification(
-            'Cannot show selection in multi-gene or multi-slice view',
+            'Cannot show selection in multi-gene view',
             type='warning'
           )
         }
