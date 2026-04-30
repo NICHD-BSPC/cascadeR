@@ -327,6 +327,9 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
         if(!is.null(split_var)) num_traces <- num_split
         else num_traces <- 1
 
+        # Keep saved data order aligned with the trace order used for restyle.
+        if(length(g) == 1) df <- df[order(df[[g]]),]
+
         # save plotted data
         plot_obj$df <- list(data=df,
                             xcol='spatial1',
@@ -415,6 +418,7 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
                           alpha=alpha,
                           split=split_var,
                           free_axes=free_axes,
+                          reorder=FALSE,
                           width=wd,
                           height=ht,
                           margin=0.05,
