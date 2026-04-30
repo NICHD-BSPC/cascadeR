@@ -242,8 +242,7 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
 
         if(obj_type == 'seurat'){
           validate(
-            need(any(grepl('Spatial', names(app_object()$rds@assays))) |
-                 any(grepl('Xenium', names(app_object()$rds))),
+            need(!is.null(app_object()$spatial_coords),
                  'Spatial analysis not available')
           )
         } else if(obj_type == 'anndata'){

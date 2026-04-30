@@ -266,7 +266,7 @@ markerPlotServer <- function(id, obj, filtered, genes_to_plot,
 
         if(app_object()$obj_type == 'seurat'){
 
-        if(!any(grepl('Spatial', names(app_object()$rds@assays))) & !any(grepl('Xenium', names(app_object()$rds)))){
+        if(is.null(app_object()$spatial_coords)){
           hideTab(inputId='ftrplt_type', target='Spatial')
           hideTab(inputId='coexplt_type', target='Spatial')
 

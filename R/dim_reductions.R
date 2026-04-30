@@ -378,7 +378,7 @@ dimredServer <- function(id, obj,
 
         if(obj_type == 'seurat'){
 
-          if(!any(grepl('Spatial', names(app_object()$rds@assays))) & !any(grepl('Xenium', names(app_object()$rds@assays)))){
+          if(is.null(app_object()$spatial_coords)){
             hideTab(inputId='dimplt_type', target='Spatial Plot')
             updateTabsetPanel(session, 'dimplt_type', selected='UMAP')
           } else {
@@ -445,7 +445,7 @@ dimredServer <- function(id, obj,
           need(!is.null(app_object()$rds), '')
         )
 
-        if(app_object()$obj_type == 'seurat' && 'Spatial' %in% names(app_object()$rds@assays)){
+        if(app_object()$obj_type == 'seurat' && !is.null(app_object()$spatial_coords)){
           # we only need this for SpatialDimPlots for Seurat objects
           # 1. get the barcodes
           # 2. subset metadata & extract colors
@@ -805,8 +805,7 @@ dimredServer <- function(id, obj,
 
         if(obj_type == 'seurat'){
           validate(
-            need(any(grepl('Spatial', names(app_object()$rds@assays))) |
-                 any(grepl('Xenium', names(app_object()$rds@assays))),
+            need(!is.null(app_object()$spatial_coords),
                  'Spatial analysis not available')
           )
         } else if(obj_type == 'anndata'){

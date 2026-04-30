@@ -574,7 +574,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
 
         if(app_object()$obj_type == 'seurat'){
 
-          if(!any(grepl('Spatial', names(app_object()$rds@assays)))){
+          if(is.null(app_object()$spatial_coords)){
             hideTab(inputId='ftrplt_type', target='Spatial')
 
             sel_plt <- input$cell_counts
@@ -1446,7 +1446,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
         if(obj_type == 'seurat'){
           # TODO: add Xenium support
           validate(
-            need(any(grepl('Spatial', names(app_object()$rds@assays))),
+            need(!is.null(app_object()$spatial_coords),
                  'Spatial analysis not available')
           )
         } else if(obj_type == 'anndata'){
