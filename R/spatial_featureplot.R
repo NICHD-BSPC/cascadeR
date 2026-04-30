@@ -343,6 +343,7 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
                             free_axes=free_axes,
                             source=source,
                             num_traces=num_traces)
+        plot_labeled(FALSE)
 
         # arrange multi-gene views into row
         if(length(g) > 1){
@@ -454,38 +455,94 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
         }
       })
 
+      # function to restyle current selection using marker opacity
+      restyle_selection <- function(marker_opacity){
+        split_var <- plot_obj$df$split
+
+        if(is.null(split_var)){
+          opacity_list <- list(marker_opacity)
+          trace_idx <- list(0)
+        } else {
+          split_values <- plot_obj$df$data[[ split_var ]]
+          if(is.factor(split_values)){
+            split_levels <- levels(droplevels(split_values))
+          } else {
+            split_levels <- unique(split_values)
+          }
+
+          opacity_list <- split(marker_opacity, f=split_values, drop=TRUE)
+          opacity_list <- opacity_list[as.character(split_levels)]
+          opacity_list <- opacity_list[!vapply(opacity_list, is.null, logical(1))]
+          trace_idx <- as.list(seq_along(opacity_list) - 1)
+        }
+
+        restyle_args <- list(
+          'marker.opacity' = I(unname(opacity_list))
+        )
+
+        plotProxy %>%
+          plotlyProxyInvoke('restyle', restyle_args, trace_idx)
+      }
+
       observeEvent(show_selection(), {
 
         validate(
           need(!is.null(app_object()$rds), '')
         )
+        validate(
+          need(!is.null(plot_obj$df), '')
+        )
 
         sel_pts <- unique(unlist(all_selected()))
 
-        if(length(slice()) == 1){
-          if(length(sel_pts) > 0){
-            new_trace <- get_label_trace(plot_obj$df,
-                                         sel_pts)
-            num_traces <- plot_obj$df$num_traces
+        validate(
+          need(length(sel_pts) > 0, '')
+        )
 
-            # remove last trace
-            # NOTE: this is 0-based indexed
-            if(plot_labeled()){
-              plotProxy %>%
-                plotlyProxyInvoke('deleteTraces', num_traces)
-            }
-
-            plotProxy %>%
-              plotlyProxyInvoke('addTraces', new_trace)
-
-            plot_labeled(TRUE)
-          } else if(plot_labeled()){
-            num_traces <- plot_obj$df$num_traces
-            plotProxy %>%
-              plotlyProxyInvoke('deleteTraces', num_traces)
-            plot_labeled(FALSE)
-          }
+        if(length(plot_obj$df$color) > 1){
+          showNotification(
+            'Cannot show selection in multi-gene view',
+            type='warning'
+          )
+          return()
         }
+
+        if(!plot_labeled()){
+          is_selected <- plot_obj$df$data$rn %in% sel_pts
+          marker_opacity <- rep(plot_obj$df$alpha * 0.05, nrow(plot_obj$df$data))
+          marker_opacity[which(is_selected)] <- 1
+        } else {
+          marker_opacity <- rep(plot_obj$df$alpha * 1.95, nrow(plot_obj$df$data))
+        }
+
+        restyle_selection(marker_opacity)
+        plot_labeled(!plot_labeled())
+
+        ## OLD APPROACH USING addTraces/deleteTraces
+        # if(length(slice()) == 1){
+        #   if(length(sel_pts) > 0){
+        #     new_trace <- get_label_trace(plot_obj$df,
+        #                                  sel_pts)
+        #     num_traces <- plot_obj$df$num_traces
+        #
+        #     # remove last trace
+        #     # NOTE: this is 0-based indexed
+        #     if(plot_labeled()){
+        #       plotProxy %>%
+        #         plotlyProxyInvoke('deleteTraces', num_traces)
+        #     }
+        #
+        #     plotProxy %>%
+        #       plotlyProxyInvoke('addTraces', new_trace)
+        #
+        #     plot_labeled(TRUE)
+        #   } else if(plot_labeled()){
+        #     num_traces <- plot_obj$df$num_traces
+        #     plotProxy %>%
+        #       plotlyProxyInvoke('deleteTraces', num_traces)
+        #     plot_labeled(FALSE)
+        #   }
+        # }
       })
 
       get_selected <- reactive({
@@ -581,6 +638,11 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
       #             ' points from selection')
       #  )
       observeEvent(reset_selection(), {
+        if(plot_labeled() & !is.null(plot_obj$df)){
+          marker_opacity <- rep(plot_obj$df$alpha, nrow(plot_obj$df$data))
+          restyle_selection(marker_opacity)
+          plot_labeled(FALSE)
+        }
         selected_points$full <- list()
       })
 
