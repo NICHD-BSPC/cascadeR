@@ -763,6 +763,12 @@ dimredServer <- function(id, obj,
           plot_labeled$umap <- FALSE
         }
 
+        if(plot_labeled$spatial & !is.null(spatial_obj$df)){
+          marker_opacity <- rep(spatial_obj$df$alpha, nrow(spatial_obj$df$data))
+          restyle_spatial_selection(marker_opacity)
+          plot_labeled$spatial <- FALSE
+        }
+
         selected_points$umap <- list()
         selected_points$spatial <- list()
       })
@@ -1115,15 +1121,6 @@ dimredServer <- function(id, obj,
         plot_labeled$spatial <- !plot_labeled$spatial
 
       })
-
-      observeEvent(reset_selection(), {
-        if(plot_labeled$spatial & !is.null(spatial_obj$df)){
-          marker_opacity <- rep(spatial_obj$df$alpha, nrow(spatial_obj$df$data))
-          restyle_spatial_selection(marker_opacity)
-          plot_labeled$spatial <- FALSE
-        }
-      })
-
 
       ################### Spatial selection #############################
 
