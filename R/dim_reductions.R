@@ -758,13 +758,13 @@ dimredServer <- function(id, obj,
 
       observeEvent(reset_selection(), {
         if(plot_labeled$umap & !is.null(umap_obj$df)){
-          marker_opacity <- rep(umap_obj$df$alpha, nrow(umap_obj$df$data))
+          marker_opacity <- rep(umap_obj$df$alpha * 1.95, nrow(umap_obj$df$data))
           restyle_umap_selection(marker_opacity)
           plot_labeled$umap <- FALSE
         }
 
         if(plot_labeled$spatial & !is.null(spatial_obj$df)){
-          marker_opacity <- rep(spatial_obj$df$alpha, nrow(spatial_obj$df$data))
+          marker_opacity <- rep(spatial_obj$df$alpha * 1.95, nrow(spatial_obj$df$data))
           restyle_spatial_selection(marker_opacity)
           plot_labeled$spatial <- FALSE
         }

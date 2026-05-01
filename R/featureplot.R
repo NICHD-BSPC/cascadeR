@@ -601,7 +601,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
       # observer to reset clicks and hide selection
       observeEvent(reset_selection(), {
         if(plot_labeled() & !is.null(plot_obj$df)){
-          marker_opacity <- rep(plot_obj$df$alpha, nrow(plot_obj$df$data))
+          marker_opacity <- rep(plot_obj$df$alpha * 1.95, nrow(plot_obj$df$data))
           restyle_selection(marker_opacity)
           plot_labeled(FALSE)
         }
