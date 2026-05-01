@@ -333,7 +333,10 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                              class='btn-primary'),
                 data.step=3,
                 data.intro='Finally, click this button to load the data.'
-              ) # introBox
+              ), # introBox
+
+              br(), br(),
+              uiOutput('current_obj')
             ), # column
             column(9, style='margin-top: 20px',
               DTOutput('analysis_desc')
@@ -549,6 +552,9 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     # list to hold project/analysis descriptions
     project_info <- reactiveValues(descriptions=list(), current=NULL)
 
+    # reactive values to hold currently loaded project
+    current <- reactiveValues(proj=NULL, analysis=NULL)
+
     # reactive values to keep track of genes
     all_genes <- reactiveValues(choices=NULL)
 
@@ -571,6 +577,10 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
       # reset gene choices
       all_genes$choices <- NULL
+
+      # reset current loaded dataset display
+      current$proj <- NULL
+      current$analysis <- NULL
 
       removeNotification('metadata_notify')
 
@@ -1109,8 +1119,31 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                         })
       app_object$cluster_colors <- label_cols_all
 
+      # update current project
+      current$proj <- input$proj
+
+      analysis_label <- basename(input$analysis)
+      al <- assay_list$l[[ input$proj ]]
+      idx <- which(unname(al) == input$analysis)
+      if(length(idx) > 0 && !is.null(names(al)) && names(al)[idx[1]] != ''){
+        analysis_label <- names(al)[idx[1]]
+      }
+      current$analysis <- analysis_label
+
       removeModal()
     }) # observeEvent
+
+    # show loaded dataset
+    output$current_obj <- renderUI({
+      req(current$proj)
+
+      tags$div(
+        class='div-stats-card',
+        tags$p('Currently loaded:'),
+        tags$p('  - Project: ', tags$i(current$proj)),
+        tags$p('  - Analysis: ', tags$i(current$analysis))
+      )
+    })
 
     # update gene scratchpad choices
     observeEvent(app_object$rds, {
