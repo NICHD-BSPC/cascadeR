@@ -399,7 +399,13 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
                             alpha=alpha,
                             source=source,
                             free_axes=free_axes,
-                            num_traces=num_traces)
+                            num_traces=num_traces,
+                            downsample=downsample)
+        plot_labeled(FALSE)
+
+        # save trace names for split-view restyle alignment
+        trace_data <- plotly::plotly_build(p)$x$data
+        plot_obj$df$trace_names <- unlist(lapply(trace_data, function(x) unique(x$meta)))
 
         pct_df <- get_coexp_tbl(df, g,
                                 threshold1=input$thres_1/100,
@@ -505,47 +511,81 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
       # proxy for plot
       plotProxy <- plotlyProxy('spatial_coexplt', session)
 
-      observeEvent(show_selection(), {
-        if(length(slice()) > 1){
-          showNotification(
-            'Cannot show selection in split view',
-            type='warning'
-          )
+      restyle_selection <- function(marker_opacity){
+        if(is.null(plot_obj$df$split)){
+          color_values <- plot_obj$df$data[[ plot_obj$df$color ]]
+          if(is.factor(color_values)){
+            color_levels <- levels(droplevels(color_values))
+          } else {
+            color_levels <- unique(color_values)
+          }
+
+          opacity_list <- split(marker_opacity, f=color_values, drop=TRUE)
+          opacity_list <- opacity_list[as.character(color_levels)]
+          opacity_list <- opacity_list[!vapply(opacity_list, is.null, logical(1))]
+
+          trace_match <- match(plot_obj$df$trace_names, names(opacity_list))
+          trace_idx <- which(!is.na(trace_match)) - 1
+          opacity_list <- opacity_list[trace_match[!is.na(trace_match)]]
+          trace_idx <- as.list(trace_idx)
+        } else {
+          split_var <- plot_obj$df$split
+
+          # Split by color and slice to match Plotly trace groups.
+          opacity_list <- split(marker_opacity,
+                                f=list(plot_obj$df$data[[ plot_obj$df$color ]],
+                                       plot_obj$df$data[[ split_var ]]),
+                                drop=TRUE)
+
+          trace_match <- match(plot_obj$df$trace_names, names(opacity_list))
+          trace_idx <- which(!is.na(trace_match)) - 1
+          opacity_list <- opacity_list[trace_match[!is.na(trace_match)]]
+          trace_idx <- as.list(trace_idx)
         }
-      })
+
+        if(length(opacity_list) == 0) return(invisible(NULL))
+
+        restyle_args <- list(
+          'marker.opacity' = I(unname(opacity_list))
+        )
+
+        plotProxy %>%
+          plotlyProxyInvoke('restyle', restyle_args, trace_idx)
+      }
 
       observeEvent(show_selection(), {
 
         validate(
           need(!is.null(app_object()$rds), '')
         )
+        validate(
+          need(!is.null(plot_obj$df), '')
+        )
 
         sel_pts <- unique(unlist(all_selected()))
 
-        if(length(slice()) == 1){
-          if(length(sel_pts) > 0){
-            new_trace <- get_label_trace(plot_obj$df,
-                                         sel_pts)
-            num_traces <- plot_obj$df$num_traces
+        validate(
+          need(length(sel_pts) > 0, '')
+        )
 
-            # remove last trace
-            # NOTE: this is 0-based indexed
-            if(plot_labeled()){
-              plotProxy %>%
-                plotlyProxyInvoke('deleteTraces', num_traces)
-            }
-
-            plotProxy %>%
-              plotlyProxyInvoke('addTraces', new_trace)
-
-            plot_labeled(TRUE)
-          } else if(plot_labeled()){
-            num_traces <- plot_obj$df$num_traces
-            plotProxy %>%
-              plotlyProxyInvoke('deleteTraces', num_traces)
-            plot_labeled(FALSE)
+        if(!plot_labeled()){
+          is_selected <- plot_obj$df$data$rn %in% sel_pts
+          if(!any(is_selected)){
+            showNotification(
+              'No selected points found in current plot',
+              type='warning'
+            )
+            return()
           }
+
+          marker_opacity <- rep(plot_obj$df$alpha * 0.05, nrow(plot_obj$df$data))
+          marker_opacity[which(is_selected)] <- 1
+        } else {
+          marker_opacity <- rep(plot_obj$df$alpha * 1.95, nrow(plot_obj$df$data))
         }
+
+        restyle_selection(marker_opacity)
+        plot_labeled(!plot_labeled())
       })
 
       get_selected <- reactive({
@@ -600,6 +640,12 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
 
       # observer to reset clicks
       observeEvent(reset_selection(), {
+        if(plot_labeled() & !is.null(plot_obj$df)){
+          marker_opacity <- rep(plot_obj$df$alpha * 1.95, nrow(plot_obj$df$data))
+          restyle_selection(marker_opacity)
+          plot_labeled(FALSE)
+        }
+
         selected_points$full <- list()
       })
 
