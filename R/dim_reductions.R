@@ -627,8 +627,6 @@ dimredServer <- function(id, obj,
       # proxy for the interactive umap plot
       umapProxy <- plotlyProxy('umapplt', session)
 
-      show_umap_selection <- reactive({ show_selection() })
-
       restyle_umap_selection <- function(marker_opacity){
         if(is.null(umap_obj$df$split)){
           color_values <- umap_obj$df$data[[ umap_obj$df$color ]]
@@ -672,7 +670,7 @@ dimredServer <- function(id, obj,
       }
 
       # Show selection on plot using restyle
-      observeEvent(show_umap_selection(), {
+      observeEvent(show_selection(), {
         validate(
           need(!is.null(app_object()$rds) & args()$dimred != '',
                '')
