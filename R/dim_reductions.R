@@ -183,45 +183,6 @@ dimredUI <- function(id, panel){
       ) # fluidRow
 
     )
-  } else if(panel == 'selection'){
-    tagList(
-      conditionalPanel(paste0('input["', ns('dimplt_type'), '"] == "Spatial Plot"'),
-        fluidRow(
-          column(6,
-            strong('Point selection')
-          ), # column
-          column(6, align='right',
-            helpButtonUI(ns('ptselect_help'))
-          ) # column
-        ), # fluidRow
-
-        uiOutput(ns('spatial_selected')),
-
-        fluidRow(
-          column(12,
-            align='center',
-            style='margin-bottom: 10px;',
-            actionButton(ns('show_spatial_selection'),
-                         label='Show selection')
-          ),
-          column(12,
-            align='center',
-            style='margin-bottom: 10px;',
-            downloadButton(ns('dload_clicks'),
-                           label='Download selection')
-          ),
-          column(12,
-            align='center',
-            style='margin-bottom: 10px;',
-            actionButton(ns('reset_clicks'),
-                         label='Reset selection',
-                         class='btn-primary')
-          )
-        ) # fluidRow
-
-      ) # conditionalPanel
-    ) # tagList
-
   } else if(panel == 'main'){
     tagList(
       tabsetPanel(type='tabs', id=ns('dimplt_type'),
