@@ -897,7 +897,6 @@ dimredServer <- function(id, obj,
           if(is.na(input$spat_marker_size)) marker_size <- 3
           else marker_size <- input$spat_marker_size
 
-          # save spatial object
           xcol <- 'imagecol'
           ycol <- 'imagerow'
           color <- color_var
@@ -917,23 +916,14 @@ dimredServer <- function(id, obj,
             num_traces <- length(unique(coords[[ color_var ]]))
           }
 
-          spatial_obj$df <- list(data=coords,
-                                 xcol=xcol,
-                                 ycol=ycol,
-                                 color=color,
-                                 colors=cols,
-                                 label_cols=label_col,
-                                 alpha=alpha,
-                                 marker_size=marker_size,
-                                 source=source,
-                                 num_traces=num_traces)
-
           # rename (eventual) axis labels
           colnames(coords)[colnames(coords) == 'imagecol'] <- 'spatial1'
           colnames(coords)[colnames(coords) == 'imagerow'] <- 'spatial2'
+          xcol <- 'spatial1'
+          ycol <- 'spatial2'
 
           # get final set of columns to pass to umap_ly
-          final_cols <- c('spatial1', 'spatial2', color)
+          final_cols <- c(xcol, ycol, color, label_col)
 
           ht <- config()$server$plots$dimplt$base_ht*input$plot_scale
           wd <- 1.25*ht
@@ -949,9 +939,25 @@ dimredServer <- function(id, obj,
             split_var <- NULL
           }
 
-          p <- umap_ly(coords[, final_cols, with=FALSE],
-                       xcol='spatial1',
-                       ycol='spatial2',
+          final_cols <- unique(final_cols)
+          plot_df <- coords[, final_cols, with=FALSE]
+
+          # save spatial object
+          spatial_obj$df <- list(data=plot_df,
+                                 xcol=xcol,
+                                 ycol=ycol,
+                                 color=color,
+                                 colors=cols,
+                                 label_cols=label_col,
+                                 split=split_var,
+                                 alpha=alpha,
+                                 marker_size=marker_size,
+                                 source=source,
+                                 num_traces=num_traces)
+
+          p <- umap_ly(plot_df,
+                       xcol=xcol,
+                       ycol=ycol,
                        color=color,
                        colors=cols,
                        split=split_var,
@@ -964,8 +970,12 @@ dimredServer <- function(id, obj,
                        height=ht,
                        source=source)
 
-        event_register(p, 'plotly_selected')
-        event_register(p, 'plotly_click')
+          trace_data <- plotly::plotly_build(p)$x$data
+          spatial_obj$df$trace_names <- unlist(lapply(trace_data, function(x) unique(x$meta)))
+          plot_labeled$spatial <- FALSE
+
+          event_register(p, 'plotly_selected')
+          event_register(p, 'plotly_click')
 
         } else if(input$spatial_dimplt_switch == 'no'){
           validate(
@@ -1068,49 +1078,91 @@ dimredServer <- function(id, obj,
       # proxy for the interactive spatial plot
       spatialProxy <- plotlyProxy('spatial_dimplt2', session)
 
+      restyle_spatial_selection <- function(marker_opacity){
+        if(is.null(spatial_obj$df$split)){
+          color_values <- spatial_obj$df$data[[ spatial_obj$df$color ]]
+          if(is.factor(color_values)){
+            color_levels <- levels(droplevels(color_values))
+          } else {
+            color_levels <- unique(color_values)
+          }
+
+          opacity_list <- split(marker_opacity, f=color_values, drop=TRUE)
+          opacity_list <- opacity_list[as.character(color_levels)]
+          opacity_list <- opacity_list[!vapply(opacity_list, is.null, logical(1))]
+
+          trace_match <- match(spatial_obj$df$trace_names, names(opacity_list))
+          trace_idx <- which(!is.na(trace_match)) - 1
+          opacity_list <- opacity_list[trace_match[!is.na(trace_match)]]
+          trace_idx <- as.list(trace_idx)
+        } else {
+          split_var <- spatial_obj$df$split
+
+          opacity_list <- split(marker_opacity,
+                                f=list(spatial_obj$df$data[[ spatial_obj$df$color ]],
+                                       spatial_obj$df$data[[ split_var ]]),
+                                drop=TRUE)
+
+          trace_match <- match(spatial_obj$df$trace_names, names(opacity_list))
+          trace_idx <- which(!is.na(trace_match)) - 1
+          opacity_list <- opacity_list[trace_match[!is.na(trace_match)]]
+          trace_idx <- as.list(trace_idx)
+        }
+
+        if(length(opacity_list) == 0) return(invisible(NULL))
+
+        restyle_args <- list(
+          'marker.opacity' = I(unname(opacity_list))
+        )
+
+        spatialProxy %>%
+          plotlyProxyInvoke('restyle', restyle_args, trace_idx)
+      }
+
       observeEvent(show_selection(), {
         validate(
           need(!is.null(app_object()$rds) & args()$dimred != '',
                '')
         )
+        validate(
+          need(!is.null(spatial_obj$df), '')
+        )
 
         sel_pts <- unique(unlist(all_selected()))
 
-        # show selected points only if single slice is selected
-        if(length(slice()) == 1){
-          if(length(sel_pts) > 0){
-            new_trace <- get_label_trace(spatial_obj$df,
-                                         sel_pts)
+        validate(
+          need(length(sel_pts) > 0, '')
+        )
 
-            num_traces <- spatial_obj$df$num_traces
+        marker_opacity <- rep(spatial_obj$df$alpha, nrow(spatial_obj$df$data))
 
-            # remove label trace
-            # NOTE: this uses 0-based indexing
-            if(plot_labeled$spatial){
-              spatialProxy %>%
-                plotlyProxyInvoke('deleteTraces',
-                                  num_traces)
-            }
-
-            spatialProxy %>%
-              plotlyProxyInvoke('addTraces',
-                                new_trace)
-
-            plot_labeled$spatial <- TRUE
-
-          } else if(plot_labeled$spatial){
-            num_traces <- spatial_obj$df$num_traces
-            spatialProxy %>%
-              plotlyProxyInvoke('deleteTraces', num_traces)
-            plot_labeled$spatial <- FALSE
+        if(!plot_labeled$spatial){
+          is_selected <- spatial_obj$df$data$barcode %in% sel_pts
+          if(!any(is_selected)){
+            showNotification(
+              'No selected points found in current plot',
+              type='warning'
+            )
+            return()
           }
-        #} else if(length(sel_pts) > 0){
-        #  showNotification(
-        #    'Warning: Cannot show selected points in multi-slice view',
-        #    type='warning'
-        #  )
+
+          marker_opacity <- marker_opacity*0.05
+          marker_opacity[which(is_selected)] <- 1
+        } else {
+          marker_opacity <- marker_opacity*1.95
         }
 
+        restyle_spatial_selection(marker_opacity)
+        plot_labeled$spatial <- !plot_labeled$spatial
+
+      })
+
+      observeEvent(reset_selection(), {
+        if(plot_labeled$spatial & !is.null(spatial_obj$df)){
+          marker_opacity <- rep(spatial_obj$df$alpha, nrow(spatial_obj$df$data))
+          restyle_spatial_selection(marker_opacity)
+          plot_labeled$spatial <- FALSE
+        }
       })
 
 
@@ -1158,7 +1210,8 @@ dimredServer <- function(id, obj,
 
         # all points
         keys <- paste(df$x, df$y)
-        data_keys <- paste(data_df$imagecol, data_df$imagerow)
+        data_keys <- paste(data_df[[ spatial_obj$df$xcol ]],
+                           data_df[[ spatial_obj$df$ycol ]])
 
         new <- data_df$barcode[which(data_keys %in% keys)]
         curr <- unique(unlist(all_selected()))
