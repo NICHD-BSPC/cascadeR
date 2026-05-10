@@ -889,6 +889,13 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
           need(!is.null(d), 'No access permissions')
       )
 
+      showModal(
+        modalDialog(
+          span('Gathering project info'),
+          footer=NULL
+        )
+      )
+
       l <- unlist(lapply(unique(d$data_area),
               function(x) list.files(x,
                               pattern=paste0(pattern(), '\\.(rds|h5ad)$'),
@@ -1029,6 +1036,8 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
           }
         }
       }
+
+      removeModal()
 
       list(assay_list=assay_list,
            reload_parent=reload_parent$flag,
