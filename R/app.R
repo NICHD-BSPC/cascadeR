@@ -339,7 +339,20 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
               uiOutput('current_obj')
             ), # column
             column(9, style='margin-top: 20px',
-              DTOutput('analysis_desc')
+              fluidRow(
+                column(6,
+                  tags$div(
+                    DTOutput('project_desc')
+                  )
+                ),
+                conditionalPanel('input.proj != "" & input.proj != "Choose one"',
+                  column(6,
+                    tags$div(
+                      DTOutput('analysis_desc')
+                    )
+                  )
+                )
+              )
             )
           ) # fluidRow
 
@@ -495,6 +508,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
       assay_list$l <- l$assay_list
       project_info$descriptions <- l$project_descriptions
+      project_info$df <- l$proj_df
 
       validate(
          need(!is.null(l$assay_list), 'No projects found')
@@ -550,7 +564,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     config <- reactiveVal(cfg)
 
     # list to hold project/analysis descriptions
-    project_info <- reactiveValues(descriptions=list(), current=NULL)
+    project_info <- reactiveValues(descriptions=list(), current=NULL, df=NULL)
 
     # reactive values to hold currently loaded project
     current <- reactiveValues(proj=NULL, analysis=NULL)
@@ -586,6 +600,40 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
     }
 
+    #################### global project summary ####################
+
+    output$project_desc <- renderDT({
+      req(project_info$df)
+
+      datatable(project_info$df,
+                rownames=FALSE,
+                selection='single',
+                caption=tags$caption(style='font-weight: bold; font-size: 15px;',
+                                     'Summary of available projects'),
+                options=list(dom='tfip', stateSave=TRUE))
+    })
+
+    # proxy for project table
+    project_desc_proxy <- dataTableProxy('project_desc')
+
+    # return 'group/project' from table selection
+    proj_from_tbl <- eventReactive(input$project_desc_rows_selected, {
+      req(project_info$df)
+
+      tbl <- project_info$df
+      sel <- input$project_desc_rows_selected
+
+      req(length(sel) > 0)
+
+      paste(tbl[['group']][sel], tbl[['project']][sel], sep=.Platform$file.sep)
+    }) # eventReactive
+
+    # update 'proj' input based on table selection
+    observeEvent(proj_from_tbl(), {
+      updateSelectizeInput(session, 'proj',
+                           selected=proj_from_tbl())
+    })
+
     observeEvent(input$proj, {
       validate(
         need(input$proj != 'Choose one' & input$proj != '', 'Waiting for selection')
@@ -620,6 +668,35 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
       } else {
         updateSelectizeInput(session, 'analysis',
                              choices=c('choose one', assay_choices))
+      }
+
+      # parse project name and update global table selection
+      tbl <- project_info$df
+      if(!is.null(tbl) && all(c('group', 'project') %in% colnames(tbl))){
+        parsed_name <- strsplit(input$proj, .Platform$file.sep, fixed=TRUE)[[1]]
+
+        if(length(parsed_name) >= 2){
+          proj_name <- paste(parsed_name[-1], collapse=.Platform$file.sep)
+          proj_info_idx <- which(
+            as.character(tbl[['group']]) == parsed_name[1] &
+              as.character(tbl[['project']]) == proj_name
+          )
+
+          if(length(proj_info_idx) > 0){
+            project_desc_proxy %>% selectRows(NULL) %>%
+              selectRows(proj_info_idx[1])
+
+            current_idx <- which(input$project_desc_rows_all == proj_info_idx[1])
+            if(length(current_idx) > 0){
+              page_length <- input$project_desc_state$length
+              if(is.null(page_length) || !is.numeric(page_length) || page_length < 1){
+                page_length <- 10
+              }
+              page_idx <- floor((current_idx[1] - 1) / page_length) + 1
+              DT::selectPage(project_desc_proxy, page_idx)
+            }
+          }
+        }
       }
 
       stop_flow(TRUE)
@@ -668,11 +745,86 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
       datatable(df,
                 rownames=FALSE,
-                selection='none',
+                selection='single',
                 caption=tags$caption(style='font-weight: bold; font-size: 15px;',
                                      'Summary of available analyses'),
-                options=list(dom='tlp'))
+                options=list(dom='tlp', stateSave=TRUE))
 
+    })
+
+    # proxy for analysis description table
+    analysis_desc_proxy <- dataTableProxy('analysis_desc')
+
+    # return selected analysis path from table selection
+    analysis_from_tbl <- eventReactive(input$analysis_desc_rows_selected, {
+      req(input$proj)
+
+      proj_desc <- project_info$descriptions[[ input$proj ]]
+      sel <- input$analysis_desc_rows_selected
+
+      req(length(sel) > 0)
+
+      all_analysis <- names(proj_desc)
+
+      # these are the analyses for the current project
+      current_assays <- assay_list$l[[ input$proj ]]
+
+      # match the selected name to the current assays
+      # since the order might be different due to sorting
+      idx <- which(names(current_assays) %in% all_analysis[sel])
+
+      req(length(idx) > 0)
+
+      current_assays[idx[1]]
+    }) # eventReactive
+
+    # update 'analysis' input based on table selection
+    observeEvent(analysis_from_tbl(), {
+      updateSelectizeInput(session, 'analysis',
+                           selected=analysis_from_tbl())
+    })
+
+    # update analysis table selection based on 'analysis'
+    observeEvent(input$analysis, {
+      validate(
+        need(!is.null(input$analysis) & input$analysis != '' & input$analysis != 'choose one',
+             'No analysis selected!')
+      )
+
+      current_assays <- assay_list$l[[ input$proj ]]
+      analysis_idx <- which(unname(current_assays) %in% input$analysis)
+
+      if(length(analysis_idx) == 0){
+        analysis_desc_proxy %>% selectRows(NULL)
+        return()
+      }
+
+      analysis_name <- names(current_assays)[analysis_idx[1]]
+      current_desc <- project_info$descriptions[[ input$proj ]]
+
+      validate(
+        need(length(current_desc) > 0, 'no project descriptions')
+      )
+
+      desc_idx <- which(names(current_desc) %in% analysis_name)
+
+      if(length(desc_idx) == 0){
+        analysis_desc_proxy %>% selectRows(NULL)
+        return()
+      }
+
+      analysis_desc_proxy %>% selectRows(NULL) %>%
+        selectRows(desc_idx[1])
+
+      current_idx <- which(input$analysis_desc_rows_all == desc_idx[1])
+      if(length(current_idx) > 0){
+        page_length <- input$analysis_desc_state$length
+        if(is.null(page_length) || !is.numeric(page_length) || page_length < 1){
+          page_length <- 10
+        }
+        page_idx <- floor((current_idx[1] - 1) / page_length) + 1
+        DT::selectPage(analysis_desc_proxy, page_idx)
+      }
     })
 
     ############################## Load data #######################################

@@ -972,6 +972,19 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
 
       assay_list <- alist
 
+      # make df summarizing projects
+      proj_names <- strsplit(names(alist), .Platform$file.sep, fixed=TRUE)
+      group <- unlist(lapply(proj_names, function(x) x[1]))
+      project <- unlist(lapply(proj_names, function(x) x[2]))
+      proj_df <- data.frame(
+                   group=group,
+                   project=project,
+                   num_datasets=unname(unlist(lapply(alist, length)))
+                 )
+
+      # order by group, then project
+      proj_df <- proj_df[order(proj_df$group, proj_df$project),]
+
       # find and read project descriptions
       project_descriptions <- list()
       for(name in names(assay_list)){
@@ -1011,7 +1024,8 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
       list(assay_list=assay_list,
            reload_parent=reload_parent$flag,
            is_admin=is_admin,
-           project_descriptions=project_descriptions)
+           project_descriptions=project_descriptions,
+           proj_df=proj_df)
     })
 
     helpButtonServer('settings_help', size='l')
