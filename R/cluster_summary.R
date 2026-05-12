@@ -574,7 +574,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
 
         if(app_object()$obj_type == 'seurat'){
 
-          if(!'Spatial' %in% names(app_object()$rds@assays)){
+          if(is.null(app_object()$spatial_coords)){
             hideTab(inputId='ftrplt_type', target='Spatial')
 
             sel_plt <- input$cell_counts
@@ -1199,13 +1199,20 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
         bc <- obj_info$filtered
 
         # get metadata
-        idx <- mdata$rn %in% bc
+        idx <- which(mdata$rn %in% bc)
         df <- mdata[idx,]
 
         # extract reduction data if needed
         if(reduction){
           if(obj_type == 'seurat'){
-            dimred <- app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings[idx, ]
+            if(nrow(mdata) != nrow(app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings)){
+              didx <- which(rownames(app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings) %in% df$rn)
+              midx <- which(df$rn %in% rownames(app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings))
+              df <- df[midx,]
+              dimred <- app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings[didx,]
+            } else {
+              dimred <- app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings[idx, ]
+            }
           } else if(obj_type == 'anndata'){
             dimred <- app_object()$rds$obsm[[ args()$dimred ]][idx,]
 
@@ -1213,7 +1220,16 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
             colnames(dimred) <- paste0(label, 1:2)
           }
 
-          df <- cbind(as.data.frame(dimred), df)
+          # if using sketch reductions, the dimensions might not match
+          # - then subset the bigger df by the rownames of the smaller df
+          if(nrow(dimred) != nrow(df)){
+            common <- intersect(rownames(dimred), rownames(df))
+            didx <- which(rownames(dimred) %in% common)
+            midx <- which(rownames(df) %in% common)
+            df <- cbind(as.data.frame(dimred)[didx,], df[midx,])
+          } else {
+            df <- cbind(as.data.frame(dimred), df)
+          }
         }
 
         df
@@ -1430,7 +1446,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
         if(obj_type == 'seurat'){
           # TODO: add Xenium support
           validate(
-            need('Spatial' %in% names(app_object()$rds@assays),
+            need(!is.null(app_object()$spatial_coords),
                  'Spatial analysis not available')
           )
         } else if(obj_type == 'anndata'){
@@ -1492,7 +1508,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
         colnames(df)[colnames(df) == 'imagerow'] <- 'spatial2'
 
         # get color range & set floor
-        crange <- c(min(df[[ var ]]), max(df[[ var ]]))
+        crange <- c(min(df[[ var ]], na.rm=TRUE), max(df[[ var ]], na.rm=TRUE))
         if(crange[1] < 0) crange[1] <- 0
 
         if(length(var) > 1){

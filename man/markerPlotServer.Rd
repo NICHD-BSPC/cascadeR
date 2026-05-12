@@ -11,6 +11,9 @@ markerPlotServer(
   genes_to_plot,
   args,
   gene_choices,
+  all_selected,
+  show_selection,
+  reset_selection,
   reload_global,
   config
 )
@@ -29,6 +32,12 @@ markerPlotServer(
 'grp_by' for grouping variable}
 
 \item{gene_choices}{reactive list with all genes present in object}
+
+\item{all_selected}{reactive containing list of selected points}
+
+\item{show_selection}{reactive to show selection}
+
+\item{reset_selection}{reactive to reset selection}
 
 \item{reload_global}{reactive to trigger reload}
 

@@ -183,81 +183,6 @@ dimredUI <- function(id, panel){
       ) # fluidRow
 
     )
-  } else if(panel == 'selection'){
-    tagList(
-      conditionalPanel(paste0('input["', ns('dimplt_type'), '"] == "UMAP"'),
-        fluidRow(
-          column(6,
-            strong('Point selection')
-          ), # column
-          column(6, align='right',
-            helpButtonUI(ns('umap_ptselect_help'))
-          ) # column
-        ), # fluidRow
-
-        uiOutput(ns('umap_selected')),
-
-        fluidRow(
-          column(12,
-            align='center',
-            style='margin-bottom: 10px;',
-            actionButton(ns('show_umap_selection'),
-                         label='Show selection')
-          ),
-          column(12,
-            align='center',
-            style='margin-bottom: 10px;',
-            downloadButton(ns('dload_umap_clicks'),
-                           label='Download selection')
-          ),
-          column(12,
-            align='center',
-            style='margin-bottom: 10px;',
-            actionButton(ns('reset_umap_clicks'),
-                         label='Reset selection',
-                         class='btn-primary')
-          )
-        ) # fluidRow
-
-      ), # conditionalPanel
-
-      conditionalPanel(paste0('input["', ns('dimplt_type'), '"] == "Spatial Plot"'),
-        fluidRow(
-          column(6,
-            strong('Point selection')
-          ), # column
-          column(6, align='right',
-            helpButtonUI(ns('ptselect_help'))
-          ) # column
-        ), # fluidRow
-
-        uiOutput(ns('spatial_selected')),
-
-        fluidRow(
-          column(12,
-            align='center',
-            style='margin-bottom: 10px;',
-            actionButton(ns('show_spatial_selection'),
-                         label='Show selection')
-          ),
-          column(12,
-            align='center',
-            style='margin-bottom: 10px;',
-            downloadButton(ns('dload_clicks'),
-                           label='Download selection')
-          ),
-          column(12,
-            align='center',
-            style='margin-bottom: 10px;',
-            actionButton(ns('reset_clicks'),
-                         label='Reset selection',
-                         class='btn-primary')
-          )
-        ) # fluidRow
-
-      ) # conditionalPanel
-    ) # tagList
-
   } else if(panel == 'main'){
     tagList(
       tabsetPanel(type='tabs', id=ns('dimplt_type'),
@@ -334,14 +259,18 @@ dimredUI <- function(id, panel){
 #' @param filtered barcodes to filter object
 #' @param args reactive list with global args, 'grp_by' for grouping variable
 #'        and 'dimred' for which dimension reduction to use
+#' @param all_selected reactive containing list of selected points
+#' @param show_selection reactive to show selection
+#' @param reset_selection reactive to reset selection
 #' @param reload_global reactive to trigger reload
 #' @param config reactive list with config settings
 #'
 #' @export
 #'
 dimredServer <- function(id, obj,
-                         filtered,
-                         args, reload_global, config){
+                         filtered, args,
+                         all_selected, show_selection, reset_selection,
+                         reload_global, config){
   moduleServer(
     id,
 
@@ -410,7 +339,7 @@ dimredServer <- function(id, obj,
 
         if(obj_type == 'seurat'){
 
-          if(!any(grepl('Spatial', names(app_object()$rds@assays))) & !any(grepl('Xenium', names(app_object()$rds@assays)))){
+          if(is.null(app_object()$spatial_coords)){
             hideTab(inputId='dimplt_type', target='Spatial Plot')
             updateTabsetPanel(session, 'dimplt_type', selected='UMAP')
           } else {
@@ -477,7 +406,7 @@ dimredServer <- function(id, obj,
           need(!is.null(app_object()$rds), '')
         )
 
-        if(app_object()$obj_type == 'seurat' && 'Spatial' %in% names(app_object()$rds@assays)){
+        if(app_object()$obj_type == 'seurat' && !is.null(app_object()$spatial_coords)){
           # we only need this for SpatialDimPlots for Seurat objects
           # 1. get the barcodes
           # 2. subset metadata & extract colors
@@ -562,8 +491,16 @@ dimredServer <- function(id, obj,
 
         # get dimred coordinates
         if(obj_type == 'seurat'){
-          df <- app_object()$rds@reductions[[ dimred ]]@cell.embeddings
-          df <- df[idx,]
+          # for sketched umaps, mdata & cell.embeddings don't have identical
+          # rows, so subset both to common rows
+          if(nrow(mdata) != nrow(app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings)){
+            didx <- which(rownames(app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings) %in% mdata$rn)
+            midx <- which(mdata$rn %in% rownames(app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings))
+            mdata <- mdata[midx,]
+            df <- app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings[didx,]
+          } else {
+            df <- app_object()$rds@reductions[[ dimred ]]@cell.embeddings[idx,]
+          }
         } else if(obj_type == 'anndata'){
           df <- app_object()$rds$obsm[[ dimred ]]
           df <- df[idx, 1:2]
@@ -665,6 +602,11 @@ dimredServer <- function(id, obj,
                      height=ht,
                      source=source)
 
+        # save trace names
+        trace_data <- plotly::plotly_build(p)$x$data
+        umap_obj$df$trace_names <- unlist(lapply(trace_data, function(x) unique(x$meta)))
+        plot_labeled$umap <- FALSE
+
         event_register(p, 'plotly_selected')
         event_register(p, 'plotly_click')
 
@@ -672,8 +614,12 @@ dimredServer <- function(id, obj,
       })
 
       output$umapplt <- renderPlotly({
+        isolate({
+          flag <- is.null(app_object()$rds)
+        })
+
         validate(
-          need(!is.null(app_object()$rds), '')
+          need(!flag, '')
         )
         get_umap_plot()
       })
@@ -681,92 +627,89 @@ dimredServer <- function(id, obj,
       # proxy for the interactive umap plot
       umapProxy <- plotlyProxy('umapplt', session)
 
-      observeEvent(c(selected_points$umap,
-                     input$show_umap_selection), {
+      restyle_umap_selection <- function(marker_opacity){
+        if(is.null(umap_obj$df$split)){
+          color_values <- umap_obj$df$data[[ umap_obj$df$color ]]
+          if(is.factor(color_values)){
+            color_levels <- levels(droplevels(color_values))
+          } else {
+            color_levels <- unique(color_values)
+          }
 
+          opacity_list <- split(marker_opacity, f=color_values, drop=TRUE)
+          opacity_list <- opacity_list[as.character(color_levels)]
+          opacity_list <- opacity_list[!vapply(opacity_list, is.null, logical(1))]
+
+          trace_match <- match(umap_obj$df$trace_names, names(opacity_list))
+          trace_idx <- which(!is.na(trace_match)) - 1
+          opacity_list <- opacity_list[trace_match[!is.na(trace_match)]]
+          trace_idx <- as.list(trace_idx)
+        } else {
+          split_var <- umap_obj$df$split
+
+          # Split by color and split variable to match Plotly trace groups.
+          opacity_list <- split(marker_opacity,
+                                f=list(umap_obj$df$data[[ umap_obj$df$color ]],
+                                       umap_obj$df$data[[ split_var ]]),
+                                drop=TRUE)
+
+          trace_match <- match(umap_obj$df$trace_names, names(opacity_list))
+          trace_idx <- which(!is.na(trace_match)) - 1
+          opacity_list <- opacity_list[trace_match[!is.na(trace_match)]]
+          trace_idx <- as.list(trace_idx)
+        }
+
+        if(length(opacity_list) == 0) return(invisible(NULL))
+
+        restyle_args <- list(
+          'marker.opacity' = I(unname(opacity_list))
+        )
+
+        umapProxy %>%
+          plotlyProxyInvoke('restyle', restyle_args, trace_idx)
+      }
+
+      # Show selection on plot using restyle
+      observeEvent(show_selection(), {
         validate(
           need(!is.null(app_object()$rds) & args()$dimred != '',
                '')
         )
+        validate(
+          need(!is.null(umap_obj$df), '')
+        )
 
-        isolate({
-          split_var <- input$umap_split_by
-        })
+        sel_barcodes <- unique(unlist(all_selected()))
 
-        sel_pts <- unique(c(selected_points$umap,
-                            selected_points$spatial))
-        if(split_var == 'none'){
-          if(length(sel_pts) > 0){
-            new_trace <- get_label_trace(umap_obj$df,
-                                         sel_pts)
+        validate(
+          need(length(sel_barcodes) > 0, '')
+        )
 
-            num_traces <- umap_obj$df$num_traces
+        marker_opacity <- rep(umap_obj$df$alpha, nrow(umap_obj$df$data))
 
-            # remove last trace
-            # NOTE: this is 0-based indexed
-            if(plot_labeled$umap){
-              umapProxy %>%
-                plotlyProxyInvoke('deleteTraces', num_traces)
-            }
+        # if not labeled, show, else hide selection
+        if(!plot_labeled$umap){
+          # Create a vector indicating which points are selected
+          is_selected <- which(rownames(umap_obj$df$data) %in% sel_barcodes)
 
-            umapProxy %>%
-              plotlyProxyInvoke('addTraces', new_trace)
-
-            plot_labeled$umap <- TRUE
-          } else if(plot_labeled$umap){
-            num_traces <- umap_obj$df$num_traces
-            umapProxy %>%
-              plotlyProxyInvoke('deleteTraces', num_traces)
-            plot_labeled$umap <- FALSE
+          if(length(is_selected) == 0){
+            showNotification(
+              'No selected points found in current plot (data may have changed)',
+              type='warning'
+            )
+            return()
           }
 
-        #} else if(length(sel_pts) > 0){
-        #  showNotification(
-        #    'Warning: Cannot show selected points in split view',
-        #    type='warning'
-        #  )
+          marker_opacity <- marker_opacity*0.05
+          marker_opacity[is_selected] <- 1
+        } else {
+          marker_opacity <- marker_opacity*1.95
         }
 
-        # TODO: implement showing selection for split plot
-        # - add empty 'selected' trace to each subplot?
-        #   Then we could use append/prepend traces
-        # - alternatively, restyle
-        #} else {
-        #  if(length(selected_points$umap) > 0){
+        restyle_umap_selection(marker_opacity)
 
-        #    new_trace <- get_label_trace(umap_obj$df,
-        #                                 selected_points$umap,
-        #                                 split=TRUE)
-
-        #    num_traces <- umap_obj$df$num_traces
-
-        #    lvls <- unique(umap_obj$df$data[, umap_obj$df$split ])
-
-        #    # remove all label traces
-        #    # NOTE: this is 0-based indexed
-        #    if(plot_labeled$umap){
-        #      for(i in 1:length(lvls)){
-        #        umapProxy %>%
-        #          plotlyProxyInvoke('deleteTraces', num_traces)
-        #      }
-        #    }
-
-        #    for(i in 1:length(new_trace)){
-        #      tmp <- new_trace[[i]]
-        #      print(tmp$pos)
-        #      print(str(tmp$trace))
-        #      umapProxy %>%
-        #        plotlyProxyInvoke('addTraces',
-        #                          tmp$trace)
-        #                          #-1)
-        #                          #tmp$pos)
-        #                          ##tmp$pos[2])
-        #    }
-        #    plot_labeled$umap <- TRUE
-
-        #  }
-        #}
-
+        # toggle
+        plot_labeled$umap <- !plot_labeled$umap
       })
 
       ##################### UMAP selection #########################
@@ -775,7 +718,8 @@ dimredServer <- function(id, obj,
         validate(
           need(!is.null(app_object()$rds), '')
         )
-        event_data('plotly_selected', source='umaply')
+        req(umap_obj$df)
+        event_data('plotly_selected', source=umap_obj$df$source)
       })
 
       observeEvent(get_umap_selected(), {
@@ -793,7 +737,7 @@ dimredServer <- function(id, obj,
         data_keys <- paste(data_df[, xcol], data_df[, ycol])
 
         new <- rownames(data_df)[data_keys %in% keys]
-        curr <- unique(unlist(selected_points$umap))
+        curr <- unique(unlist(all_selected()))
 
         # only add new points
         if(!all(new %in% curr)){
@@ -811,48 +755,20 @@ dimredServer <- function(id, obj,
         }
       })
 
-      output$umap_selected <- renderUI({
-        np <- length(unique(unlist(c(selected_points$spatial,
-                                     selected_points$umap))))
 
-        tagList(
-          fluidRow(
-            column(12, style='margin-bottom: 10px;',
-
-              paste(np, 'points selected')
-            )
-          )
-        )
-      })
-
-      output$dload_umap_clicks <- downloadHandler(
-        filename = function(){
-          paste0('clicked-points.tsv')
-        },
-        content = function(file){
-          bc <- unique(unlist(c(selected_points$umap,
-                                selected_points$spatial)))
-
-          # only output unique barcodes
-          mdata <- data.table::as.data.table(app_object()$metadata, keep.rownames=T)
-          idx <- mdata$rn %in% bc
-
-          mdata_sel <- as.data.frame(mdata[idx,])
-          rn_idx <- which(colnames(mdata_sel) == 'rn')
-          colnames(mdata_sel)[rn_idx] <- 'barcodes'
-
-          write.table(mdata_sel, file=file, sep='\t', quote=FALSE,
-                      row.names=FALSE)
+      observeEvent(reset_selection(), {
+        if(plot_labeled$umap & !is.null(umap_obj$df)){
+          marker_opacity <- rep(umap_obj$df$alpha * 1.95, nrow(umap_obj$df$data))
+          restyle_umap_selection(marker_opacity)
+          plot_labeled$umap <- FALSE
         }
-      )
 
-      observeEvent(input$reset_umap_clicks, {
-        np <- length(unique(unlist(c(selected_points$umap,
-                                     selected_points$spatial))))
-        showNotification(
-            paste0('Clearing ', np,
-                   ' points from selection')
-        )
+        if(plot_labeled$spatial & !is.null(spatial_obj$df)){
+          marker_opacity <- rep(spatial_obj$df$alpha * 1.95, nrow(spatial_obj$df$data))
+          restyle_spatial_selection(marker_opacity)
+          plot_labeled$spatial <- FALSE
+        }
+
         selected_points$umap <- list()
         selected_points$spatial <- list()
       })
@@ -878,8 +794,7 @@ dimredServer <- function(id, obj,
 
         if(obj_type == 'seurat'){
           validate(
-            need(any(grepl('Spatial', names(app_object()$rds@assays))) |
-                 any(grepl('Xenium', names(app_object()$rds@assays))),
+            need(!is.null(app_object()$spatial_coords),
                  'Spatial analysis not available')
           )
         } else if(obj_type == 'anndata'){
@@ -947,7 +862,6 @@ dimredServer <- function(id, obj,
           if(is.na(input$spat_marker_size)) marker_size <- 3
           else marker_size <- input$spat_marker_size
 
-          # save spatial object
           xcol <- 'imagecol'
           ycol <- 'imagerow'
           color <- color_var
@@ -967,23 +881,14 @@ dimredServer <- function(id, obj,
             num_traces <- length(unique(coords[[ color_var ]]))
           }
 
-          spatial_obj$df <- list(data=coords,
-                                 xcol=xcol,
-                                 ycol=ycol,
-                                 color=color,
-                                 colors=cols,
-                                 label_cols=label_col,
-                                 alpha=alpha,
-                                 marker_size=marker_size,
-                                 source=source,
-                                 num_traces=num_traces)
-
           # rename (eventual) axis labels
           colnames(coords)[colnames(coords) == 'imagecol'] <- 'spatial1'
           colnames(coords)[colnames(coords) == 'imagerow'] <- 'spatial2'
+          xcol <- 'spatial1'
+          ycol <- 'spatial2'
 
           # get final set of columns to pass to umap_ly
-          final_cols <- c('spatial1', 'spatial2', color)
+          final_cols <- c(xcol, ycol, color, label_col)
 
           ht <- config()$server$plots$dimplt$base_ht*input$plot_scale
           wd <- 1.25*ht
@@ -999,9 +904,25 @@ dimredServer <- function(id, obj,
             split_var <- NULL
           }
 
-          p <- umap_ly(coords[, final_cols, with=FALSE],
-                       xcol='spatial1',
-                       ycol='spatial2',
+          final_cols <- unique(final_cols)
+          plot_df <- coords[, final_cols, with=FALSE]
+
+          # save spatial object
+          spatial_obj$df <- list(data=plot_df,
+                                 xcol=xcol,
+                                 ycol=ycol,
+                                 color=color,
+                                 colors=cols,
+                                 label_cols=label_col,
+                                 split=split_var,
+                                 alpha=alpha,
+                                 marker_size=marker_size,
+                                 source=source,
+                                 num_traces=num_traces)
+
+          p <- umap_ly(plot_df,
+                       xcol=xcol,
+                       ycol=ycol,
                        color=color,
                        colors=cols,
                        split=split_var,
@@ -1014,8 +935,12 @@ dimredServer <- function(id, obj,
                        height=ht,
                        source=source)
 
-        event_register(p, 'plotly_selected')
-        event_register(p, 'plotly_click')
+          trace_data <- plotly::plotly_build(p)$x$data
+          spatial_obj$df$trace_names <- unlist(lapply(trace_data, function(x) unique(x$meta)))
+          plot_labeled$spatial <- FALSE
+
+          event_register(p, 'plotly_selected')
+          event_register(p, 'plotly_click')
 
         } else if(input$spatial_dimplt_switch == 'no'){
           validate(
@@ -1118,52 +1043,84 @@ dimredServer <- function(id, obj,
       # proxy for the interactive spatial plot
       spatialProxy <- plotlyProxy('spatial_dimplt2', session)
 
-      observeEvent(c(selected_points$spatial,
-                     input$show_spatial_selection), {
+      restyle_spatial_selection <- function(marker_opacity){
+        if(is.null(spatial_obj$df$split)){
+          color_values <- spatial_obj$df$data[[ spatial_obj$df$color ]]
+          if(is.factor(color_values)){
+            color_levels <- levels(droplevels(color_values))
+          } else {
+            color_levels <- unique(color_values)
+          }
+
+          opacity_list <- split(marker_opacity, f=color_values, drop=TRUE)
+          opacity_list <- opacity_list[as.character(color_levels)]
+          opacity_list <- opacity_list[!vapply(opacity_list, is.null, logical(1))]
+
+          trace_match <- match(spatial_obj$df$trace_names, names(opacity_list))
+          trace_idx <- which(!is.na(trace_match)) - 1
+          opacity_list <- opacity_list[trace_match[!is.na(trace_match)]]
+          trace_idx <- as.list(trace_idx)
+        } else {
+          split_var <- spatial_obj$df$split
+
+          opacity_list <- split(marker_opacity,
+                                f=list(spatial_obj$df$data[[ spatial_obj$df$color ]],
+                                       spatial_obj$df$data[[ split_var ]]),
+                                drop=TRUE)
+
+          trace_match <- match(spatial_obj$df$trace_names, names(opacity_list))
+          trace_idx <- which(!is.na(trace_match)) - 1
+          opacity_list <- opacity_list[trace_match[!is.na(trace_match)]]
+          trace_idx <- as.list(trace_idx)
+        }
+
+        if(length(opacity_list) == 0) return(invisible(NULL))
+
+        restyle_args <- list(
+          'marker.opacity' = I(unname(opacity_list))
+        )
+
+        spatialProxy %>%
+          plotlyProxyInvoke('restyle', restyle_args, trace_idx)
+      }
+
+      observeEvent(show_selection(), {
         validate(
           need(!is.null(app_object()$rds) & args()$dimred != '',
                '')
         )
+        validate(
+          need(!is.null(spatial_obj$df), '')
+        )
 
-        sel_pts <- unique(c(selected_points$spatial,
-                            selected_points$umap))
-        # show selected points only if single slice is selected
-        if(length(slice()) == 1){
-          if(length(sel_pts) > 0){
-            new_trace <- get_label_trace(spatial_obj$df,
-                                         sel_pts)
+        sel_pts <- unique(unlist(all_selected()))
 
-            num_traces <- spatial_obj$df$num_traces
+        validate(
+          need(length(sel_pts) > 0, '')
+        )
 
-            # remove label trace
-            # NOTE: this uses 0-based indexing
-            if(plot_labeled$spatial){
-              spatialProxy %>%
-                plotlyProxyInvoke('deleteTraces',
-                                  num_traces)
-            }
+        marker_opacity <- rep(spatial_obj$df$alpha, nrow(spatial_obj$df$data))
 
-            spatialProxy %>%
-              plotlyProxyInvoke('addTraces',
-                                new_trace)
-
-            plot_labeled$spatial <- TRUE
-
-          } else if(plot_labeled$spatial){
-            num_traces <- spatial_obj$df$num_traces
-            spatialProxy %>%
-              plotlyProxyInvoke('deleteTraces', num_traces)
-            plot_labeled$spatial <- FALSE
+        if(!plot_labeled$spatial){
+          is_selected <- spatial_obj$df$data$barcode %in% sel_pts
+          if(!any(is_selected)){
+            showNotification(
+              'No selected points found in current plot',
+              type='warning'
+            )
+            return()
           }
-        #} else if(length(sel_pts) > 0){
-        #  showNotification(
-        #    'Warning: Cannot show selected points in multi-slice view',
-        #    type='warning'
-        #  )
+
+          marker_opacity <- marker_opacity*0.05
+          marker_opacity[which(is_selected)] <- 1
+        } else {
+          marker_opacity <- marker_opacity*1.95
         }
 
-      })
+        restyle_spatial_selection(marker_opacity)
+        plot_labeled$spatial <- !plot_labeled$spatial
 
+      })
 
       ################### Spatial selection #############################
 
@@ -1172,14 +1129,16 @@ dimredServer <- function(id, obj,
         validate(
           need(!is.null(app_object()$rds), '')
         )
-        event_data('plotly_click', source='dimplt')
+        req(spatial_obj$df)
+        event_data('plotly_click', source=spatial_obj$df$source)
       })
 
       get_selection <- reactive({
         validate(
           need(!is.null(app_object()$rds), '')
         )
-        event_data('plotly_selected', source='dimplt')
+        req(spatial_obj$df)
+        event_data('plotly_selected', source=spatial_obj$df$source)
       })
 
       observeEvent(c(get_clicks(), get_selection()), {
@@ -1207,10 +1166,11 @@ dimredServer <- function(id, obj,
 
         # all points
         keys <- paste(df$x, df$y)
-        data_keys <- paste(data_df$imagecol, data_df$imagerow)
+        data_keys <- paste(data_df[[ spatial_obj$df$xcol ]],
+                           data_df[[ spatial_obj$df$ycol ]])
 
         new <- data_df$barcode[which(data_keys %in% keys)]
-        curr <- unique(unlist(selected_points$spatial))
+        curr <- unique(unlist(all_selected()))
 
         # only add new points
         if(!all(new %in% curr)){
@@ -1229,53 +1189,6 @@ dimredServer <- function(id, obj,
 
       })
 
-      output$spatial_selected <- renderUI({
-        np <- length(unique(unlist(c(selected_points$spatial,
-                                     selected_points$umap))))
-
-        tagList(
-          fluidRow(
-            column(12, style='margin-bottom: 10px;',
-
-              paste(np, 'points selected')
-            )
-          )
-        )
-
-      })
-
-      output$dload_clicks <- downloadHandler(
-        filename = function(){
-          paste0('clicked-points-spatial.tsv')
-        },
-        content = function(file){
-          bc <- unique(unlist(c(selected_points$umap,
-                                selected_points$spatial)))
-
-          # only output unique barcodes
-          mdata <- data.table::as.data.table(app_object()$metadata, keep.rownames=T)
-          idx <- mdata$rn %in% bc
-
-          mdata_sel <- as.data.frame(mdata[idx,])
-          rn_idx <- which(colnames(mdata_sel) == 'rn')
-          colnames(mdata_sel)[rn_idx] <- 'barcodes'
-
-          write.table(mdata_sel, file=file, sep='\t', quote=FALSE,
-                      row.names=FALSE)
-        }
-      )
-
-      observeEvent(input$reset_clicks, {
-        np <- length(unique(unlist(c(selected_points$spatial,
-                                     selected_points$umap))))
-        showNotification(
-            paste0('Clearing ', np,
-                   ' points from selection')
-        )
-        selected_points$spatial <- list()
-        selected_points$umap <- list()
-      })
-
       ######################### Help ####################
 
       helpButtonServer('dimred_help', size='l')
@@ -1290,10 +1203,11 @@ dimredServer <- function(id, obj,
 
       return(
         reactive({
-          list(
-            umap=unique(unlist(selected_points$umap)),
-            spatial=unique(unlist(selected_points$spatial))
-          )
+          ll <- list()
+          if(length(selected_points$umap) > 0) ll$umap <- selected_points$umap
+          if(length(selected_points$spatial) > 0) ll$spatial <- selected_points$spatial
+
+          ll
         })
       )
     } # function

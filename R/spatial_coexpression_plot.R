@@ -47,6 +47,16 @@ spatialCoexpressionPlotUI <- function(id, panel){
       strong('Other options', style='margin-top: 10px;'),
 
       fluidRow(
+        column(col1, 'Free axes?'),
+        column(col2,
+          selectInput(ns('free_axes'),
+                      label=NULL,
+                      choices=c('no', 'yes'),
+                      selected='yes')
+        ) # column
+      ), # fluidRow
+
+      fluidRow(
         column(col1, 'Color map'),
         column(col2,
           selectInput(ns('colormap'),
@@ -91,6 +101,41 @@ spatialCoexpressionPlotUI <- function(id, panel){
                       label=NULL,
                       choices=c('yes', 'no'))
         ) # column
+      ) # fluidRow
+    )
+  } else if(panel == 'selection'){
+    tagList(
+      fluidRow(
+        column(6,
+          strong('Point selection')
+        ), # column
+        column(6, align='right',
+          helpButtonUI(ns('umap_ptselect_help'))
+        ) # column
+      ), # fluidRow
+
+      uiOutput(ns('pt_selected')),
+
+      fluidRow(
+        column(12,
+          align='center',
+          style='margin-bottom: 10px;',
+          actionButton(ns('show_selection'),
+                       label='Show selection')
+        ),
+        column(12,
+          align='center',
+          style='margin-bottom: 10px;',
+          downloadButton(ns('dload_clicks'),
+                         label='Download selection')
+        ),
+        column(12,
+          align='center',
+          style='margin-bottom: 10px;',
+          actionButton(ns('reset_clicks'),
+                       label='Reset selection',
+                       class='btn-primary')
+        )
       ) # fluidRow
     )
   } else if(panel == 'main'){
@@ -155,6 +200,9 @@ spatialCoexpressionPlotUI <- function(id, panel){
 #'        'grp_by' for grouping variable
 #' @param gene_choices reactive list with all genes present in object
 #' @param slice reactive with slices to be used for plotting
+#' @param all_selected reactive containing list of selected points
+#' @param show_selection reactive to show selection
+#' @param reset_selection reactive to reset selection
 #' @param reload_global reactive to trigger reload
 #' @param refresh reactive to trigger plot refresh from sidebar button
 #' @param config reactive list with config settings
@@ -163,6 +211,7 @@ spatialCoexpressionPlotUI <- function(id, panel){
 #'
 spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
                                           args, gene_choices, slice,
+                                          all_selected, show_selection, reset_selection,
                                           reload_global, refresh, config){
   moduleServer(
     id,
@@ -171,6 +220,13 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
       ns <- NS(id)
 
       plot_data <- reactiveValues(spat_coexp_tbl=NULL)
+
+      # keep track of point selection here
+      selected_points <- reactiveValues(full=list(),
+                                        current=list())
+
+      plot_obj <- reactiveValues(df=NULL)
+      plot_labeled <- reactiveVal(FALSE)
 
       observeEvent(gene_choices(), {
         updateSelectizeInput(session, 'plt_genes',
@@ -196,6 +252,13 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
                                selected=selected,
                                server=TRUE)
         }
+      })
+
+      observeEvent(app_object()$metadata_levels, {
+        # reset data
+        plot_obj$df <- NULL
+        selected_points$full <- list()
+        selected_points$current <- list()
       })
 
       #################### Main plotting function ####################
@@ -225,8 +288,7 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
 
         if(obj_type == 'seurat'){
           validate(
-            need(any(grepl('Spatial', names(app_object()$rds@assays))) |
-                 any(grepl('Xenium', names(app_object()$rds))),
+            need(!is.null(app_object()$spatial_coords),
                  'Spatial analysis not available')
           )
         } else if(obj_type == 'anndata'){
@@ -251,8 +313,12 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
               'Number of empty cells very large! Downsampling to 50000',
               type='warning'
             )
+            # find sample indices, then reorder to maintain original order
             idx <- c(which(!zero_rows), sample(which(zero_rows), 50000))
+            idx <- idx[order(idx)]
+            df <- data.table::as.data.table(df)
             df <- df[idx,]
+            df <- as.data.frame(df)
           } else {
             showNotification(
               'Number of empty cells very large! Consider downsampling for faster plotting',
@@ -274,6 +340,7 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
         if(length(slice()) > 1){
           split_var <- 'slice'
           df[[ split_var ]] <- factor(df[[ split_var ]], levels=slice())
+          num_split <- length(slice())
         } else {
           split_var <- NULL
         }
@@ -286,24 +353,59 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
           ht <- 0.6*ht
         }
 
-        p <- feature_blend(df,
-                           xcol='spatial1',
-                           ycol='spatial2',
-                           blend_cols=g,
-                           colors=colors[2:4],
-                           split=split_var,
-                           col_threshold_1=input$thres_1/100,
-                           col_threshold_2=input$thres_2/100,
-                           neutral_color=colors[1],
-                           #bin_mode='quantile',
-                           showlegend=TRUE,
-                           showticklabels=FALSE,
-                           type='scattergl',
-                           marker_size=marker_size,
-                           alpha=alpha,
-                           free_axes=TRUE,
-                           width=wd,
-                           height=ht)
+        free_axes <- ifelse(input$free_axes == 'yes', TRUE, FALSE)
+
+        source <- 'spatial_coexpression_plot'
+
+        pp <- feature_blend(df,
+                            xcol='spatial1',
+                            ycol='spatial2',
+                            blend_cols=g,
+                            colors=colors[2:4],
+                            split=split_var,
+                            col_threshold_1=input$thres_1/100,
+                            col_threshold_2=input$thres_2/100,
+                            neutral_color=colors[1],
+                            #bin_mode='quantile',
+                            showlegend=TRUE,
+                            showticklabels=FALSE,
+                            type='scattergl',
+                            marker_size=marker_size,
+                            alpha=alpha,
+                            free_axes=free_axes,
+                            width=wd,
+                            height=ht,
+                            source=source)
+
+        # get list elements
+        p <- pp$plot
+        df <- pp$data
+
+        num_traces <- length(unique(df[[ 'color' ]]))
+        if(!is.null(split_var)) num_traces <- num_traces*num_split
+
+        # save plotted data
+        plot_obj$df <- list(data=df,
+                            xcol='spatial1',
+                            ycol='spatial2',
+                            color='color',
+                            blend_cols=g,
+                            colors=colors[2:4],
+                            split=split_var,
+                            col_threshold_1=input$thres_1/100,
+                            col_threshold_2=input$thres_2/100,
+                            neutral_color=colors[1],
+                            marker_size=marker_size*1.25,
+                            alpha=alpha,
+                            source=source,
+                            free_axes=free_axes,
+                            num_traces=num_traces,
+                            downsample=downsample)
+        plot_labeled(FALSE)
+
+        # save trace names for split-view restyle alignment
+        trace_data <- plotly::plotly_build(p)$x$data
+        plot_obj$df$trace_names <- unlist(lapply(trace_data, function(x) unique(x$meta)))
 
         pct_df <- get_coexp_tbl(df, g,
                                 threshold1=input$thres_1/100,
@@ -324,6 +426,8 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
 
         plot_data$spat_coexp_tbl <- list(tbl=pct_df,
                                          colors=colors)
+
+        event_register(p, 'plotly_selected')
 
         p
       })
@@ -402,9 +506,157 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
         input$plt_genes[2]
       })
 
+      ##################### lasso selection ###########################
+
+      # proxy for plot
+      plotProxy <- plotlyProxy('spatial_coexplt', session)
+
+      restyle_selection <- function(marker_opacity){
+        if(is.null(plot_obj$df$split)){
+          color_values <- plot_obj$df$data[[ plot_obj$df$color ]]
+          if(is.factor(color_values)){
+            color_levels <- levels(droplevels(color_values))
+          } else {
+            color_levels <- unique(color_values)
+          }
+
+          opacity_list <- split(marker_opacity, f=color_values, drop=TRUE)
+          opacity_list <- opacity_list[as.character(color_levels)]
+          opacity_list <- opacity_list[!vapply(opacity_list, is.null, logical(1))]
+
+          trace_match <- match(plot_obj$df$trace_names, names(opacity_list))
+          trace_idx <- which(!is.na(trace_match)) - 1
+          opacity_list <- opacity_list[trace_match[!is.na(trace_match)]]
+          trace_idx <- as.list(trace_idx)
+        } else {
+          split_var <- plot_obj$df$split
+
+          # Split by color and slice to match Plotly trace groups.
+          opacity_list <- split(marker_opacity,
+                                f=list(plot_obj$df$data[[ plot_obj$df$color ]],
+                                       plot_obj$df$data[[ split_var ]]),
+                                drop=TRUE)
+
+          trace_match <- match(plot_obj$df$trace_names, names(opacity_list))
+          trace_idx <- which(!is.na(trace_match)) - 1
+          opacity_list <- opacity_list[trace_match[!is.na(trace_match)]]
+          trace_idx <- as.list(trace_idx)
+        }
+
+        if(length(opacity_list) == 0) return(invisible(NULL))
+
+        restyle_args <- list(
+          'marker.opacity' = I(unname(opacity_list))
+        )
+
+        plotProxy %>%
+          plotlyProxyInvoke('restyle', restyle_args, trace_idx)
+      }
+
+      observeEvent(show_selection(), {
+
+        validate(
+          need(!is.null(app_object()$rds), '')
+        )
+        validate(
+          need(!is.null(plot_obj$df), '')
+        )
+
+        sel_pts <- unique(unlist(all_selected()))
+
+        validate(
+          need(length(sel_pts) > 0, '')
+        )
+
+        if(!plot_labeled()){
+          is_selected <- plot_obj$df$data$rn %in% sel_pts
+          if(!any(is_selected)){
+            showNotification(
+              'No selected points found in current plot',
+              type='warning'
+            )
+            return()
+          }
+
+          marker_opacity <- rep(plot_obj$df$alpha * 0.05, nrow(plot_obj$df$data))
+          marker_opacity[which(is_selected)] <- 1
+        } else {
+          marker_opacity <- rep(plot_obj$df$alpha * 1.95, nrow(plot_obj$df$data))
+        }
+
+        restyle_selection(marker_opacity)
+        plot_labeled(!plot_labeled())
+      })
+
+      get_selected <- reactive({
+        validate(
+          need(!is.null(plot_obj$df), '')
+        )
+
+        event_data('plotly_selected', source=plot_obj$df$source)
+      })
+
+      observeEvent(get_selected(), {
+        validate(
+          need(!is.null(app_object()$rds), '')
+        )
+
+        df <- get_selected()
+
+        # get points by matching coords & key
+        keys <- paste(df$x, df$y)
+
+        # plot data
+        data_df <- plot_obj$df$data
+        xcol <- plot_obj$df$xcol
+        ycol <- plot_obj$df$ycol
+
+        # fix names if starting with number
+        if(grepl('^\\d', xcol)) xcol <- make.names(xcol)
+        if(grepl('^\\d', ycol)) ycol <- make.names(ycol)
+
+        data_keys <- paste(data_df[, xcol],
+                           data_df[, ycol])
+
+        new <- unique(data_df$rn[which(data_keys %in% keys)])
+
+        curr <- unique(unlist(all_selected()))
+
+        # only add new points
+        if(!all(new %in% curr)){
+          new_idx <- which(!new %in% curr)
+          showNotification(
+              paste0('Adding ', length(new_idx), ' points to selection')
+          )
+
+          selected_points$full[[ length(selected_points$full) + 1 ]] <- new[new_idx]
+        } else if(length(new) > 0){
+          showNotification(
+              paste0('All selected points already in selection'),
+              type='warning'
+          )
+        }
+      })
+
+      # observer to reset clicks
+      observeEvent(reset_selection(), {
+        if(plot_labeled() & !is.null(plot_obj$df)){
+          marker_opacity <- rep(plot_obj$df$alpha * 1.95, nrow(plot_obj$df$data))
+          restyle_selection(marker_opacity)
+          plot_labeled(FALSE)
+        }
+
+        selected_points$full <- list()
+      })
+
       helpButtonServer('spatial_coexplt_help', size='l')
+      helpButtonServer('umap_ptselect_help', size='l')
       downloadPlotServer('plt_dload', get_spatial_coexp_plot, 'spatial_coexpression_plot')
 
+      # return selected points
+      return(
+        reactive({ selected_points$full })
+      )
     } # function
   ) # moduleServer
 } # spatialCoexpressionPlotServer

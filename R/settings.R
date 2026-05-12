@@ -7,6 +7,7 @@
 #' @param panel context for generating ui elements ('sidebar' or 'main')
 #' @param username user name
 #'
+#' @export
 settingsUI <- function(id, panel, username){
   ns <- NS(id)
 
@@ -38,11 +39,11 @@ settingsUI <- function(id, panel, username){
                    )  # fluidRow
                  ) # tabPanel
 
-    msg <- 'Add/edit cascadeR data & user settings here'
+    msg <- paste('Add/edit', packageName(), 'data & user settings here')
   } else {
     user_settings <- tagList()
     user_main <- tabPanel(title=NULL)
-    msg <- 'Add/edit cascadeR data settings here'
+    msg <- paste('Add/edit', packageName(), 'data settings here')
   }
 
   if(panel == 'sidebar'){
@@ -109,8 +110,8 @@ settingsUI <- function(id, panel, username){
                    fluidRow(
                      column(10,
                        DTOutput(ns('data_areas'))
-                     ),  # column
-                     column(2, align='left',
+                     ), # column
+                     column(1, align='left',
                        helpButtonUI(ns('settings_help'))
                      ) # column
                    )    # fluidRow
@@ -134,6 +135,7 @@ settingsUI <- function(id, panel, username){
 #' @param assay_fun function to parse assay names from file path
 #' @param config reactive list with config settings
 #'
+#' @export
 settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
   moduleServer(
     id,
@@ -190,7 +192,16 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
             ) # modalDialog
           ) # showModal
         } else {
-          stop('Error loading access yaml: ', p$message)
+          showModal(
+            modalDialog(
+              tags$b('Error loading access settings', style='color: red;'),
+              br(), br(),
+              span(p$message),
+              br(),
+              span('Please check file permissions of "', get_access_path(), '" and try again'),
+              footer=NULL
+            ) # modalDialog
+          ) # showModal
         }
       } else {
         access_yaml$l <- p
@@ -842,13 +853,20 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
                                admin=admin_group())
       }
 
+      # var to detect if in shinymanager admin view
+      if(is.null(details()$where)) shinyadmin <- FALSE
+      else if(details()$where != 'admin') shinyadmin <- FALSE
+      else shinyadmin <- TRUE
+
       if(is.null(d)){
         # single-user mode
-        if(is.null(username())){
-          no_projects_modal()
+        if(is.null(u)){
+          showModal(
+            no_projects_modal()
+          )
         } else {
-          # don't show this in admin view
-          if(details()$where != 'admin'){
+          # don't show if in shinymanager admin view
+          if(!shinyadmin){
             if(!is_admin){
               showModal(
                 modalDialog(
@@ -859,7 +877,9 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
                 )
               )
             } else {
-              no_projects_modal()
+              showModal(
+                no_projects_modal()
+              )
             }
           }
         }
@@ -869,16 +889,23 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
           need(!is.null(d), 'No access permissions')
       )
 
+      showModal(
+        modalDialog(
+          span('Gathering project info'),
+          footer=NULL
+        )
+      )
+
       l <- unlist(lapply(unique(d$data_area),
               function(x) list.files(x,
                               pattern=paste0(pattern(), '\\.(rds|h5ad)$'),
-                              recursive=TRUE,
                               ignore.case=TRUE,
+                              recursive=TRUE,
                               full.names = TRUE)))
 
       if(is.null(l) | length(l) == 0){
         # don't show modal if in admin panel
-        if(details()$where != 'admin'){
+        if(!shinyadmin){
           showModal(
             no_projects_modal()
           ) # showModal
@@ -934,9 +961,8 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
               fixed_label <- dirname(old_label)
 
               # add dev/ prefix to assay label for dev datasets
-              names(alist[[old_label]]) <- paste0(staging_dir(),
-                                                  '/',
-                                                  names(alist[[old_label]]))
+              names(alist[[old_label]]) <- file.path(staging_dir(),
+                                                     names(alist[[old_label]]))
 
               # if fixed label already exists, add to existing list
               # otherwise create label
@@ -961,6 +987,19 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
 
       assay_list <- alist
 
+      # make df summarizing projects
+      proj_names <- strsplit(names(alist), .Platform$file.sep, fixed=TRUE)
+      group <- unlist(lapply(proj_names, function(x) x[1]))
+      project <- unlist(lapply(proj_names, function(x) x[2]))
+      proj_df <- data.frame(
+                   group=group,
+                   project=project,
+                   num_datasets=unname(unlist(lapply(alist, length)))
+                 )
+
+      # order by group, then project
+      proj_df <- proj_df[order(proj_df$group, proj_df$project),]
+
       # find and read project descriptions
       project_descriptions <- list()
       for(name in names(assay_list)){
@@ -974,14 +1013,36 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
 
         # read project descriptions if file exists
         if(file.exists(pd_path)){
-          project_descriptions[[ name ]] <- read_yaml(pd_path)
+          tmp_desc <- tryCatch(
+                        read_yaml(pd_path),
+                        error = function(e){ e }
+                      ) # tryCatch
+
+          if(inherits(tmp_desc, 'error')){
+            showNotification(
+              paste0('Error reading project description for project "',
+                     name, '": ', tmp_desc),
+              type='warning'
+            )
+          } else {
+            # if not admin, filter out staged data
+            if(!is_admin){
+              idx <- grep(staging_dir(), names(tmp_desc))
+              tmp_desc <- tmp_desc[ -idx ]
+            }
+
+            project_descriptions[[ name ]] <- tmp_desc
+          }
         }
       }
+
+      removeModal()
 
       list(assay_list=assay_list,
            reload_parent=reload_parent$flag,
            is_admin=is_admin,
-           project_descriptions=project_descriptions)
+           project_descriptions=project_descriptions,
+           proj_df=proj_df)
     })
 
     helpButtonServer('settings_help', size='l')

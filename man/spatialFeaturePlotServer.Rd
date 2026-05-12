@@ -12,6 +12,9 @@ spatialFeaturePlotServer(
   args,
   gene_choices,
   slice,
+  all_selected,
+  show_selection,
+  reset_selection,
   reload_global,
   refresh,
   config
@@ -33,6 +36,12 @@ spatialFeaturePlotServer(
 \item{gene_choices}{reactive list with all genes present in object}
 
 \item{slice}{reactive with slices to be used for plotting}
+
+\item{all_selected}{reactive containing list of selected points}
+
+\item{show_selection}{reactive to show selection}
+
+\item{reset_selection}{reactive to reset selection}
 
 \item{reload_global}{reactive to trigger reload}
 

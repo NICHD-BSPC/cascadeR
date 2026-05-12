@@ -116,6 +116,9 @@ spatialFeaturePlotUI <- function(id, panel){
 #'        'grp_by' for grouping variable
 #' @param gene_choices reactive list with all genes present in object
 #' @param slice reactive with slices to be used for plotting
+#' @param all_selected reactive containing list of selected points
+#' @param show_selection reactive to show selection
+#' @param reset_selection reactive to reset selection
 #' @param reload_global reactive to trigger reload
 #' @param refresh reactive to trigger plot refresh from sidebar button
 #' @param config reactive list with config settings
@@ -124,12 +127,20 @@ spatialFeaturePlotUI <- function(id, panel){
 #'
 spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
                                      args, gene_choices, slice,
+                                     all_selected, show_selection, reset_selection,
                                      reload_global, refresh, config){
   moduleServer(
     id,
 
     function(input, output, session){
       ns <- NS(id)
+
+      # keep track of point selection here
+      selected_points <- reactiveValues(full=list(),
+                                        current=list())
+
+      plot_obj <- reactiveValues(df=NULL)
+      plot_labeled <- reactiveVal(FALSE)
 
       observeEvent(gene_choices(), {
         updateSelectizeInput(session, 'plt_genes',
@@ -155,6 +166,13 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
                                selected=selected,
                                server=TRUE)
         }
+      })
+
+      observeEvent(app_object()$metadata_levels, {
+        # reset data
+        plot_obj$df <- NULL
+        selected_points$full <- list()
+        selected_points$current <- list()
       })
 
       #################### Main plotting function ####################
@@ -189,8 +207,7 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
 
         if(obj_type == 'seurat'){
           validate(
-            need(any(grepl('Spatial', names(app_object()$rds@assays))) |
-                 any(grepl('Xenium', names(app_object()$rds))),
+            need(!is.null(app_object()$spatial_coords),
                  'Spatial analysis not available')
           )
         } else if(obj_type == 'anndata'){
@@ -219,7 +236,10 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
               type='warning'
             )
             idx <- c(which(!zero_rows), sample(which(zero_rows), 50000))
+            idx <- idx[order(idx)]
+            df <- data.table::as.data.table(df)
             df <- df[idx,]
+            df <- as.data.frame(df)
           } else {
             showNotification(
               'Number of empty cells very large! Consider downsampling for faster plotting',
@@ -260,11 +280,36 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
         if(length(curr_slices) > 1){
           split_var <- 'slice'
           df[[ split_var ]] <- factor(df[[ split_var ]], levels=curr_slices)
+          num_split <- length(curr_slices)
         } else {
           split_var <- NULL
+          num_split <- 1
         }
 
         free_axes <- ifelse(input$free_axes == 'yes', TRUE, FALSE)
+
+        source <- 'spatial_featureplot'
+
+        if(!is.null(split_var)) num_traces <- num_split
+        else num_traces <- 1
+
+        # Keep saved data order aligned with the trace order used for restyle.
+        if(length(g) == 1) df <- df[order(df[[g]]),]
+
+        # save plotted data
+        plot_obj$df <- list(data=df,
+                            xcol='spatial1',
+                            ycol='spatial2',
+                            color=g,
+                            colors=colors,
+                            split=split_var,
+                            crange=crange,
+                            marker_size=marker_size + 0.25*marker_size, # slightly increase marker size
+                            alpha=alpha,
+                            free_axes=free_axes,
+                            source=source,
+                            num_traces=num_traces)
+        plot_labeled(FALSE)
 
         # arrange multi-gene views into row
         if(length(g) > 1){
@@ -307,7 +352,8 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
                                      split=split_var,
                                      free_axes=free_axes,
                                      width=wd,
-                                     height=ht)
+                                     height=ht,
+                                     source=source)
                      p
                    })
 
@@ -339,11 +385,15 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
                           alpha=alpha,
                           split=split_var,
                           free_axes=free_axes,
+                          reorder=FALSE,
                           width=wd,
                           height=ht,
-                          margin=0.05)
+                          margin=0.05,
+                          source=source)
 
         }
+
+        event_register(p, 'plotly_selected')
 
         p
       })
@@ -357,9 +407,185 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
         p
       })
 
+      ##################### lasso selection ###########################
+
+      # proxy for plot
+      plotProxy <- plotlyProxy('spatial_featureplt', session)
+
+      observeEvent(input$show_selection, {
+        if(length(input$plt_genes) > 1){
+          showNotification(
+            'Cannot show selection in multi-gene view',
+            type='warning'
+          )
+        }
+      })
+
+      # function to restyle current selection using marker opacity
+      restyle_selection <- function(marker_opacity){
+        split_var <- plot_obj$df$split
+
+        if(is.null(split_var)){
+          opacity_list <- list(marker_opacity)
+          trace_idx <- list(0)
+        } else {
+          split_values <- plot_obj$df$data[[ split_var ]]
+          if(is.factor(split_values)){
+            split_levels <- levels(droplevels(split_values))
+          } else {
+            split_levels <- unique(split_values)
+          }
+
+          opacity_list <- split(marker_opacity, f=split_values, drop=TRUE)
+          opacity_list <- opacity_list[as.character(split_levels)]
+          opacity_list <- opacity_list[!vapply(opacity_list, is.null, logical(1))]
+          trace_idx <- as.list(seq_along(opacity_list) - 1)
+        }
+
+        restyle_args <- list(
+          'marker.opacity' = I(unname(opacity_list))
+        )
+
+        plotProxy %>%
+          plotlyProxyInvoke('restyle', restyle_args, trace_idx)
+      }
+
+      observeEvent(show_selection(), {
+
+        validate(
+          need(!is.null(app_object()$rds), '')
+        )
+        validate(
+          need(!is.null(plot_obj$df), '')
+        )
+
+        sel_pts <- unique(unlist(all_selected()))
+
+        validate(
+          need(length(sel_pts) > 0, '')
+        )
+
+        if(length(plot_obj$df$color) > 1){
+          showNotification(
+            'Cannot show selection in multi-gene view',
+            type='warning'
+          )
+          return()
+        }
+
+        if(!plot_labeled()){
+          is_selected <- plot_obj$df$data$rn %in% sel_pts
+          if(!any(is_selected)){
+            showNotification(
+              'No selected points found in current plot',
+              type='warning'
+            )
+            return()
+          }
+          marker_opacity <- rep(plot_obj$df$alpha * 0.05, nrow(plot_obj$df$data))
+          marker_opacity[which(is_selected)] <- 1
+        } else {
+          marker_opacity <- rep(plot_obj$df$alpha * 1.95, nrow(plot_obj$df$data))
+        }
+
+        restyle_selection(marker_opacity)
+        plot_labeled(!plot_labeled())
+
+        ## OLD APPROACH USING addTraces/deleteTraces
+        # if(length(slice()) == 1){
+        #   if(length(sel_pts) > 0){
+        #     new_trace <- get_label_trace(plot_obj$df,
+        #                                  sel_pts)
+        #     num_traces <- plot_obj$df$num_traces
+        #
+        #     # remove last trace
+        #     # NOTE: this is 0-based indexed
+        #     if(plot_labeled()){
+        #       plotProxy %>%
+        #         plotlyProxyInvoke('deleteTraces', num_traces)
+        #     }
+        #
+        #     plotProxy %>%
+        #       plotlyProxyInvoke('addTraces', new_trace)
+        #
+        #     plot_labeled(TRUE)
+        #   } else if(plot_labeled()){
+        #     num_traces <- plot_obj$df$num_traces
+        #     plotProxy %>%
+        #       plotlyProxyInvoke('deleteTraces', num_traces)
+        #     plot_labeled(FALSE)
+        #   }
+        # }
+      })
+
+      get_selected <- reactive({
+        validate(
+          need(!is.null(plot_obj$df), '')
+        )
+
+        event_data('plotly_selected', source=plot_obj$df$source)
+      })
+
+      observeEvent(get_selected(), {
+        validate(
+          need(!is.null(app_object()$rds), '')
+        )
+
+        df <- get_selected()
+
+        # get points by matching coords & key
+        keys <- paste(df$x, df$y)
+
+        # plot data
+        data_df <- as.data.frame(plot_obj$df$data)
+        xcol <- plot_obj$df$xcol
+        ycol <- plot_obj$df$ycol
+
+        # fix names if starting with number
+        if(grepl('^\\d', xcol)) xcol <- make.names(xcol)
+        if(grepl('^\\d', ycol)) ycol <- make.names(ycol)
+
+        data_keys <- paste(data_df[, xcol],
+                           data_df[, ycol])
+
+        new <- unique(data_df$rn[which(data_keys %in% keys)])
+
+        curr <- unique(unlist(all_selected()))
+
+        # only add new points
+        if(!all(new %in% curr)){
+          new_idx <- which(!new %in% curr)
+          showNotification(
+              paste0('Adding ', length(new_idx), ' points to selection')
+          )
+
+          selected_points$full[[ length(selected_points$full) + 1 ]] <- new[new_idx]
+        } else if(length(new) > 0){
+          showNotification(
+              paste0('All selected points already in selection'),
+              type='warning'
+          )
+        }
+      })
+
+      # observer to reset clicks
+      observeEvent(reset_selection(), {
+        if(plot_labeled() & !is.null(plot_obj$df)){
+          marker_opacity <- rep(plot_obj$df$alpha * 1.95, nrow(plot_obj$df$data))
+          restyle_selection(marker_opacity)
+          plot_labeled(FALSE)
+        }
+        selected_points$full <- list()
+      })
+
       helpButtonServer('spatial_featureplt_help', size='l')
+      helpButtonServer('umap_ptselect_help', size='l')
       downloadPlotServer('plt_dload', get_spatial_feature_plot, 'spatial_feature_plot')
 
+      # return selected points
+      return(
+        reactive({ selected_points$full })
+      )
     } # function
   ) # moduleServer
 } # spatialFeaturePlotServer

@@ -4,6 +4,7 @@
 #'
 #' @param id Input id
 #'
+#' @export
 helpButtonUI <- function(id){
   ns <- NS(id)
 
@@ -20,6 +21,7 @@ helpButtonUI <- function(id){
 #' @param id Input id
 #' @param ... other params passed to helpModal()
 #'
+#' @export
 helpButtonServer <- function(id, ...){
   moduleServer(
     id,
@@ -53,6 +55,7 @@ helpButtonServer <- function(id, ...){
 #' @param title Title of modal dialog
 #' @param ... other params passed to modalDialog()
 #'
+#' @export
 helpModal <- function(mdfile, title=NULL, ...){
   modalDialog(
       title=title,
@@ -71,6 +74,7 @@ helpModal <- function(mdfile, title=NULL, ...){
 #'
 #' @param id Input id
 #'
+#' @export
 downloadPlotUI <- function(id){
   ns <- NS(id)
 
@@ -89,6 +93,7 @@ downloadPlotUI <- function(id){
 #' @param plot_type reactive/static value used for output filename
 #' @param direction direction of phylogenetic tree
 #'
+#' @export
 downloadPlotServer <- function(id, outplot, plot_type, direction=NULL){
   moduleServer(
     id,
@@ -225,6 +230,7 @@ downloadPlotServer <- function(id, outplot, plot_type, direction=NULL){
 #'
 #' @param id Input id
 #'
+#' @export
 downloadFileUI <- function(id){
   ns <- NS(id)
 
@@ -249,6 +255,7 @@ downloadFileUI <- function(id){
 #' @param data reactive w data frame
 #' @param file_type reactive/static value used for output filename
 #'
+#' @export
 downloadFileServer <- function(id, data, file_type){
   moduleServer(
     id,

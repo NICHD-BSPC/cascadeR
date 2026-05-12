@@ -248,15 +248,46 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
         introBox(
           dropdownButton(
             tagList(
-              conditionalPanel("input.mode == 'Cell Embeddings'",
-                dimredUI('dimred_tab', panel='selection')
+              conditionalPanel("input.mode == 'Cell Embeddings' | input.mode == 'Marker Plots'",
+                fluidRow(
+                  column(6,
+                    strong('Point selection')
+                  ), # column
+                  column(6, align='right',
+                    helpButtonUI('ptselect_help')
+                  ) # column
+                ), # fluidRow
+
+                uiOutput('pt_selected'),
+
+                fluidRow(
+                  column(12,
+                    align='center',
+                    style='margin-bottom: 10px;',
+                    actionButton('show_selection',
+                                 label='Show/Hide selection')
+                  ),
+                  column(12,
+                    align='center',
+                    style='margin-bottom: 10px;',
+                    downloadButton('dload_clicks',
+                                   label='Download selection')
+                  ),
+                  column(12,
+                    align='center',
+                    style='margin-bottom: 10px;',
+                    actionButton('reset_clicks',
+                                 label='Reset selection',
+                                 class='btn-primary')
+                  )
+                ) # fluidRow
               ), # conditionalPanel
 
               conditionalPanel("input.mode == 'Cell Markers'",
                 markerTableUI('marker_tbl_tab', panel='selection')
               ), # conditionalPanel
 
-              conditionalPanel("input.mode != 'Cell Embeddings' && input.mode != 'Cell Markers'",
+              conditionalPanel("input.mode != 'Cell Embeddings' && input.mode != 'Cell Markers' && input.mode != 'Marker Plots'",
                 'No selection settings available for this tab'
               ) # conditionalPanel
             ), # tagList
@@ -302,10 +333,26 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                              class='btn-primary'),
                 data.step=3,
                 data.intro='Finally, click this button to load the data.'
-              ) # introBox
+              ), # introBox
+
+              br(), br(),
+              uiOutput('current_obj')
             ), # column
             column(9, style='margin-top: 20px',
-              DTOutput('analysis_desc')
+              fluidRow(
+                column(6,
+                  tags$div(
+                    DTOutput('project_desc')
+                  )
+                ),
+                conditionalPanel('input.proj != "" & input.proj != "Choose one"',
+                  column(6,
+                    tags$div(
+                      DTOutput('analysis_desc')
+                    )
+                  )
+                )
+              )
             )
           ) # fluidRow
 
@@ -393,12 +440,16 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     #################### authentication ####################
 
     # check_credentials directly on sqlite db
-    res_auth <- shinymanager::secure_server(
-      check_credentials = shinymanager::check_credentials(
-          db=credentials,
-          passphrase=passphrase
+    if(!is.null(credentials)){
+      res_auth <- shinymanager::secure_server(
+        check_credentials = shinymanager::check_credentials(
+            db=credentials,
+            passphrase=passphrase
+        )
       )
-    )
+    } else {
+      res_auth <- NULL
+    }
 
     user_details <- reactiveValues(username=NULL, admin=FALSE)
 
@@ -457,6 +508,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
       assay_list$l <- l$assay_list
       project_info$descriptions <- l$project_descriptions
+      project_info$df <- l$proj_df
 
       validate(
          need(!is.null(l$assay_list), 'No projects found')
@@ -500,9 +552,10 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                                  consmarkers=NULL,
                                  demarkers=NULL,
                                  cluster_colors=NULL,
-                                 grouping_vars=NULL,
-                                 selected_points=list(umap=NULL,
-                                                      spatial=NULL))
+                                 grouping_vars=NULL)
+
+    # save selected points
+    selected_points <- reactiveValues(bc=list())
 
     # var to stop app flow
     stop_flow <- reactiveVal(FALSE)
@@ -511,7 +564,10 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     config <- reactiveVal(cfg)
 
     # list to hold project/analysis descriptions
-    project_info <- reactiveValues(descriptions=list(), current=NULL)
+    project_info <- reactiveValues(descriptions=list(), current=NULL, df=NULL)
+
+    # reactive values to hold currently loaded project
+    current <- reactiveValues(proj=NULL, analysis=NULL)
 
     # reactive values to keep track of genes
     all_genes <- reactiveValues(choices=NULL)
@@ -531,15 +587,52 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
       app_object$demarkers <- NULL
       app_object$cluster_colors <- NULL
       app_object$grouping_vars <- NULL
-      app_object$selected_points <- list(umap=NULL,
-                                         spatial=NULL)
+      selected_points$bc <- list()
 
       # reset gene choices
       all_genes$choices <- NULL
 
+      # reset current loaded dataset display
+      current$proj <- NULL
+      current$analysis <- NULL
+
       removeNotification('metadata_notify')
 
     }
+
+    #################### global project summary ####################
+
+    output$project_desc <- renderDT({
+      req(project_info$df)
+
+      datatable(project_info$df,
+                rownames=FALSE,
+                selection='single',
+                caption=tags$caption(style='font-weight: bold; font-size: 15px;',
+                                     'Summary of available projects'),
+                options=list(dom='tfip', stateSave=TRUE))
+    })
+
+    # proxy for project table
+    project_desc_proxy <- dataTableProxy('project_desc')
+
+    # return 'group/project' from table selection
+    proj_from_tbl <- eventReactive(input$project_desc_rows_selected, {
+      req(project_info$df)
+
+      tbl <- project_info$df
+      sel <- input$project_desc_rows_selected
+
+      req(length(sel) > 0)
+
+      paste(tbl[['group']][sel], tbl[['project']][sel], sep=.Platform$file.sep)
+    }) # eventReactive
+
+    # update 'proj' input based on table selection
+    observeEvent(proj_from_tbl(), {
+      updateSelectizeInput(session, 'proj',
+                           selected=proj_from_tbl())
+    })
 
     observeEvent(input$proj, {
       validate(
@@ -549,12 +642,61 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
       l <- assay_list$l
 
       assay_choices <- l[[input$proj]]
+
+      # if project description exists, order assay choices by description names
+      proj_desc <- project_info$descriptions[[ input$proj ]]
+      if(!is.null(proj_desc)){
+        # names from proj desc, that are in assay choices
+        # are moved to the front
+        pnames <- intersect(names(proj_desc), names(assay_choices))
+
+        if(length(pnames) != length(proj_desc)){
+          pmissing <- setdiff(names(proj_desc), names(assay_choices))
+          showNotification(
+            paste0("Warning - Some datasets in project description not found in 'Available analyses': ",
+                   paste(pmissing, collapse=', ')),
+            type='warning'
+          )
+        }
+        anames <- c(pnames, setdiff(names(assay_choices), pnames))
+        assay_choices <- assay_choices[anames]
+      }
+
       if(length(assay_choices) == 1){
         updateSelectizeInput(session, 'analysis',
                              choices=assay_choices)
       } else {
         updateSelectizeInput(session, 'analysis',
                              choices=c('choose one', assay_choices))
+      }
+
+      # parse project name and update global table selection
+      tbl <- project_info$df
+      if(!is.null(tbl) && all(c('group', 'project') %in% colnames(tbl))){
+        parsed_name <- strsplit(input$proj, .Platform$file.sep, fixed=TRUE)[[1]]
+
+        if(length(parsed_name) >= 2){
+          proj_name <- paste(parsed_name[-1], collapse=.Platform$file.sep)
+          proj_info_idx <- which(
+            as.character(tbl[['group']]) == parsed_name[1] &
+              as.character(tbl[['project']]) == proj_name
+          )
+
+          if(length(proj_info_idx) > 0){
+            project_desc_proxy %>% selectRows(NULL) %>%
+              selectRows(proj_info_idx[1])
+
+            current_idx <- which(input$project_desc_rows_all == proj_info_idx[1])
+            if(length(current_idx) > 0){
+              page_length <- input$project_desc_state$length
+              if(is.null(page_length) || !is.numeric(page_length) || page_length < 1){
+                page_length <- 10
+              }
+              page_idx <- floor((current_idx[1] - 1) / page_length) + 1
+              DT::selectPage(project_desc_proxy, page_idx)
+            }
+          }
+        }
       }
 
       stop_flow(TRUE)
@@ -571,18 +713,118 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     output$analysis_desc <- renderDT({
       req(input$proj)
 
-      df <- data.frame(
-        'analysis_name'=names(project_info$descriptions[[ input$proj ]]),
-        'description'=unname(unlist(project_info$descriptions[[ input$proj ]]))
-      )
+      proj_desc <- project_info$descriptions[[ input$proj ]]
+
+      # check fields present in descriptions
+      field_names <- unique(unlist(lapply(proj_desc, names)))
+
+      if(is.null(field_names)){
+        # here entries are a single string description
+        df <- data.frame(
+          'analysis_name'=names(proj_desc),
+          'description'=unname(unlist(proj_desc))
+        )
+      } else {
+        # here we handle multiple fields for each entry
+        df.i <- lapply(proj_desc, function(x){
+                 if(all(field_names %in% names(x))) x
+                 else {
+                   # check for missing fields and add NAs
+                   ff <- setdiff(field_names, names(x))
+                   ff <- c(x, setNames(rep(NA, length(ff)), ff))
+
+                   # reorder
+                   ff <- ff[ field_names ]
+                 }
+               })
+        df <- as.data.frame(do.call('rbind', df.i))
+        cnames <- colnames(df)
+        df$analysis_name <- rownames(df)
+        df <- df[, c('analysis_name', cnames)]
+      }
 
       datatable(df,
                 rownames=FALSE,
-                selection='none',
+                selection='single',
                 caption=tags$caption(style='font-weight: bold; font-size: 15px;',
                                      'Summary of available analyses'),
-                options=list(dom='t'))
+                options=list(dom='tlp', stateSave=TRUE))
 
+    })
+
+    # proxy for analysis description table
+    analysis_desc_proxy <- dataTableProxy('analysis_desc')
+
+    # return selected analysis path from table selection
+    analysis_from_tbl <- eventReactive(input$analysis_desc_rows_selected, {
+      req(input$proj)
+
+      proj_desc <- project_info$descriptions[[ input$proj ]]
+      sel <- input$analysis_desc_rows_selected
+
+      req(length(sel) > 0)
+
+      all_analysis <- names(proj_desc)
+
+      # these are the analyses for the current project
+      current_assays <- assay_list$l[[ input$proj ]]
+
+      # match the selected name to the current assays
+      # since the order might be different due to sorting
+      idx <- which(names(current_assays) %in% all_analysis[sel])
+
+      req(length(idx) > 0)
+
+      current_assays[idx[1]]
+    }) # eventReactive
+
+    # update 'analysis' input based on table selection
+    observeEvent(analysis_from_tbl(), {
+      updateSelectizeInput(session, 'analysis',
+                           selected=analysis_from_tbl())
+    })
+
+    # update analysis table selection based on 'analysis'
+    observeEvent(input$analysis, {
+      validate(
+        need(!is.null(input$analysis) & input$analysis != '' & input$analysis != 'choose one',
+             'No analysis selected!')
+      )
+
+      current_assays <- assay_list$l[[ input$proj ]]
+      analysis_idx <- which(unname(current_assays) %in% input$analysis)
+
+      if(length(analysis_idx) == 0){
+        analysis_desc_proxy %>% selectRows(NULL)
+        return()
+      }
+
+      analysis_name <- names(current_assays)[analysis_idx[1]]
+      current_desc <- project_info$descriptions[[ input$proj ]]
+
+      validate(
+        need(length(current_desc) > 0, 'no project descriptions')
+      )
+
+      desc_idx <- which(names(current_desc) %in% analysis_name)
+
+      if(length(desc_idx) == 0){
+        analysis_desc_proxy %>% selectRows(NULL)
+        return()
+      }
+
+      analysis_desc_proxy %>% selectRows(NULL) %>%
+        selectRows(desc_idx[1])
+
+      current_idx <- which(input$analysis_desc_rows_all == desc_idx[1])
+      if(length(current_idx) > 0){
+        page_length <- input$analysis_desc_state$length
+        if(is.null(page_length) || !is.numeric(page_length) || page_length < 1){
+          page_length <- 10
+        }
+        page_idx <- floor((current_idx[1] - 1) / page_length) + 1
+        DT::selectPage(analysis_desc_proxy, page_idx)
+      }
     })
 
     ############################## Load data #######################################
@@ -707,7 +949,8 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
             coords_list <- lapply(names(obj@images), function(x){
                              coords <- obj@images[[ x ]]@boundaries$centroids@coords
                              tmp <- data.table::as.data.table(coords)
-                             colnames(tmp) <- c('imagerow', 'imagecol')
+                             # NOTE: imagerow & imagecol are flipped in Seurat v5.4 objects
+                             colnames(tmp) <- c('imagecol', 'imagerow')
                              tmp$slice <- x
                              tmp$rn <- obj@images[[ x ]]@boundaries$centroids@cells
                              tmp
@@ -1028,8 +1271,31 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                         })
       app_object$cluster_colors <- label_cols_all
 
+      # update current project
+      current$proj <- input$proj
+
+      analysis_label <- basename(input$analysis)
+      al <- assay_list$l[[ input$proj ]]
+      idx <- which(unname(al) == input$analysis)
+      if(length(idx) > 0 && !is.null(names(al)) && names(al)[idx[1]] != ''){
+        analysis_label <- names(al)[idx[1]]
+      }
+      current$analysis <- analysis_label
+
       removeModal()
     }) # observeEvent
+
+    # show loaded dataset
+    output$current_obj <- renderUI({
+      req(current$proj)
+
+      tags$div(
+        class='div-stats-card',
+        tags$p('Currently loaded:'),
+        tags$p('  - Project: ', tags$i(current$proj)),
+        tags$p('  - Analysis: ', tags$i(current$analysis))
+      )
+    })
 
     # update gene scratchpad choices
     observeEvent(app_object$rds, {
@@ -1103,6 +1369,10 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     observeEvent(apply_filters(), {
       bc <- apply_filters()
 
+      validate(
+        need(all(bc %in% rownames(app_object$metadata)), '')
+      )
+
       # subset metadata levels
       idx <- which(rownames(app_object$metadata) %in% bc)
       mdata.dt <- data.table::as.data.table(app_object$metadata, keep.rownames=T)
@@ -1114,9 +1384,13 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
       # update numeric metadata
       for(mc in names(app_object$metadata_numeric$all)){
-        hh <- hist(mdata.dt[[ mc ]], breaks=20, plot=FALSE)
-        hist_df <- data.frame(mids=hh$mids, counts=hh$counts)
-        app_object$metadata_numeric$filtered[[ mc ]] <- hist_df
+        tmp <- mdata.dt[[ mc ]]
+        tmp <- tmp[!is.na(tmp)]
+        if(length(tmp) > 0 && !all(is.na(tmp))){
+          hh <- hist(tmp, breaks=20, plot=FALSE)
+          hist_df <- data.frame(mids=hh$mids, counts=hh$counts)
+          app_object$metadata_numeric$filtered[[ mc ]] <- hist_df
+        }
       }
     })
 
@@ -1236,19 +1510,11 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     dimred_selected <- dimredServer('dimred_tab', app_object,
                                     apply_filters,
                                     dimred_args,
+                                    reactive({ selected_points$bc }),
+                                    reactive({ input$show_selection }),
+                                    reactive({ input$reset_clicks_do }),
                                     reload_global,
                                     config)
-
-    observeEvent(dimred_selected(), {
-      ll <- dimred_selected()
-
-      app_object$selected_points$umap <- ll$umap
-
-      if('spatial' %in% names(ll)){
-        app_object$selected_points$spatial <- ll$spatial
-      }
-
-    })
 
     ##################### Marker Plots ########################
 
@@ -1260,19 +1526,114 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
       )
     })
 
-    markerPlotServer('mrkrplt_tab',
+    marker_plt_selected <- markerPlotServer('mrkrplt_tab',
                      app_object,
                      apply_filters,
                      gene_scratchpad,
                      plot_args,
                      reactive({ all_genes$choices }),
+                     reactive({ selected_points$bc }),
+                     reactive({ input$show_selection }),
+                     reactive({ input$reset_clicks_do }),
                      reload_global,
                      config)
+
+    ################## handle point selection #################
+
+    observeEvent(c(dimred_selected(), marker_plt_selected()), {
+      dim_pts <- dimred_selected()
+      marker_pts <- marker_plt_selected()
+      comb <- c(dim_pts, marker_pts)
+
+      # flatten selections & give unique names
+      all_sel <- list()
+      for(i in seq_len(length(comb))){
+        elem <- comb[[i]]
+        names(elem) <- paste0(names(comb)[i], '_', seq_len(length(elem)))
+        all_sel <- c(all_sel, elem)
+      }
+
+      if(!all(all_sel %in% selected_points$bc)){
+        delta <- setdiff(all_sel, selected_points$bc)
+
+        selected_points$bc <- c(selected_points$bc, delta)
+      }
+
+    })
+
+    output$dload_clicks <- downloadHandler(
+      filename = function(){
+        paste0('clicked-points.tsv')
+      },
+      content = function(file){
+        bc <- unique(unlist(selected_points$bc))
+
+        # only output unique barcodes
+        mdata <- data.table::as.data.table(app_object$metadata, keep.rownames=T)
+        idx <- mdata$rn %in% bc
+
+        mdata_sel <- as.data.frame(mdata[idx,])
+        rn_idx <- which(colnames(mdata_sel) == 'rn')
+        colnames(mdata_sel)[rn_idx] <- 'barcodes'
+
+        write.table(mdata_sel, file=file, sep='\t', quote=FALSE,
+                    row.names=FALSE)
+      }
+    )
+
+    # show modal first when resetting
+    observeEvent(input$reset_clicks, {
+      np <- length(unique(unlist(selected_points$bc)))
+
+      if(np > 0){
+        showModal(
+            modalDialog(
+                div(tags$b(
+                    paste0('Warning: This will remove ', np,
+                           ' points from selection & cannot be undone. Are you sure?'),
+                    style='color: red;')),
+                footer=tagList(
+                    modalButton('Cancel'),
+                    actionButton('reset_clicks_do', 'Yes')
+                )  # tagList
+            )  # modalDialog
+        )  # showModal
+      } else {
+        showNotification(
+            'No points selected!', type='warning'
+        )
+      }
+    })
+
+    observeEvent(input$reset_clicks_do, {
+      np <- length(unique(unlist(selected_points$bc)))
+      showNotification(
+          paste0('Clearing ', np,
+                 ' points from selection')
+      )
+      selected_points$bc <- list()
+      removeModal()
+    })
+
+    output$pt_selected <- renderUI({
+      np <- length(unique(unlist(selected_points$bc)))
+
+      tagList(
+        fluidRow(
+          column(12, style='margin-bottom: 10px;',
+
+            paste(np, 'points selected')
+          )
+        )
+      )
+
+    })
 
     ########################## Help #############################
 
     helpButtonServer('global_help', size='l')
     helpButtonServer('gene_scratchpad_help', size='l')
+    helpButtonServer('ptselect_help', size='l')
 
   } # server
 

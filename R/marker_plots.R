@@ -113,6 +113,46 @@ markerPlotUI <- function(id, panel){
         ) # column
       ) # fluidRow
     ) # tagList
+  } else if(panel == 'selection'){
+    tagList(
+      conditionalPanel(paste0('input["', ns('markerplt_type'), '"] == "Gene-gene Scatter"'),
+
+        scatterPlotUI(ns('scatter'), panel='selection')
+
+      ), # conditionalPanel
+      conditionalPanel(
+        paste0('input["', ns('markerplt_type'), '"] == "Feature Plot" & ',
+               'input["', ns('ftrplt_type'), '"] == "UMAP"'),
+        featurePlotUI(ns('featureplot'), panel='selection')
+
+      ), # conditionalPanel
+      conditionalPanel(
+        paste0('input["', ns('markerplt_type'), '"] == "Feature Plot" & ',
+               'input["', ns('ftrplt_type'), '"] == "Spatial"'),
+        spatialFeaturePlotUI(ns('spatial_featureplot'), panel='selection')
+
+      ), # conditionalPanel
+      conditionalPanel(
+        paste0('input["', ns('markerplt_type'), '"] == "Coexpression Plot" & ',
+               'input["', ns('coexplt_type'), '"] == "UMAP"'),
+        coexpressionPlotUI(ns('coexpression_plot'), panel='selection')
+
+      ), # conditionalPanel
+      conditionalPanel(
+        paste0('input["', ns('markerplt_type'), '"] == "Coexpression Plot" & ',
+               'input["', ns('coexplt_type'), '"] == "Spatial"'),
+        spatialCoexpressionPlotUI(ns('spatial_coexpression_plot'), panel='selection')
+
+      ), # conditionalPanel
+      conditionalPanel(
+        paste0('input["', ns('markerplt_type'), '"] != "Gene-gene Scatter" & ',
+               'input["', ns('markerplt_type'), '"] != "Feature Plot" & ',
+               'input["', ns('markerplt_type'), '"] != "Coexpression Plot"'),
+
+        'No selection settings available for this tab'
+
+      ) # conditionalPanel
+    )
   } else if(panel == 'main'){
     tagList(
       tabsetPanel(type='tabs', id=ns('markerplt_type'),
@@ -162,13 +202,18 @@ markerPlotUI <- function(id, panel){
 #'        'dimred' for which dimension reduction to use and
 #'        'grp_by' for grouping variable
 #' @param gene_choices reactive list with all genes present in object
+#' @param all_selected reactive containing list of selected points
+#' @param show_selection reactive to show selection
+#' @param reset_selection reactive to reset selection
 #' @param reload_global reactive to trigger reload
 #' @param config reactive list with config settings
 #'
 #' @export
 #'
 markerPlotServer <- function(id, obj, filtered, genes_to_plot,
-                             args, gene_choices, reload_global, config){
+                             args, gene_choices,
+                             all_selected, show_selection, reset_selection,
+                             reload_global, config){
   moduleServer(
     id,
 
@@ -221,7 +266,7 @@ markerPlotServer <- function(id, obj, filtered, genes_to_plot,
 
         if(app_object()$obj_type == 'seurat'){
 
-        if(!any(grepl('Spatial', names(app_object()$rds@assays))) & !any(grepl('Xenium', names(app_object()$rds)))){
+        if(is.null(app_object()$spatial_coords)){
           hideTab(inputId='ftrplt_type', target='Spatial')
           hideTab(inputId='coexplt_type', target='Spatial')
 
@@ -383,24 +428,30 @@ markerPlotServer <- function(id, obj, filtered, genes_to_plot,
 
       ##################### Feature Plot ########################
 
-      featurePlotServer('featureplot',
+      ftrplt_selected <- featurePlotServer('featureplot',
                         app_object,
                         reactive({ obj_info$filtered }),
                         genes_to_plot,
                         reactive({ list(assay=input$assay, slot=obj_info$slot, dimred=args()$dimred) }),
                         gene_choices,
+                        all_selected,
+                        show_selection,
+                        reset_selection,
                         reload_global,
                         reactive({ input$plt_do }),
                         config)
 
       ##################### Coexpression Plot ########################
 
-      coexpressionPlotServer('coexpression_plot',
+      coexplt_selected <- coexpressionPlotServer('coexpression_plot',
                              app_object,
                              reactive({ obj_info$filtered }),
                              genes_to_plot,
                              reactive({ list(assay=input$assay, slot=obj_info$slot, dimred=args()$dimred) }),
                              gene_choices,
+                             all_selected,
+                             show_selection,
+                             reset_selection,
                              reload_global,
                              reactive({ input$plt_do }),
                              config)
@@ -415,38 +466,47 @@ markerPlotServer <- function(id, obj, filtered, genes_to_plot,
 
       ##################### Spatial Feature Plot ###############
 
-      spatialFeaturePlotServer('spatial_featureplot',
+      spat_ftrplt_selected <- spatialFeaturePlotServer('spatial_featureplot',
                                app_object,
                                reactive({ obj_info$filtered }),
                                genes_to_plot,
                                reactive({ list(assay=input$assay, slot=obj_info$slot, dimred=args()$dimred) }),
                                gene_choices,
                                reactive({ intersect(slice(), obj_info$slice_choices) }),
+                               all_selected,
+                               show_selection,
+                               reset_selection,
                                reload_global,
                                reactive({ input$plt_do }),
                                config)
 
       ##################### Spatial Coexpression Plot ########################
 
-      spatialCoexpressionPlotServer('spatial_coexpression_plot',
+      spat_coexplt_selected <- spatialCoexpressionPlotServer('spatial_coexpression_plot',
                                     app_object,
                                     reactive({ obj_info$filtered }),
                                     genes_to_plot,
                                     reactive({ list(assay=input$assay, slot=obj_info$slot, dimred=args()$dimred) }),
                                     gene_choices,
                                     reactive({ intersect(slice(), obj_info$slice_choices) }),
+                                    all_selected,
+                                    show_selection,
+                                    reset_selection,
                                     reload_global,
                                     reactive({ input$plt_do }),
                                     config)
 
       ##################### Gene-gene scatter ########################
 
-      scatterPlotServer('scatter',
+      scatter_selected <- scatterPlotServer('scatter',
                         app_object,
                         reactive({ obj_info$filtered }),
                         genes_to_plot,
                         reactive({ list(grp_by=args()$grp_by, assay=input$assay, slot=obj_info$slot, assay_list=obj_info$assay_list) }),
                         gene_choices,
+                        all_selected,
+                        show_selection,
+                        reset_selection,
                         reload_global,
                         reactive({ input$plt_do }),
                         config)
@@ -463,10 +523,27 @@ markerPlotServer <- function(id, obj, filtered, genes_to_plot,
                      reactive({ input$plt_do }),
                      config)
 
+
       #################### Help buttons ####################
 
       helpButtonServer('mrkrplt_help', size='l')
 
+      # return selected points
+      return(
+        reactive({
+          ll <- list(
+            ftrplt=ftrplt_selected(),
+            coexplt=coexplt_selected(),
+            spat_ftrplt=spat_ftrplt_selected(),
+            spat_coexplt=spat_coexplt_selected(),
+            scatter=scatter_selected()
+          )
+
+          # drop empty lists
+          nozero_idx <- which(unlist(lapply(ll, length)) > 0)
+          ll[nozero_idx]
+        })
+      )
     } # function
   ) # moduleServer
 } # markerPlotServer
@@ -533,8 +610,9 @@ get_marker_plot_data <- function(g, app_object, filtered, args,
 
       # get cell indices
       # - filter using coords if slice is specified
-      if(is.null(slice)) cidx <- which(rownames(app_object()$rds@assays[[ assay ]]@cells) %in% filtered)
-      else cidx <- which(rownames(app_object()$rds@assays[[ assay ]]@cells) %in% coords$rn)
+      cell_names <- rownames(app_object()$rds@assays[[ assay ]]@cells)
+      if(is.null(slice)) cidx <- which(cell_names %in% filtered)
+      else cidx <- which(cell_names %in% coords$rn)
 
       gdat <- app_object()$rds@assays[[ assay ]]@layers[[ selected_slot ]][ridx, cidx]
 
@@ -547,6 +625,17 @@ get_marker_plot_data <- function(g, app_object, filtered, args,
 
       # order by gene
       gdat <- gdat[,g]
+
+      # final set of cell ids
+      cidx <- cell_names[cidx]
+
+      # if spatial, order to match coords
+      if(!is.null(slice)){
+        idx <- match(coords$rn, cidx)
+        cidx <- cidx[idx]
+        if(length(ridx) == 1) gdat <- gdat[idx]
+        else gdat <- gdat[idx,]
+      }
     } else {
       # get cell indices
       # - filter using coords if slice is specified
@@ -560,8 +649,20 @@ get_marker_plot_data <- function(g, app_object, filtered, args,
       if(length(g) > 1) gdat <- t(gdat)
     }
 
+    # subset mdata by cidx with dimensions are different
+    if(nrow(df) != length(cidx)){
+      if(!is.null(slice)) midx <- which(coords$rn %in% cidx)
+      else midx <- which(df$rn %in% cidx)
+      df <- df[midx,]
+    }
+
     if(reduction){
-      dimred <- app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings[idx, ]
+      # for sketched umaps, mdata & cell.embeddings don't have identical
+      # rows, so subset both to common rows
+      drn <- rownames(app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings)
+      if(!is.null(slice)) didx <- match(coords$rn, drn)
+      else didx <- match(df$rn, drn)
+      dimred <- app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings[didx, ]
     }
   } else if(obj_type == 'anndata'){
     gdat <- app_object()$rds$X[idx, g]

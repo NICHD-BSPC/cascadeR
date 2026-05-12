@@ -24,7 +24,8 @@ feature_blend(
   alpha = 0.3,
   free_axes = FALSE,
   width = NULL,
-  height = NULL
+  height = NULL,
+  source = "A"
 )
 }
 \arguments{
@@ -68,9 +69,11 @@ n bins) or 'quantile' (cells binned into n bins by exp)}
 \item{width}{width of plot in pixels. If NULL (default), plot is auto-sized.}
 
 \item{height}{height of plot in pixels. if NULL (default), plot is auto-sized.}
+
+\item{source}{name of source to return data from}
 }
 \value{
-plotly handle
+list with plot data and plotly handle
 }
 \description{
 This is a wrapper around umap_ly

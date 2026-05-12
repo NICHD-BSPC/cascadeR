@@ -186,14 +186,22 @@ umap_ly <- function(df, xcol, ycol,
   if(inherits(df, 'data.table')) df <- as.data.frame(df)
 
   # sanitize plotting column names
-  cols_to_sanitize <- c(xcol, ycol, color)
-  new_names <- sanitize_colnames(cols_to_sanitize)
+  new_xcol <- sanitize_colnames(xcol)
+  new_ycol <- sanitize_colnames(ycol)
+  new_color <- sanitize_colnames(color)
+  colnames(df)[colnames(df) == xcol] <- new_xcol
+  colnames(df)[colnames(df) == ycol] <- new_ycol
+  colnames(df)[colnames(df) == color] <- new_color
 
-  cidx <- which(colnames(df) %in% cols_to_sanitize)
-  colnames(df)[cidx] <- new_names
-  xcol <- new_names[1]
-  ycol <- new_names[2]
-  color <- new_names[3]
+  if(!is.null(label_cols)){
+    label_cols[label_cols == xcol] <- new_xcol
+    label_cols[label_cols == ycol] <- new_ycol
+    label_cols[label_cols == color] <- new_color
+  }
+
+  xcol <- new_xcol
+  ycol <- new_ycol
+  color <- new_color
 
   xlims <- range(df[, xcol])
   ylims <- range(df[, ycol])
@@ -260,6 +268,7 @@ umap_ly <- function(df, xcol, ycol,
              x=as.formula(paste('~', xcol)),
              y=as.formula(paste('~', ycol)),
              type=type,
+             meta=as.formula(paste('~', color)),
              text=hover_text,
              mode='markers',
              hoverinfo='text',
@@ -361,15 +370,18 @@ umap_ly <- function(df, xcol, ycol,
                tmp[[color]] <- factor(tmp[[color]], levels=curr_lvls)
 
                hover_text_tmp <- rep('', nrow(missing_df))
-
              }
            }
+
+           # build vector of trace names
+           names <- paste0(tmp[[ color ]], '.', x)
 
            p <- plot_ly(tmp,
                        source=source,
                        x=as.formula(paste('~', xcol)),
                        y=as.formula(paste('~', ycol)),
                        type=type,
+                       meta=names,
                        text=c(hover_text[idx], hover_text_tmp),
                        mode='markers',
                        hoverinfo='text',
@@ -462,8 +474,9 @@ umap_ly <- function(df, xcol, ycol,
 #' @param free_axes should subplots have free axes?
 #' @param width width of plot in pixels. If NULL (default), plot is auto-sized.
 #' @param height height of plot in pixels. if NULL (default), plot is auto-sized.
+#' @param source name of source to return data from
 #'
-#' @return plotly handle
+#' @return list with plot data and plotly handle
 #'
 feature_blend <- function(df, xcol, ycol, blend_cols,
                           colors,
@@ -481,7 +494,8 @@ feature_blend <- function(df, xcol, ycol, blend_cols,
                           alpha=0.3,
                           free_axes=FALSE,
                           width=NULL,
-                          height=NULL){
+                          height=NULL,
+                          source='A'){
 
   if(inherits(df, 'data.table')) df <- as.data.frame(df)
 
@@ -528,10 +542,10 @@ feature_blend <- function(df, xcol, ycol, blend_cols,
                alpha=alpha,
                free_axes=free_axes,
                width=width,
-               height=height)
+               height=height,
+               source=source)
 
-  p
-
+  list(plot=p, data=df)
 }
 
 #' Get counts table based on coexpression
@@ -855,6 +869,10 @@ get_coexp_legend <- function(colors,
 #' @param reorder should be sort cells in ascending order of expression?
 #' @param width width of plot in pixels
 #' @param height height of plot in pixels
+#' @param title_mode string specifying how axes should be titled. If 'color' (default),
+#'        the y-axis is titled with the coloring variable; if 'xy', xcol and ycol are
+#'        used as labels.
+#' @param source name of source to return data from
 #'
 #' @return plotly handle
 feature_ly <- function(df, xcol, ycol,
@@ -872,7 +890,9 @@ feature_ly <- function(df, xcol, ycol,
                        free_axes=FALSE,
                        reorder=TRUE, # sort df in ascending order of expr
                        width=NULL,
-                       height=NULL){
+                       height=NULL,
+                       title_mode='color',
+                       source='A'){
 
   if(inherits(df, 'data.table')) df <- as.data.frame(df)
 
@@ -904,18 +924,35 @@ feature_ly <- function(df, xcol, ycol,
   }
 
   # sanitize plotting column names
-  cols_to_sanitize <- c(xcol, ycol, color)
-  new_names <- sanitize_colnames(cols_to_sanitize)
+  new_xcol <- sanitize_colnames(xcol)
+  new_ycol <- sanitize_colnames(ycol)
+  new_color <- sanitize_colnames(color)
+  colnames(df)[colnames(df) == xcol] <- new_xcol
+  colnames(df)[colnames(df) == ycol] <- new_ycol
+  colnames(df)[colnames(df) == color] <- new_color
 
-  cidx <- which(colnames(df) %in% cols_to_sanitize)
-  colnames(df)[cidx] <- new_names
-  xcol <- new_names[1]
-  ycol <- new_names[2]
-  color <- new_names[3]
+  if(!is.null(label_cols)){
+    label_cols[label_cols == xcol] <- new_xcol
+    label_cols[label_cols == ycol] <- new_ycol
+    label_cols[label_cols == color] <- new_color
+  }
+
+  xcol <- new_xcol
+  ycol <- new_ycol
+  color <- new_color
 
   if(reorder) df <- df[order(df[, color]),]
   if(is.null(split)){
+    if(title_mode == 'color'){
+      xtitle <- ''
+      ytitle <- ''
+    } else if(title_mode == 'xy'){
+      xtitle <- xcol
+      ytitle <- ycol
+    }
+
     p <- plot_ly(df,
+                 source=source,
                  x=as.formula(paste('~', xcol)),
                  y=as.formula(paste('~', ycol)),
                  type='scattergl',
@@ -935,33 +972,36 @@ feature_ly <- function(df, xcol, ycol,
                              showscale=showscale)) %>%
          layout(
             xaxis=list(range=xrange,
-                       title='',
+                       title=xtitle,
                        showline=TRUE, linewidth=1,
                        showticklabels=showticklabels,
                        showgrid=FALSE, zeroline=FALSE),
             yaxis=list(range=yrange,
-                       title='',
+                       title=ytitle,
                        showline=TRUE, linewidth=1,
                        showticklabels=showticklabels,
                        showgrid=FALSE, zeroline=FALSE),
             dragmode='lasso')
 
 
-    axis_titles <- list(
-                      # color variable (gene name)
-                      list(x=-margin,
-                           y=0.5,
-                           xref='paper',
-                           yref='paper',
-                           xanchor='left',
-                           yanchor='center',
-                           textangle=-90,
-                           showarrow=FALSE,
-                           font=list(size=17),
-                           text=paste('<b>', color,'<b>'))
-                   )
+    if(title_mode == 'color'){
+      axis_titles <- list(
+                        # color variable (gene name)
+                        list(x=-margin,
+                             y=0.5,
+                             xref='paper',
+                             yref='paper',
+                             xanchor='left',
+                             yanchor='center',
+                             textangle=-90,
+                             showarrow=FALSE,
+                             font=list(size=17),
+                             text=paste('<b>', color,'<b>'))
+                     )
 
-    p <- p %>% layout(annotations=axis_titles)
+      p <- p %>% layout(annotations=axis_titles)
+    }
+
   } else {
 
     ddf <- df %>%
@@ -1018,6 +1058,7 @@ feature_ly <- function(df, xcol, ycol,
            }
 
            p <- plot_ly(ddf[idx, ],
+                       source=source,
                        x=as.formula(paste('~', xcol)),
                        y=as.formula(paste('~', ycol)),
                        type='scattergl',
@@ -1086,7 +1127,8 @@ feature_ly <- function(df, xcol, ycol,
                            text=paste('<b>', color,'<b>'))
                    )
 
-    p <- p %>% layout(annotations=c(axis_titles, subplt_titles))
+    p <- p %>% layout(annotations=c(axis_titles, subplt_titles),
+                      dragmode='lasso')
 
   }
   p
@@ -1360,12 +1402,23 @@ get_label_trace <- function(plot_data, labeled_pts,
 
   # subset plot data df to labeled barcodes
   bc <- unique(unlist(labeled_pts))
+
   if(inherits(plot_data$data, 'data.table')){
     idx <- plot_data$data$barcode %in% bc
-    ldf <- plot_data$data[idx,]
   } else {
-    ldf <- plot_data$data[bc, ]
+    idx <- rownames(plot_data$data) %in% bc
+    # if no matches, try to match to 'barcode' column if present
+    if(sum(idx) == 0){
+      if('barcode' %in% colnames(plot_data$data)){
+        idx <- plot_data$data$barcode %in% bc
+      } else if('rn' %in% colnames(plot_data$data)){
+        idx <- plot_data$data$rn %in% bc
+      }
+
+    }
   }
+  ldf <- plot_data$data[idx, ]
+
   ldf <- as.data.frame(ldf)
 
   color <- plot_data$color

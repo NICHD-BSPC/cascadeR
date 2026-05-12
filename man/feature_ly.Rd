@@ -23,7 +23,9 @@ feature_ly(
   free_axes = FALSE,
   reorder = TRUE,
   width = NULL,
-  height = NULL
+  height = NULL,
+  title_mode = "color",
+  source = "A"
 )
 }
 \arguments{
@@ -64,6 +66,12 @@ feature_ly(
 \item{width}{width of plot in pixels}
 
 \item{height}{height of plot in pixels}
+
+\item{title_mode}{string specifying how axes should be titled. If 'color' (default),
+the y-axis is titled with the coloring variable; if 'xy', xcol and ycol are
+used as labels.}
+
+\item{source}{name of source to return data from}
 }
 \value{
 plotly handle

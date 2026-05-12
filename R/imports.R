@@ -6,14 +6,14 @@
 #' @importFrom dplyr mutate relocate select filter any_of "%>%" rename inner_join add_count count group_by all_of
 #' @importFrom DT renderDT DTOutput datatable formatStyle formatSignif dataTableProxy selectRows styleEqual
 #' @import ggplot2
-#' @importFrom ggraph guide_edge_colourbar
+#' @importFrom ggraph guide_edge_colourbar geom_edge_link scale_edge_colour_continuous scale_edge_alpha scale_edge_color_gradientn scale_edge_width_manual
 #' @importFrom graphics par hist
 #' @importFrom grDevices col2rgb dev.off pdf rgb
 #' @importFrom grid unit rasterGrob
 #' @importFrom htmltools withTags tagAppendChild tagAppendChildren
 #' @importFrom Matrix t sparse.model.matrix colSums
 #' @importFrom methods slot slotNames
-#' @importFrom plotly plotlyOutput renderPlotly layout plot_ly add_trace add_markers toWebGL plotlyProxy event_data highlight_key highlight event_register subplot plotlyProxyInvoke plotly_empty hide_legend ggplotly kaleido
+#' @importFrom plotly plotlyOutput renderPlotly layout plot_ly add_trace add_markers toWebGL plotlyProxy event_data highlight_key highlight event_register subplot plotlyProxyInvoke plotly_empty hide_legend ggplotly kaleido plotly_build
 #' @importFrom RColorBrewer brewer.pal
 #' @importFrom readr write_tsv read_tsv
 #' @importFrom reshape2 melt
