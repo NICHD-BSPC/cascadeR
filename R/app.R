@@ -311,7 +311,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
         tabPanel('Load data',
           fluidRow(
-            column(3,
+            column(2, style='margin-top: 20px',
               introBox(
                 selectizeInput('proj',
                                label=h5('Available projects'),
@@ -338,7 +338,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
               br(), br(),
               uiOutput('current_obj')
             ), # column
-            column(9, style='margin-top: 20px',
+            column(10, style='margin-top: 20px',
               fluidRow(
                 column(6,
                   tags$div(
