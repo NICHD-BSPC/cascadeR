@@ -79,6 +79,15 @@ featurePlotUI <- function(id, panel){
       ), # fluidRow
 
       fluidRow(
+        column(col1, 'Aspect ratio'),
+        column(col2,
+          selectInput(ns('plot_aspect'),
+                      label=NULL,
+                      choices=c('narrow', 'wide'))
+        ) # column
+      ), # fluidRow
+
+      fluidRow(
         column(col1, 'Downsample empty cells'),
         column(col2,
           selectInput(ns('downsample'),
@@ -351,6 +360,10 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
 
         ht <- ht*input$scale
 
+        # change aspect ratio
+        if(input$plot_aspect == 'narrow') wd <- 1.25*ht
+        else wd <- NULL
+
         lvls <- plt_split_lvls()
 
         source <- 'featureplot'
@@ -406,6 +419,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
                                      reorder=TRUE,
                                      split=split_var,
                                      free_axes=free_axes,
+                                     width=wd,
                                      height=0.75*ht*length(g),
                                      source=source)
                      p
@@ -431,6 +445,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
                           reorder=FALSE, # df already sorted by exp
                           split=split_var,
                           free_axes=free_axes,
+                          width=wd,
                           height=ht,
                           margin=0.05,
                           source=source)

@@ -74,7 +74,17 @@ dimredUI <- function(id, panel){
                         value=1.0, step=0.1,
                         min=0.5, max=2, ticks=FALSE)
           ) # column
+        ), # fluidRow
+
+        fluidRow(
+          column(col1, 'Aspect ratio'),
+          column(col2,
+            selectInput(ns('plot_aspect'),
+                        label=NULL,
+                        choices=c('narrow', 'wide'))
+          ) # column
         ) # fluidRow
+
       ), # conditionalPanel
 
       conditionalPanel(paste0('input["', ns('dimplt_type'), '"] == "Spatial Plot"'),
@@ -591,6 +601,9 @@ dimredServer <- function(id, obj,
           ht <- 0.6*ht
         }
 
+        if(input$plot_aspect == 'narrow') wd <- 1.5*ht
+        else wd <- NULL
+
         p <- umap_ly(df, xcol=xcol, ycol=ycol,
                      color=color_var,
                      colors=cols,
@@ -599,6 +612,7 @@ dimredServer <- function(id, obj,
                      alpha=alpha,
                      free_axes=free_axes,
                      type='scattergl',
+                     width=wd,
                      height=ht,
                      source=source)
 
