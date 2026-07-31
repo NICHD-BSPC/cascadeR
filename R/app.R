@@ -1077,7 +1077,8 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
             lvls <- unique(tmp[!is.na(tmp)])
             lvls <- lvls[order(lvls)]
             if(any(is.na(tmp))){
-              lvls <- c(lvls, 'NA')
+              # add 'NA' level if not already present
+              if(!'NA' %in% lvls) lvls <- c(lvls, 'NA')
               na_idx <- is.na(tmp)
               tmp[na_idx] <- 'NA'
 
