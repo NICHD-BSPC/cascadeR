@@ -166,6 +166,8 @@ sanitize_colnames <- function(cnames,
 #'
 #' @return plotly handle
 #'
+#' @export
+#'
 umap_ly <- function(df, xcol, ycol,
                     color,
                     colors,
@@ -478,6 +480,8 @@ umap_ly <- function(df, xcol, ycol,
 #'
 #' @return list with plot data and plotly handle
 #'
+#' @export
+#'
 feature_blend <- function(df, xcol, ycol, blend_cols,
                           colors,
                           split=NULL,
@@ -568,6 +572,8 @@ feature_blend <- function(df, xcol, ycol, blend_cols,
 #'        n bins) or 'quantile' (cells binned into n bins by exp)
 #'
 #' @return data.frame with co-expression counts
+#'
+#' @export
 #'
 get_coexp_tbl <- function(df, genes, n = 100,
                           threshold1=0.5, threshold2=0.5,
@@ -747,6 +753,9 @@ BlendExpression2 <- function (data, n=1){
 #' @param margin plot margin
 #'
 #' @return plotly handle
+#'
+#' @export
+#'
 get_coexp_legend <- function(colors,
                              dimnames,
                              xline,
@@ -875,6 +884,9 @@ get_coexp_legend <- function(colors,
 #' @param source name of source to return data from
 #'
 #' @return plotly handle
+#'
+#' @export
+#'
 feature_ly <- function(df, xcol, ycol,
                        color, colors,
                        crange=NULL,
@@ -1150,6 +1162,9 @@ feature_ly <- function(df, xcol, ycol,
 #' @param text_scale scaling factor for text labels. If < 1, text size is reduced and vice-versa
 #'
 #' @return ggplot2 handle
+#'
+#' @export
+#'
 violin2 <- function(df, xcol, ycol,
                     color=NULL, colors=NULL,
                     draw_points=FALSE,
@@ -1288,6 +1303,9 @@ violin_ly <- function(df, xcol, ycol,
 #' @param col.max if data is scaled, this is the upper limit of values (default: 2.5)
 #'
 #' @return ggplot2 handle
+#'
+#' @export
+#'
 dotplot <- function(df,
                     xcol, # grouping variable
                     ycol, # gene names (can be multiple)
@@ -1397,6 +1415,9 @@ dotplot <- function(df,
 #' @param split column by which plot is split
 #'
 #' @return plotly handle
+#'
+#' @export
+#'
 get_label_trace <- function(plot_data, labeled_pts,
                             split=FALSE){
 
