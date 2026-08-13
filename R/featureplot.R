@@ -361,7 +361,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
         ht <- ht*input$scale
 
         # change aspect ratio
-        if(input$plot_aspect == 'narrow') wd <- 1.25*ht
+        if(input$plot_aspect == 'narrow') wd <- 1.15*ht
         else wd <- NULL
 
         lvls <- plt_split_lvls()
