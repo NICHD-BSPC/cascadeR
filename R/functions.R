@@ -624,6 +624,10 @@ get_coexp_tbl <- function(df, genes, n = 100,
 
 #' Bin gene expression in columns of a data frame
 #'
+#' The expression of a gene present in columns of a data frame
+#' are binned based either on the range of observed
+#' expression ('range') or quantiles of cells where the gene is expressed.
+#'
 #' @param df data.frame with expression data
 #' @param bins number of bins
 #' @param mode how to calculate bins? options are 'range' or 'quantile'
@@ -633,9 +637,14 @@ get_coexp_tbl <- function(df, genes, n = 100,
 get_binned_exp <- function(df, bins=100, mode='range'){
   bin_fun <- function(x){
     if(mode == 'range'){
+      if(min(x) == max(x)){
+        if(min(x) == 0) return(rep(0, length(x)))
+        return(rep(bins - 1, length(x)))
+      }
       return(round(x = (bins - 1) * (x - min(x))/(max(x) - min(x))))
     } else if(mode == 'quantile'){
-      qq <- quantile(x, probs=seq(0, 1, by=1/bins))
+      if(length(unique(x)) == 1) return(as.factor(rep(1, length(x))))
+      qq <- unique(quantile(x, probs=seq(0, 1, by=1/bins)))
       binned <- cut(x, breaks=qq, include.lowest=TRUE, right=FALSE)
       return(as.factor(as.numeric(binned)))
     } else {
