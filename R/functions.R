@@ -581,7 +581,7 @@ get_coexp_tbl <- function(df, genes, n = 100,
 
   if(inherits(df, 'data.table')) df <- as.data.frame(df)
 
-  if(length(genes) > 2){
+  if(length(genes) != 2){
     stop('Need exactly 2 genes to get coexpression')
   }
 
