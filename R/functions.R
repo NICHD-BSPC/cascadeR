@@ -569,7 +569,7 @@ feature_blend <- function(df, xcol, ycol, blend_cols,
 #' @param threshold1 percentile to define expression for gene 1
 #' @param threshold2 percentile to define expression for gene 2
 #' @param bin_mode how to bin? can be 'range' (gene expression binned into
-#'        n bins) or 'quantile' (cells binned into n bins by exp)
+#'        n bins) or 'quantile' (cells binned into n bins by expression quantiles)
 #'
 #' @return data.frame with co-expression counts
 #'
