@@ -1316,9 +1316,9 @@ violin_ly <- function(df, xcol, ycol,
 #' @export
 #'
 dotplot <- function(df,
-                    xcol, # grouping variable
-                    ycol, # gene names (can be multiple)
-                    split=NULL, # faceting variable
+                    xcol,
+                    ycol,
+                    split=NULL,
                     scale=TRUE,
                     dot.scale=10,
                     col.min=-2.5,
@@ -1914,8 +1914,9 @@ get_coexplt_colors <- function(x){
   } else if(x == 'red-green'){
     # orange, red, darkgreen
     colors <- c('#d3d3d3', '#ff0000', '#006400', '#ff6400')
+  } else {
+    stop('color maps can only be "red-blue" or "red-green"')
   }
 
   return(colors)
 }
-
