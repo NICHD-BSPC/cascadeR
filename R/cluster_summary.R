@@ -271,8 +271,16 @@ clustSummaryUI <- function(id, panel){
                         value=0.5, step=0.1,
                         min=0, max=1, ticks=FALSE)
           ) # column
-        ) # fluidRow
+        ), # fluidRow
 
+        fluidRow(
+          column(col1, 'Aspect ratio'),
+          column(col2,
+            selectInput(ns('plot_aspect'),
+                        label=NULL,
+                        choices=c('narrow', 'wide'))
+          ) # column
+        ) # fluidRow
       ), # conditionalPanel
 
       conditionalPanel(
@@ -1328,6 +1336,10 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
         crange <- c(min(df[, var], na.rm=TRUE), max(df[, var], na.rm=TRUE))
         if(crange[1] < 0) crange[1] <- 0
 
+        # change aspect ratio
+        if(input$plot_aspect == 'narrow') wd <- 1.15*ht
+        else wd <- NULL
+
         lvls <- ftrplt_split()
         # arrange multi-var view into rows
         if(length(var) > 1){
@@ -1359,6 +1371,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
                                      alpha=alpha,
                                      split=split_var,
                                      free_axes=free_axes,
+                                     width=wd,
                                      height=0.5*ht*length(var))
                      p
                    })
@@ -1382,6 +1395,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
                           alpha=alpha,
                           split=split_var,
                           free_axes=free_axes,
+                          width=wd,
                           height=ht,
                           margin=0.05)
         }
