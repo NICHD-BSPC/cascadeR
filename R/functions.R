@@ -679,7 +679,7 @@ get_binned_exp <- function(df, bins=100, mode='range'){
 BlendMap2 <- function(color.matrix, dimnames=NULL){
   color.heat <- matrix(data = seq_len(prod(dim(x = color.matrix))) -
       1, nrow = nrow(x = color.matrix), ncol = ncol(x = color.matrix),
-      dimnames = list(seq_len(nrow(x = color.matrix), seq_len(ncol(x = color.matrix))))
+      dimnames = list(seq_len(nrow(x = color.matrix), seq_len(ncol(x = color.matrix)))))
 
   ll <- list()
   txt <- list()
