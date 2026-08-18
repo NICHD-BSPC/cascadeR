@@ -580,7 +580,7 @@ markerTableGeneralServer <- function(id, obj, type,
             # make sure no other cols are to the right of sample cols
             # NOTE: here we reorder columns, putting the sample columns
             #       to the right-most position
-            df <- df[, c(setdiff(1:ncol(df), unique(unlist(samp.idx))), 
+            df <- df[, c(setdiff(seq_len(ncol(df)), unique(unlist(samp.idx))),
                          unique(unlist(samp.idx)))]
 
             # get remaining sample column indices
@@ -594,7 +594,7 @@ markerTableGeneralServer <- function(id, obj, type,
                                colnames(df)[samp.idx[[1]]])
 
             # get non-sample column names
-            nonsamp.idx <- setdiff(1:ncol(df), unique(unlist(samp.idx)))
+            nonsamp.idx <- setdiff(seq_len(ncol(df)), unique(unlist(samp.idx)))
             nonsamp.names <- colnames(df)[nonsamp.idx]
 
             # build container for table

@@ -281,9 +281,9 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
         if(obj_type == 'seurat'){
           if(any(grepl('Spatial', names(app_object()$rds))) |
              any(grepl('Xenium', names(app_object()$rds)))){
-            choices=c('spatial', 'umap')
+            choices <- c('spatial', 'umap')
           } else {
-            choices=c('umap')
+            choices <- c('umap')
           }
         } else if(obj_type == 'anndata'){
           if('spatial' %in% names(app_object()$rds$obsm)){
@@ -951,13 +951,13 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
         obj_type <- app_object()$obj_type
 
         mdata <- app_object()$metadata
-        mdata <- data.table::as.data.table(mdata, keep.rownames=T)
+        mdata <- data.table::as.data.table(mdata, keep.rownames=TRUE)
         mdata_orig <- mdata
 
         if(length(filter_list$order) > 0){
           for(col in filter_list$order){
 
-            idx <- 1:nrow(mdata)
+            idx <- seq_len(nrow(mdata))
             if(col %in% names(filter_list$metadata)){
               mcol <- mdata[[ col ]]
 

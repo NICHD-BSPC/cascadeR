@@ -320,7 +320,7 @@ coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
           showNotification(
             'More that 2 genes selected, using first two ...'
           )
-          g <- g[1:2]
+          g <- g[seq_len(2)]
         }
 
         df <- get_marker_plot_data(g, app_object, filtered(), args, reduction=TRUE)
@@ -532,7 +532,7 @@ coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
         validate(
           need(length(g) >= 2, '')
         )
-        g <- g[1:2]
+        g <- g[seq_len(2)]
 
         p1 <- get_coexp_legend(colors[2:4],
                                dimnames=g,

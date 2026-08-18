@@ -612,7 +612,7 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
                                      assay_name=input$clust_assay)
 
           max_var_genes <- config()$server$max_var_genes
-          if(length(var_genes) > max_var_genes) var_genes <- var_genes[1:max_var_genes]
+          if(length(var_genes) > max_var_genes) var_genes <- var_genes[seq_len(max_var_genes)]
           obj_info$var_genes[[ input$clust_assay ]] <- var_genes
         }
 
@@ -846,9 +846,9 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
         }
 
         label <- sub('X_', '', red_dim)
-        colnames(df) <- paste0(label,  1:ncol(df))
+        colnames(df) <- paste0(label,  seq_len(ncol(df)))
 
-        mdata <- cbind(mdata, df[, 1:2])
+        mdata <- cbind(mdata, df[, seq_len(2)])
         withProgress(
           {
         #clust_tree_obj$overlay <- future_promise({

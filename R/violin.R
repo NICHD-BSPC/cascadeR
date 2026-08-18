@@ -214,7 +214,7 @@ violinServer <- function(id, app_object, filtered, genes_to_plot,
                    'Plotting first ', max_vlnplt_genes),
             type='warning'
           )
-          g <- g[1:max_vlnplt_genes]
+          g <- g[seq_len(max_vlnplt_genes)]
         }
 
         if(input$split_by == 'none') split_var <- NULL

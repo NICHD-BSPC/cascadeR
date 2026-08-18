@@ -135,7 +135,7 @@ sanitize_colnames <- function(cnames,
                               bad_char='(\\-|\\+|\\/|\\*|\\:|\\-|\\.)',
                               repl='_'){
 
-  sanitized_names <- vapply(1:length(cnames),
+  sanitized_names <- vapply(seq_len(length(cnames)),
                        function(x) gsub(bad_char, repl, cnames[x]),
                        character(1)
                      )
@@ -439,7 +439,7 @@ umap_ly <- function(df, xcol, ycol,
     yloc <- rep(ydelta*((nrows):1), each=ncols) #+ 0.05*ydelta
 
     # arrange plot titles
-    subplt_titles <- lapply(1:length(lvls),
+    subplt_titles <- lapply(seq_len(length(lvls)),
                        function(x){
                          list(x=xloc[x], y=yloc[x],
                               xref='paper', yref='paper',
@@ -534,7 +534,7 @@ feature_blend <- function(df, xcol, ycol, blend_cols,
   names(col_idx)[3] <- paste(blend_cols[2], 'only')
 
   color <- rep('', nrow(df))
-  for(i in 1:length(col_idx)){
+  for(i in seq_len(length(col_idx))){
     color[col_idx[[i]]] <- rep(names(col_idx)[i], length(col_idx[[i]]))
   }
   df[[ 'color' ]] <- factor(color, levels=names(col_idx))
@@ -677,17 +677,17 @@ get_binned_exp <- function(df, bins=100, mode='range'){
 #' @return plotly handle
 #'
 BlendMap2 <- function(color.matrix, dimnames=NULL){
-  color.heat <- matrix(data = 1:prod(dim(x = color.matrix)) -
+  color.heat <- matrix(data = seq_len(prod(dim(x = color.matrix))) -
       1, nrow = nrow(x = color.matrix), ncol = ncol(x = color.matrix),
-      dimnames = list(1:nrow(x = color.matrix), 1:ncol(x = color.matrix)))
+      dimnames = list(seq_len(nrow(x = color.matrix), seq_len(ncol(x = color.matrix))))
 
   ll <- list()
   txt <- list()
   mat_dims <- c(nrow(color.matrix), ncol(color.matrix))
-  for(i in 1:mat_dims[1]){
+  for(i in seq_len(mat_dims[1])){
     ll[[i]] <- list()
     txt[[i]] <- list()
-    for(j in 1:mat_dims[2]){
+    for(j in seq_len(mat_dims[2])){
       xind <- mat_dims[1] - i + 1
       yind <- j
       ll[[i]][[j]] <- as.vector(col2rgb(color.matrix[xind, yind]))
@@ -751,7 +751,7 @@ BlendExpression2 <- function (data, n=1){
     }))
     data[, 3] <- data[, 1] + data[, 2] * (10^n)
     colnames(x = data) <- c(features, paste(features, collapse = "_"))
-    for (i in 1:ncol(x = data)) {
+    for (i in seq_len(ncol(x = data))) {
         data[, i] <- factor(x = data[, i])
     }
     return(data)
@@ -1129,7 +1129,7 @@ feature_ly <- function(df, xcol, ycol,
     xloc <- rep(xdelta*(0:(ncols-1)), nrows) + 0.5*xdelta
     yloc <- rep(ydelta*((nrows):1), each=ncols)
 
-    subplt_titles <- lapply(1:length(lvls),
+    subplt_titles <- lapply(seq_len(length(lvls)),
                             function(x){
                               list(x=xloc[x],
                                    y=yloc[x],
@@ -1297,7 +1297,7 @@ violin_ly <- function(df, xcol, ycol,
   p <- p %>%
     layout(
       yaxis = list(
-        zeroline = F
+        zeroline = FALSE
       ),
       violinmode = 'group',
       violingroupgap = 0
@@ -1500,15 +1500,15 @@ get_label_trace <- function(plot_data, labeled_pts,
 
     # plot indices
     pind <- list()
-    for(i in 1:nrows){
-      for(j in 1:ncols){
+    for(i in seq_len(nrows)){
+      for(j in seq_len(ncols)){
         pind[[ length(pind) + 1 ]] <- c(i, j)
       }
     }
     names(pind) <- lvls
 
     new_trace <- list()
-    for(i in 1:length(lvls)){
+    for(i in seq_len(length(lvls))){
       grp <- lvls[i]
       ind <- ldf[, plot_data$split] == grp
       if(sum(ind) > 0){
@@ -1604,9 +1604,9 @@ BuildClusterTree2 <- function(
   if (!is.null(x = dims)) {
 
     if(!reduction %in% names(object$obsm)){
-      stop(paste0('Reduction: "', reduction, '" not found in object! ',
-                  'Possible values are: ',
-                  paste(names(object$obsm), sep=', ')))
+      tmp_names <- paste(names(object$obsm), sep=', ')
+      stop('Reduction: "', reduction, '" not found in object! ',
+           'Possible values are: ', tmp_names)
     }
     embeddings <- object$obsm[[ reduction ]][, dims]
     idents <- object$obs[[ clust_column ]]
@@ -1667,16 +1667,16 @@ PseudoBulkExpression2 <- function(
   } else {
     data <- object$obs[, rev(group.by)]
   }
-  data <- data[which(rowSums(x = is.na(x = data)) == 0), , drop = F]
+  data <- data[which(rowSums(x = is.na(x = data)) == 0), , drop = FALSE]
   if (nrow(x = data) < nrow(x = object)) {
     message("Removing cells with NA for 1 or more grouping variables")
     object <- object[rownames(data),]
   }
-  for (i in 1:ncol(x = data)) {
+  for (i in seq_len(ncol(x = data))) {
     data[, i] <- as.factor(x = data[, i])
   }
   num.levels <- vapply(
-    X = 1:ncol(x = data),
+    X = seq_len(ncol(x = data)),
     FUN = function(i) {
       length(x = levels(x = data[, i]))
     },
@@ -1690,7 +1690,7 @@ PseudoBulkExpression2 <- function(
       )
     )
     group.by <- colnames(x = data)[which(num.levels > 1)]
-    data <- data[, which(num.levels > 1), drop = F]
+    data <- data[, which(num.levels > 1), drop = FALSE]
   }
   if (ncol(x = data) == 0) {
     message("All grouping variables have 1 value only. Computing across all cells.")
@@ -1708,7 +1708,7 @@ PseudoBulkExpression2 <- function(
         '~0+',
         paste0(
           "data[,",
-          1:length(x = group.by),
+          seq_len(length(x = group.by)),
           "]",
           collapse = ":"
         )
@@ -1804,11 +1804,11 @@ add_cascade_analysis <- function(
   # check to see if data_dir exists
   if(!dir.exists(data_dir)){
     stop(
-      paste0('Data directory:"', data_dir, '" does not exist!')
+      'Data directory:"', data_dir, '" does not exist!'
     )
   } else {
     message(
-      paste0('\n- Data directory:"', data_dir, '" already exists')
+      '\n- Data directory:"', data_dir, '" already exists'
     )
   }
 
@@ -1816,15 +1816,15 @@ add_cascade_analysis <- function(
   proj_path <- file.path(data_dir, project)
   if(!dir.exists(proj_path)){
     message(
-      paste0('\n- Project directory:"', proj_path, '" does not exist. Creating it')
+      '\n- Project directory:"', proj_path, '" does not exist. Creating it'
     )
 
     cmd <- paste0("mkdir -p ", proj_path)
-    message(paste0('\n', cmd, '\n'))
-    if(execute) system(cmd)
+    message('\n', cmd, '\n')
+    if(execute) system2("mkdir", args=c("-p", proj_path))
   } else {
     message(
-      paste0('\n- Project directory:"', proj_path, '" already exists')
+      '\n- Project directory:"', proj_path, '" already exists'
     )
   }
 
@@ -1833,27 +1833,27 @@ add_cascade_analysis <- function(
   if(dir.exists(analysis_path)){
     if(!overwrite){
       stop(
-        paste0('\nAnalysis directory "', analysis_path, '" already exists! To overwrite, rerun with "overwrite=TRUE"')
+        '\nAnalysis directory "', analysis_path, '" already exists! To overwrite, rerun with "overwrite=TRUE"'
       )
     } else {
       message(
-        paste0('\n- Analysis directory "', analysis_path, '" exists, but "overwrite=TRUE". Removing it')
+        '\n- Analysis directory "', analysis_path, '" exists, but "overwrite=TRUE". Removing it'
       )
 
       cmd <- paste0("rm -r ", analysis_path, '/*')
-      message(paste0('\n', cmd, '\n'))
+      message('\n', cmd, '\n')
       if(execute){
-        system(cmd)
+        system2("rm", args=c("-r", paste0(analysis_path, "/*")))
       }
     }
   } else {
     message(
-      paste0('- Analysis directory "', analysis_path, '" does not exist, creating it')
+      '- Analysis directory "', analysis_path, '" does not exist, creating it'
     )
 
     cmd <- paste0("mkdir -p ", analysis_path)
-    message(paste0('\n', cmd, '\n'))
-    if(execute) system(cmd)
+    message('\n', cmd, '\n')
+    if(execute) system2("mkdir", args=c("-p", analysis_path))
   }
 
   # set up project using symlinks
@@ -1868,48 +1868,53 @@ add_cascade_analysis <- function(
   if(execute) cwd <- getwd()
 
   # build command
-  cmd <- c(paste0('cd ', analysis_path),
-           paste0('ln -s ', obj_path, ' .'))
+  cmd <- list(
+           c('cd', analysis_path),
+           c('ln', '-s', obj_path, '.')
+         )
 
   if(!missing(cluster_markers)){
     if(!file.exists(cluster_markers)){
       stop(
-        paste0('Cluster marker file: "', cluster_markers, '" does not exist!')
+        'Cluster marker file: "', cluster_markers, '" does not exist!'
       )
     }
-    cmd <- c(cmd, paste0('ln -s ', cluster_markers, ' allmarkers.tsv'))
+    cmd <- c(cmd, list('ln', '-s', cluster_markers, 'allmarkers.tsv'))
   }
 
   if(!missing(de_markers)){
     if(!file.exists(de_markers)){
       stop(
-        paste0('DE marker file: "', de_markers, '" does not exist!')
+        'DE marker file: "', de_markers, '" does not exist!'
       )
     }
-    cmd <- c(cmd, paste0('ln -s ', de_markers, ' demarkers.tsv'))
+    cmd <- c(cmd, list('ln', '-s', de_markers, 'demarkers.tsv'))
   }
 
   if(!missing(conserved_markers)){
     if(!file.exists(conserved_markers)){
       stop(
-        paste0('Conserved marker file: "', conserved_markers, '" does not exist!')
+        'Conserved marker file: "', conserved_markers, '" does not exist!'
       )
     }
-    cmd <- c(cmd, paste0('ln -s ', conserved_markers, ' consmarkers.tsv'))
+    cmd <- c(cmd, list('ln', '-s', conserved_markers, 'consmarkers.tsv'))
   }
 
   # print command or execute
   message('Setting up project:\n')
-  message(paste(cmd, collapse='\n'))
-  if(execute){
-    system(paste(cmd, collapse='\n'))
-    setwd(cwd)
-  }
+  tmp <- lapply(cmd, function(x){
+    tmp_msg <- paste(x, collapse=' ')
+    message(tmp_msg)
+    if(execute){
+      system2(x[1], args=x[-1])
+      setwd(cwd)
+    }
+  })
 
   if(!execute){
     message('\nIf everything looks good, rerun with "execute=TRUE" to create new analysis')
   } else {
-    message(paste0('\nAll done! Remember to add "', data_dir, '" to Cascade data areas to view new analysis'))
+    message('\nAll done! Remember to add "', data_dir, '" to Cascade data areas to view new analysis')
   }
 }
 

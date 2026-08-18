@@ -23,14 +23,14 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     # check to see if shinymanager is available
     if(!requireNamespace('shinymanager', quietly=TRUE)){
       stop(
-        paste('Login functionality using SQL/sqlite credentials requires "shinymanager".',
-              'Please install using "install.packages(\'shinymanager\')"'),
+        'Login functionality using SQL/sqlite credentials requires "shinymanager".',
+        'Please install using "install.packages(\'shinymanager\')"',
         .call=FALSE
       )
     } else if(!file.exists(credentials)){
       stop(
-        paste0('Credentials specified, but file not found: "',
-               credentials, '"')
+        'Credentials specified, but file not found: "',
+        credentials, '"'
       )
     }
   }
@@ -965,7 +965,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                                         })
             coords_list <- lapply(names(obj@images), function(x){
                              coords <- obj@images[[ x ]]@coordinates
-                             tmp <- data.table::as.data.table(coords, keep.rownames=T)
+                             tmp <- data.table::as.data.table(coords, keep.rownames=TRUE)
                              tmp$slice <- x
                              tmp
                            })
@@ -1259,9 +1259,9 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                                            tmp <- as.vector(col2rgb(x))
                                            rgb(tmp[1], tmp[2], tmp[3], maxColorValue=255)
                                          }))
-                              cols <- c(cols, grayhex[1:sum(idx)])
+                              cols <- c(cols, grayhex[seq_len(sum(idx))])
 
-                              if(sum(idx) > 1) names(cols) <- c(nona, paste0('NA', seq(1:sum(idx))))
+                              if(sum(idx) > 1) names(cols) <- c(nona, paste0('NA', seq_len(sum(idx))))
                               else names(cols) <- c(nona, 'NA')
                             } else {
                               cols <- scales::hue_pal()(length(lvls))
@@ -1376,7 +1376,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
       # subset metadata levels
       idx <- which(rownames(app_object$metadata) %in% bc)
-      mdata.dt <- data.table::as.data.table(app_object$metadata, keep.rownames=T)
+      mdata.dt <- data.table::as.data.table(app_object$metadata, keep.rownames=TRUE)
       mdata.dt <- mdata.dt[idx,]
       for(mc in names(app_object$metadata_levels$all)){
         lvls <- t(unique(mdata.dt[[ mc ]]))
@@ -1570,7 +1570,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
         bc <- unique(unlist(selected_points$bc))
 
         # only output unique barcodes
-        mdata <- data.table::as.data.table(app_object$metadata, keep.rownames=T)
+        mdata <- data.table::as.data.table(app_object$metadata, keep.rownames=TRUE)
         idx <- mdata$rn %in% bc
 
         mdata_sel <- as.data.frame(mdata[idx,])

@@ -11,15 +11,15 @@ get_access_path <- function(){
     path <- Sys.getenv('CASCADE_ACCESS_YAML')
     if(!dir.exists(path)){
       stop(
-        paste('Environment variable "CASCADE_ACCESS_YAML" exists',
-              'but specified location does not exist on disk:', path)
+        'Environment variable "CASCADE_ACCESS_YAML" exists',
+        'but specified location does not exist on disk:', path
       )
     }
   } else {
     path <- path.expand('~')
     message(
-      paste('Environment variable "CASCADE_ACCESS_YAML" not found.',
-            'Using default location for access yaml:', path)
+      'Environment variable "CASCADE_ACCESS_YAML" not found.',
+      'Using default location for access yaml:', path
     )
   }
   file.path(path, '.cascade-access.yaml')

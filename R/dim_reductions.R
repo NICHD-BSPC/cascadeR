@@ -530,7 +530,7 @@ dimredServer <- function(id, obj,
         mdata <- app_object()$metadata
         idx <- which(rownames(mdata) %in% bc)
 
-        mdata <- data.table::as.data.table(mdata, keep.rownames=T)
+        mdata <- data.table::as.data.table(mdata, keep.rownames=TRUE)
         mdata <- mdata[idx,]
         mdata <- as.data.frame(mdata)
         rownames(mdata) <- mdata$rn
@@ -549,10 +549,10 @@ dimredServer <- function(id, obj,
           }
         } else if(obj_type == 'anndata'){
           df <- app_object()$rds$obsm[[ dimred ]]
-          df <- df[idx, 1:2]
+          df <- df[idx, seq_len(2)]
 
           label <- sub('X_', '', dimred)
-          colnames(df) <- paste0(label, 1:2)
+          colnames(df) <- paste0(label, seq_len(2))
 
         }
 
@@ -634,7 +634,7 @@ dimredServer <- function(id, obj,
             freq <- table(groups)
 
             # group indices into a list
-            grp_idx <- split(1:nrow(df), f=groups)
+            grp_idx <- split(seq_len(nrow(df)), f=groups)
 
             # stratified sampling numbers
             # - we multiply downsampling target by normalized grp size
@@ -917,7 +917,7 @@ dimredServer <- function(id, obj,
         # filter
         idx <- which(rownames(app_object()$metadata) %in% bc)
 
-        mdata <- data.table::as.data.table(app_object()$metadata, keep.rownames=T)
+        mdata <- data.table::as.data.table(app_object()$metadata, keep.rownames=TRUE)
         mdata <- mdata[idx,]
         mdata <- as.data.frame(mdata)
         rownames(mdata) <- mdata$rn
@@ -1042,7 +1042,7 @@ dimredServer <- function(id, obj,
               freq <- table(groups)
 
               # group indices into a list
-              grp_idx <- split(1:nrow(plot_df), f=groups)
+              grp_idx <- split(seq_len(nrow(plot_df)), f=groups)
 
               # stratified sampling numbers
               # - we multiply downsampling target by normalized grp size

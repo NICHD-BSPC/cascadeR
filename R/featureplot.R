@@ -278,7 +278,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
                    ' genes at a time. Using first ', max_genes),
             type='warning'
           )
-          g <- g[1:max_genes]
+          g <- g[seq_len(max_genes)]
         }
 
         # adjust plot height based on number of genes
@@ -405,7 +405,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
           }
 
           # get list of plotly handles
-          plist <- lapply(1:length(g), function(x){
+          plist <- lapply(seq_len(length(g)), function(x){
                      if(x == 1) showscale <- TRUE
                      else showscale <- FALSE
 

@@ -376,7 +376,7 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
           showNotification(
             'More that 2 genes selected, using first two ...'
           )
-          g <- g[1:2]
+          g <- g[seq_len(2)]
         }
 
         grp_var <- global_args$grp_by
@@ -448,7 +448,7 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
 
         # build bin names
         # NOTE: not used
-        bin_names <- paste0(hh$breaks[1:length(tmp)], '-',
+        bin_names <- paste0(hh$breaks[seq_len(length(tmp))], '-',
                             hh$breaks[2:length(hh$breaks)])
         names(bin_names) <- tmp
 
@@ -516,7 +516,7 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
         else alpha <- input$marker_opacity
 
         # if gene names start with number, add character
-        for(i in 1:length(g)){
+        for(i in seq_len(length(g))){
           g_i <- g[i]
           cidx <- which(colnames(df) == g_i)
           if(regexpr('^\\d+', g_i) > 0){

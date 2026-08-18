@@ -672,7 +672,7 @@ get_marker_plot_data <- function(g, app_object, filtered, args,
       dimred <- app_object()$rds$obsm[[ args()$dimred ]][idx,]
 
       label <- sub('X_', '', args()$dimred)
-      colnames(dimred) <- paste0(label, 1:2)
+      colnames(dimred) <- paste0(label, seq_len(2))
     }
   }
 
