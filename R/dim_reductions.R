@@ -261,10 +261,12 @@ dimredUI <- function(id, panel){
           ), # conditionalPanel
 
           conditionalPanel(paste0('input["', ns('spatial_dimplt_switch'), '"] == "no"'),
-            withSpinner(
-              plotOutput(ns('spatial_dimplt1'),
-                         width='100%', height='700px')
-            ) # withSpinner
+            div(align='center',
+              withSpinner(
+                plotOutput(ns('spatial_dimplt1'),
+                           width='100%', height='700px')
+              ) # withSpinner
+            )
           ) # conditionalPanel
 
         ), # tabPanel
