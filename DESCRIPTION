@@ -53,7 +53,9 @@ Imports:
     yaml
 Suggests:
     shinymanager
+    testthat
 BugReports: https://github.com/NICHD-BSPC/cascadeR/issues
 biocViews:
     Software, SingleCell, Spatial, Transcriptomics, GeneExpression,
     Visualization, DifferentialExpression, ShinyApps, GUI
+URL: https://nichd-bspc.github.io/cascadeR/
