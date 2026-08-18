@@ -184,6 +184,40 @@ dimredUI <- function(id, panel){
         ) # conditionalPanel
       ), # conditionalPanel
 
+      fluidRow(
+        column(12, style='margin-bottom: 10px;',
+          strong('Downsampling settings')
+        )
+      ), # fluidRow
+
+      fluidRow(
+        column(col1, 'Downsample cells?'),
+        column(col2,
+          selectInput(ns('downsample'),
+                      label=NULL,
+                      choices=c('yes', 'no'))
+        ) # column
+      ), # fluidRow
+
+      fluidRow(
+        column(col1, 'Target cell proportion'),
+        column(col2,
+          sliderInput(ns('downsample_target_prop'),
+                      label=NULL,
+                      value=0.5, step=0.05,
+                      min=0, max=1, ticks=FALSE)
+        ) # column
+      ), # fluidRow
+
+      fluidRow(
+        column(col1, 'Set seed'),
+        column(col2,
+          numericInput(ns('seed'),
+                       label=NULL,
+                       value=1234)
+        ) # column
+      ), # fluidRow
+
       fluidRow(align='center',
         column(12,
           actionButton(ns('plt_do'), 'Refresh plot',
@@ -573,6 +607,64 @@ dimredServer <- function(id, obj,
           num_traces <- num_cols
         }
 
+        # downsample cells
+        min_downsample_target <- config()$server$downsample_target
+        if(nrow(df) > min_downsample_target){
+          if(input$downsample == 'yes'){
+
+            downsample_target <- round(nrow(df)*input$downsample_target_prop)
+            showNotification(
+              paste('Downsampling to',
+              downsample_target, 'cells'),
+              type='warning'
+            )
+
+            # downsample making sure all colors and splits are represented
+            if(is.null(split_var)){
+              # color groups
+              groups <- df[[ color_var ]]
+            } else {
+              # color x split groups
+              groups <- paste(df[[ color_var ]], df[[ split_var ]])
+            }
+
+            # size of groups
+            freq <- table(groups)
+
+            # group indices into a list
+            grp_idx <- split(1:nrow(df), f=groups)
+
+            # stratified sampling numbers
+            # - we multiply downsampling target by normalized grp size
+            # - then make sure we get at least 1 cell from each group
+            target_vec <- floor(downsample_target*(freq/sum(freq)))
+            target_vec[target_vec < 1] <- 1
+
+
+            # now sample from each group
+            if(is.na(input$seed)) set.seed(1234)
+            else set.seed(input$seed)
+            sampled_grp_idx <- lapply(names(grp_idx), function(x){
+                                 if(length(grp_idx[[x]]) == 0) return(NULL)
+                                 sample(grp_idx[[x]], size=target_vec[x],
+                                   replace=FALSE)
+                               })
+
+            # concatenate sampled cell indices
+            idx <- unique(unlist(sampled_grp_idx))
+            idx <- idx[order(idx)]
+            df <- data.table::as.data.table(df)
+            df <- df[idx,]
+            df <- as.data.frame(df)
+          } else {
+            showNotification(
+              'Number of cells very large! Consider downsampling for faster plotting',
+              type='warning'
+            )
+          }
+        }
+
+
         # add check for empty marker size
         if(is.na(input$marker_size)) marker_size <- 2
         else marker_size <- input$marker_size
@@ -920,6 +1012,65 @@ dimredServer <- function(id, obj,
 
           final_cols <- unique(final_cols)
           plot_df <- coords[, final_cols, with=FALSE]
+
+          # downsample to these many cells
+          min_downsample_target <- config()$server$downsample_target
+          if(nrow(plot_df) > min_downsample_target){
+
+            downsample_target <- round(nrow(plot_df)*input$downsample_target_prop)
+            if(input$downsample == 'yes'){
+              showNotification(
+                paste('Downsampling to',
+                downsample_target, 'cells'),
+                type='warning'
+              )
+
+              # downsample making sure all colors and splits are represented
+
+              # determine groups based on color & split
+              if(is.null(split_var)){
+                # color groups
+                groups <- plot_df[[ color ]]
+              } else {
+                # color x split groups
+                groups <- paste(plot_df[[ color ]], plot_df[[ split_var ]])
+              }
+
+              # size of groups
+              freq <- table(groups)
+
+              # group indices into a list
+              grp_idx <- split(1:nrow(plot_df), f=groups)
+
+              # stratified sampling numbers
+              # - we multiply downsampling target by normalized grp size
+              # - then make sure we get at least 1 cell from each group
+              target_vec <- floor(downsample_target*(freq/sum(freq)))
+              target_vec[target_vec < 1] <- 1
+
+              # now sample from each group
+              if(is.na(input$seed)) set.seed(1234)
+              else set.seed(input$seed)
+              sampled_grp_idx <- lapply(names(grp_idx), function(x){
+                                   if(length(grp_idx[[x]]) == 0) return(NULL)
+                                   sample(grp_idx[[x]], size=target_vec[x],
+                                     replace=FALSE)
+                                 })
+
+              # concatenate sampled cell indices
+              idx <- unique(unlist(sampled_grp_idx))
+              idx <- idx[order(idx)]
+              plot_df <- data.table::as.data.table(plot_df)
+              plot_df <- plot_df[idx,]
+              plot_df <- as.data.frame(plot_df)
+            } else {
+              showNotification(
+                'Number of cells very large! Consider downsampling for faster plotting',
+                type='warning'
+              )
+            }
+          }
+
 
           # save spatial object
           spatial_obj$df <- list(data=plot_df,
