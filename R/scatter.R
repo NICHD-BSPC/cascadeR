@@ -244,6 +244,7 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
       plot_obj <- reactiveValues(metadata=NULL,
                                  gene=NULL)
       plot_labeled <- reactiveVal(FALSE)
+      active_plot_type <- reactiveVal(NULL)
 
       observeEvent(gene_choices(), {
         updateSelectizeInput(session, 'plt_genes',
@@ -290,6 +291,8 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
         # reset data
         plot_obj$metadata <- NULL
         plot_obj$gene <- NULL
+        plot_labeled(FALSE)
+        active_plot_type(NULL)
         selected_points$full <- list()
         selected_points$current <- list()
 
@@ -566,6 +569,11 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
                                     source=source,
                                     num_traces=num_traces)
 
+          trace_data <- plotly::plotly_build(p)$x$data
+          plot_obj$metadata$trace_names <- unlist(lapply(trace_data, function(x) unique(x$meta)))
+          plot_labeled(FALSE)
+          active_plot_type('metadata')
+
         } else {
           crange <- range(df[[ input$grp_gene ]])
           source <- 'scatter_gene'
@@ -582,6 +590,7 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
                           reversescale=reversescale,
                           marker_size=marker_size,
                           alpha=alpha,
+                          reorder=FALSE,
                           split=split_var,
                           height=ht,
                           width=wd,
@@ -605,6 +614,9 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
                                 source=source,
                                 num_traces=num_traces)
 
+          plot_labeled(FALSE)
+          active_plot_type('gene')
+
         }
 
         event_register(p, 'plotly_selected')
@@ -622,45 +634,137 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
       # proxy for plot
       plotProxy <- plotlyProxy('scatterplt', session)
 
+      restyle_selection <- function(marker_opacity){
+        plot_type <- active_plot_type()
+        if(is.null(plot_type)) return(invisible(NULL))
+
+        obj <- plot_obj[[ plot_type ]]
+        if(is.null(obj)) return(invisible(NULL))
+
+        if(plot_type == 'gene'){
+          split_var <- obj$split
+
+          if(is.null(split_var)){
+            opacity_list <- list(marker_opacity)
+            trace_idx <- list(0)
+          } else {
+            split_values <- obj$data[[ split_var ]]
+            if(is.factor(split_values)){
+              split_levels <- levels(droplevels(split_values))
+            } else {
+              split_levels <- unique(split_values)
+            }
+
+            opacity_list <- split(marker_opacity, f=split_values, drop=TRUE)
+            opacity_list <- opacity_list[as.character(split_levels)]
+            opacity_list <- opacity_list[!vapply(opacity_list, is.null, logical(1))]
+            trace_idx <- as.list(seq_along(opacity_list) - 1)
+          }
+        } else {
+          color_values <- obj$data[[ obj$color ]]
+
+          if(is.null(obj$split)){
+            opacity_list <- split(marker_opacity, f=color_values, drop=TRUE)
+          } else {
+            split_var <- obj$split
+
+            opacity_list <- split(marker_opacity,
+                                  f=list(color_values,
+                                         obj$data[[ split_var ]]),
+                                  drop=TRUE)
+          }
+
+          if(is.null(obj$trace_names)){
+            trace_idx <- as.list(seq_along(opacity_list) - 1)
+          } else {
+            trace_match <- match(obj$trace_names, names(opacity_list))
+            trace_idx <- which(!is.na(trace_match)) - 1
+            opacity_list <- opacity_list[trace_match[!is.na(trace_match)]]
+            trace_idx <- as.list(trace_idx)
+          }
+        }
+
+        if(length(opacity_list) == 0) return(invisible(NULL))
+
+        restyle_args <- list(
+          'marker.opacity' = I(unname(opacity_list))
+        )
+
+        plotProxy %>%
+          plotlyProxyInvoke('restyle', restyle_args, trace_idx)
+      }
+
       observeEvent(show_selection(), {
 
         validate(
           need(!is.null(app_object()$rds), '')
         )
-
-        isolate({
-          split_var <- input$split_by
-        })
+        validate(
+          need(!is.null(active_plot_type()), '')
+        )
+        validate(
+          need(!is.null(plot_obj[[ active_plot_type() ]]), '')
+        )
 
         sel_pts <- unique(unlist(all_selected()))
 
-        if(input$color_by == 'gene') plot_type <- 'gene'
-        else plot_type <- 'metadata'
+        validate(
+          need(length(sel_pts) > 0, '')
+        )
 
-        if(split_var == 'none'){
-          if(length(sel_pts) > 0){
-            new_trace <- get_label_trace(plot_obj[[ plot_type ]],
-                                         sel_pts)
-            num_traces <- plot_obj[[ plot_type ]]$num_traces
+        obj <- plot_obj[[ active_plot_type() ]]
 
-            # remove last trace
-            # NOTE: this is 0-based indexed
-            if(plot_labeled()){
-              plotProxy %>%
-                plotlyProxyInvoke('deleteTraces', num_traces)
-            }
-
-            plotProxy %>%
-              plotlyProxyInvoke('addTraces', new_trace)
-
-            plot_labeled(TRUE)
-          } else if(plot_labeled()){
-            num_traces <- plot_obj[[ plot_type ]]$num_traces
-            plotProxy %>%
-              plotlyProxyInvoke('deleteTraces', num_traces)
-            plot_labeled(FALSE)
+        if(!plot_labeled()){
+          is_selected <- obj$data$rn %in% sel_pts
+          if(!any(is_selected)){
+            showNotification(
+              'No selected points found in current plot',
+              type='warning'
+            )
+            return()
           }
+
+          marker_opacity <- rep(obj$alpha * 0.05, nrow(obj$data))
+          marker_opacity[which(is_selected)] <- 1
+        } else {
+          marker_opacity <- rep(obj$alpha * 1.95, nrow(obj$data))
         }
+
+        restyle_selection(marker_opacity)
+        plot_labeled(!plot_labeled())
+
+        ## OLD APPROACH USING addTraces/deleteTraces
+        # isolate({
+        #   split_var <- input$split_by
+        # })
+        #
+        # if(input$color_by == 'gene') plot_type <- 'gene'
+        # else plot_type <- 'metadata'
+        #
+        # if(split_var == 'none'){
+        #   if(length(sel_pts) > 0){
+        #     new_trace <- get_label_trace(plot_obj[[ plot_type ]],
+        #                                  sel_pts)
+        #     num_traces <- plot_obj[[ plot_type ]]$num_traces
+        #
+        #     # remove last trace
+        #     # NOTE: this is 0-based indexed
+        #     if(plot_labeled()){
+        #       plotProxy %>%
+        #         plotlyProxyInvoke('deleteTraces', num_traces)
+        #     }
+        #
+        #     plotProxy %>%
+        #       plotlyProxyInvoke('addTraces', new_trace)
+        #
+        #     plot_labeled(TRUE)
+        #   } else if(plot_labeled()){
+        #     num_traces <- plot_obj[[ plot_type ]]$num_traces
+        #     plotProxy %>%
+        #       plotlyProxyInvoke('deleteTraces', num_traces)
+        #     plot_labeled(FALSE)
+        #   }
+        # }
       })
 
       get_selected <- reactive({
@@ -668,13 +772,11 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
           need(!is.null(app_object()$rds), '')
         )
 
-        if(input$color_by == 'gene'){
-          req(plot_obj$gene)
-          source <- plot_obj$gene$source
-        } else {
-          req(plot_obj$metadata)
-          source <- plot_obj$metadata$source
-        }
+        plot_type <- active_plot_type()
+        req(plot_type)
+        req(plot_obj[[ plot_type ]])
+        source <- plot_obj[[ plot_type ]]$source
+
         event_data('plotly_selected', source=source)
       })
 
@@ -689,8 +791,8 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
         keys <- paste(df$x, df$y)
 
         # plot data
-        if(input$color_by == 'gene') name <- 'gene'
-        else name <- 'metadata'
+        name <- active_plot_type()
+        req(name)
 
         data_df <- plot_obj[[ name ]]$data
         xcol <- plot_obj[[ name ]]$xcol
@@ -723,9 +825,21 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
         }
       })
 
-      # observer to reset clicks
+      # observer to reset clicks and hide selection
       observeEvent(reset_selection(), {
+        plot_type <- active_plot_type()
+
+        if(plot_labeled() & !is.null(plot_type)){
+          obj <- plot_obj[[ plot_type ]]
+          if(!is.null(obj)){
+            marker_opacity <- rep(obj$alpha * 1.95, nrow(obj$data))
+            restyle_selection(marker_opacity)
+          }
+        }
+
+        plot_labeled(FALSE)
         selected_points$full <- list()
+        selected_points$current <- list()
       })
 
 
