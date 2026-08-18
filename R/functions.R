@@ -135,8 +135,9 @@ sanitize_colnames <- function(cnames,
                               bad_char='(\\-|\\+|\\/|\\*|\\:|\\-|\\.)',
                               repl='_'){
 
-  sanitized_names <- sapply(1:length(cnames),
-                       function(x) gsub(bad_char, repl, cnames[x])
+  sanitized_names <- vapply(1:length(cnames),
+                       function(x) gsub(bad_char, repl, cnames[x]),
+                       character(1)
                      )
 
   return(sanitized_names)
@@ -1674,11 +1675,12 @@ PseudoBulkExpression2 <- function(
   for (i in 1:ncol(x = data)) {
     data[, i] <- as.factor(x = data[, i])
   }
-  num.levels <- sapply(
+  num.levels <- vapply(
     X = 1:ncol(x = data),
     FUN = function(i) {
       length(x = levels(x = data[, i]))
-    }
+    },
+    numeric(1)
   )
   if (any(num.levels == 1)) {
     message(
@@ -1727,7 +1729,9 @@ PseudoBulkExpression2 <- function(
       FUN = function(name) {
         name <- gsub(pattern = "data\\[, [1-9]*\\]", replacement = "", x = name)
         return(paste0(rev(x = unlist(x = strsplit(x = name, split = ":"))), collapse = "_"))
-      })
+      },
+      character(1)
+    )
   }
 
   # NOTE: using the 'X' slot here.
