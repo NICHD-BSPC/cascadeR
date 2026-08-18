@@ -52,7 +52,7 @@ Imports:
     viridis,
     yaml
 Suggests:
-    shinymanager
+    shinymanager,
     testthat
 BugReports: https://github.com/NICHD-BSPC/cascadeR/issues
 biocViews:
