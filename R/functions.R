@@ -205,6 +205,14 @@ umap_ly <- function(df, xcol, ycol,
   ycol <- new_ycol
   color <- new_color
 
+  if(!is.null(split)){
+    new_split <- sanitize_colnames(split)
+    colnames(df)[colnames(df) == split] <- new_split
+    if(!is.null(label_cols))
+      label_cols[label_cols == split] <- new_split
+    split <- new_split
+  }
+
   xlims <- range(df[, xcol])
   ylims <- range(df[, ycol])
 
