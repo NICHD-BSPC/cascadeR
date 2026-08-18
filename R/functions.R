@@ -1724,7 +1724,7 @@ PseudoBulkExpression2 <- function(
         STATS = colsums,
         FUN = "/")
     }
-    colnames(x = category.matrix) <- sapply(
+    colnames(x = category.matrix) <- vapply(
       X = colnames(x = category.matrix),
       FUN = function(name) {
         name <- gsub(pattern = "data\\[, [1-9]*\\]", replacement = "", x = name)
