@@ -403,8 +403,7 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
                             alpha=alpha,
                             source=source,
                             free_axes=free_axes,
-                            num_traces=num_traces,
-                            downsample=downsample)
+                            num_traces=num_traces)
         plot_labeled(FALSE)
 
         # save trace names for split-view restyle alignment
