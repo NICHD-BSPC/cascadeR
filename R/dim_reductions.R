@@ -904,7 +904,7 @@ dimredServer <- function(id, obj,
           # get final set of columns to pass to umap_ly
           final_cols <- c(xcol, ycol, color, label_col)
 
-          ht <- config()$server$plots$dimplt$base_ht*input$plot_scale
+          ht <- config()$server$plots$dimplt$base_ht*input$spat_plot_scale
           wd <- 1.25*ht
           if(length(slice()) == 2){
             ht <- 0.75*ht
