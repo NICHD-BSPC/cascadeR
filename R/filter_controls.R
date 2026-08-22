@@ -82,7 +82,8 @@ controlServer <- function(id, full_obj, column, global, default='all'){
         }
 
         if(is.numeric(default)){
-          default <- intersect(default, seq_len(length(dat)))
+          if(length(dat) > 0)
+            default <- intersect(default, seq_len(length(dat)))
           if(length(default) > 0){
             selected <- dat[default]
           }
