@@ -121,6 +121,15 @@ coexpressionPlotUI <- function(id, panel){
       ), # fluidRow
 
       fluidRow(
+        column(col1, 'Aspect ratio'),
+        column(col2,
+          selectInput(ns('plot_aspect'),
+                      label=NULL,
+                      choices=c('narrow', 'wide'))
+        ) # column
+      ), # fluidRow
+
+      fluidRow(
         column(col1, 'Downsample empty cells'),
         column(col2,
           selectInput(ns('downsample'),
@@ -194,10 +203,12 @@ coexpressionPlotUI <- function(id, panel){
             ) # column
           ), # fluidRow
           fluidRow(
+            div(align='center',
             withSpinner(
               plotlyOutput(ns('coexplt'),
                            height='700px')
             ) # withSpinner
+            )
           )
         ),
         column(3, align='center',
@@ -403,6 +414,10 @@ coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
             ht <- 0.75*ht
         }
 
+        # change aspect ratio
+        if(input$plot_aspect == 'narrow') wd <- 1.35*ht
+        else wd <- NULL
+
         source <- 'coexpression_plot'
 
         pp <- feature_blend(df,
@@ -420,6 +435,7 @@ coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
                             marker_size=marker_size,
                             alpha=alpha,
                             free_axes=free_axes,
+                            width=wd,
                             height=ht,
                             margin=0.05,
                             source=source)
