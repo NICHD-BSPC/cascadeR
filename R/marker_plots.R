@@ -665,7 +665,15 @@ get_marker_plot_data <- function(g, app_object, filtered, args,
       dimred <- app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings[didx, ]
     }
   } else if(obj_type == 'anndata'){
-    gdat <- app_object()$rds$X[idx, g]
+    # here we use a 2-step slice approach to help handle
+    # large datasets
+    #
+    # first we slice to get a 'view', then
+    # we access X
+    gidx <- which(rownames(app_object()$rds$var) %in% g)
+    tmp_obj <- app_object()$rds[which(idx), gidx]
+
+    gdat <- tmp_obj$X
     gdat <- as.matrix(gdat)
 
     if(reduction){
