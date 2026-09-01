@@ -990,7 +990,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
         }
 
       } else if(app_object$obj_type == 'anndata'){
-        obj <- read_h5ad(input$analysis)
+        obj <- read_h5ad(input$analysis, backed='r')
 
         if(!inherits(obj, 'AnnDataR6')){
           showModal(

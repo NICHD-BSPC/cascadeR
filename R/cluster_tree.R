@@ -450,6 +450,17 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
           clust_tree_obj$single <- Tool(obj, slot='BuildClusterTree')
         } else if(obj_type == 'anndata'){
 
+          if(obj$isbacked){
+            showNotification(
+              'Cannot generate single cluster tree for backed anndata object',
+              type='error'
+            )
+          }
+
+          validate(
+            need(!obj$isbacked, 'Anndata object cannot be backed')
+          )
+
           withProgress(
             {
               data.tree <- BuildClusterTree2(obj,
