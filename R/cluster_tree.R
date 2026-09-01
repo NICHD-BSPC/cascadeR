@@ -77,78 +77,27 @@ clustreeUI <- function(id, panel){
         paste0('input["', ns('clustree_type'), '"] == "Compare resolutions (Tree)" | ',
                'input["', ns('clustree_type'), '"] == "Compare resolutions (Overlay)"'),
 
+        wellPanel(
+          controlUI(ns('tree_col'), label='Columns to compare'),
+          fluidRow(
+            column(6, 'Select by pattern'),
+            column(6,
+              selectizeInput(ns('tree_col_pattern'),
+                             label=NULL,
+                             choices=c("Enter a pattern"=""),
+                             multiple=TRUE,
+                             options=list(create=TRUE))
+            ) # column
+          ) # fluidRow
+
+        ), # wellPanel
+
         fluidRow(
           column(12, strong('Plot options'))
         ),  # fluidRow
 
-        fluidRow(style='margin-bottom: 10px;',
-          column(12, 'Clustering resolutions'),
-        ),
-
-        fluidRow(
-          column(12,
-            selectizeInput(ns('clust_col_tree_current'),
-                           label=NULL,
-                           choices=NULL,
-                           multiple=TRUE)
-          ) # column
-        ), # fluidRow
-
-        fluidRow(
-          align='center',
-          style='margin-bottom: 20px;',
-          column(12,
-            splitLayout(cellWidths=c('50%', '50%'),
-                actionButton(ns('clust_col_tree_none'),
-                             label='none',
-                             icon=shiny::icon('minus'),
-                             class='select-buttons'),
-                actionButton(ns('clust_col_tree_all'),
-                             label='all',
-                             icon=shiny::icon('check'),
-                             class='select-buttons')
-            ) # splitLayout
-          ) # column
-        ), # fluidRow
-
-        fluidRow(
-          column(6, 'Cluster column prefix'),
-          column(6,
-            selectizeInput(ns('clust_col_prefix'),
-                           label=NULL,
-                           choices=NULL,
-                           selected=NULL,
-                           options=list(create=TRUE)
-            ) # selectizeInput
-          ) # column
-        ), # fluidRow
-
-        fluidRow(
-          column(6, 'Replace with'),
-          column(6,
-            textInput(ns('clust_col_rep'),
-                      label=NULL,
-                      value='res.'
-            ) # textInput
-          ) # column
-        ), # fluidRow
-
-        fluidRow(
-          column(6, 'Min incoming node proportion'),
-          column(6,
-            numericInput(ns('min_in_prop'),
-                         label=NULL,
-                         value=0.1
-            ) # textInput
-          ) # column
-        ), # fluidRow
-
         conditionalPanel(
           paste0('input["', ns('clustree_type'), '"] == "Compare resolutions (Overlay)"'),
-
-          fluidRow(
-            column(12, strong('Overlay options'))
-          ),  # fluidRow
 
           fluidRow(
             column(6, 'Dimension reduction'),
@@ -180,7 +129,17 @@ clustreeUI <- function(id, panel){
             ) # column
           ) # fluidRow
 
-        ) # conditionalPanel
+        ), # conditionalPanel
+
+        fluidRow(
+          column(6, 'Min incoming node proportion'),
+          column(6,
+            sliderInput(ns('min_in_prop'),
+                        label=NULL, value=0.1,
+                        min=0, max=1, step=0.1, ticks=FALSE
+            ) # sliderInput
+          ) # column
+        ) # fluidRow
 
       ), # conditionalPanel
 
@@ -292,6 +251,7 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
           rds=obj$rds,
           obj_type=obj$obj_type,
           metadata=obj$metadata,
+          metadata_levels=obj$metadata_levels,
           grouping_vars=obj$grouping_vars
         )
       })
@@ -303,14 +263,15 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
 
       obj_info <- reactiveValues(slot=NULL,
                                  filtered=NULL,
-                                 cluster_columns=NULL,
+                                 cluster_columns=list(all=NULL, selected=NULL),
                                  var_genes=list())
 
       observeEvent(app_object()$rds, {
         obj_info$slot <- NULL
         obj_info$filtered <- NULL
         obj_info$var_genes <- list()
-        obj_info$cluster_columns <- NULL
+        obj_info$cluster_columns$all <- NULL
+        obj_info$cluster_columns$selected <- NULL
 
         if(app_object()$obj_type == 'seurat'){
 
@@ -329,7 +290,8 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
         obj_info$filtered <- NULL
 
         ## reset clustree objects
-        obj_info$cluster_columns <- NULL
+        obj_info$cluster_columns$all <- NULL
+        obj_info$cluster_columns$selected <- NULL
         clust_tree_obj$single <- NULL
         clust_tree_obj$tree <- NULL
         clust_tree_obj$overlay <- NULL
@@ -340,7 +302,8 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
         # get current barcodes & save
         obj_info$filtered <- filtered()
 
-        meta_cols <- colnames(app_object()$metadata)
+        meta_cols <- names(app_object()$metadata_levels$filtered)
+        obj_info$cluster_columns$all <- meta_cols
 
         if(obj_type == 'seurat'){
 
@@ -384,115 +347,6 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
                           choices=dr_choices,
                           selected=selected)
 
-        # get clust column regex
-        clust_regex <- config()$server$grouping_column$regex
-
-        # find matches
-        clust_idx <- lapply(clust_regex, function(x) grep(x, meta_cols))
-        names(clust_idx) <- clust_regex
-
-        # if matches are non-unique, show warning, don't do anything
-        if(length(unlist(clust_idx)) != length(unique(unlist(clust_idx)))){
-          showNotification(
-            'Warning: Cluster column prefixes return non-unique matches',
-            type='warning'
-          )
-        }
-
-        # get clust_col_prefix from metadata columns
-        tmp_prefix <- unique(
-                        unlist(
-                          lapply(clust_regex,
-                            function(x){
-                              idx <- clust_idx[[x]]
-
-                              # only keep if multiple resolutions found
-                              if(length(idx) >= 2){
-                                # seurat object
-                                if(regexpr('res', x) > 0){
-                                  # remove trailing number, e.g. '1.2'
-                                  tmp_prefix <- unique(
-                                                  sub('(\\d|\\.)+', '',
-                                                      meta_cols[idx])
-                                                )
-
-                                  # add back trailing '.'
-                                  tmp_prefix <- paste0(tmp_prefix, '.')
-                                } else {
-                                  # anndata object
-                                  tmp_prefix <- x
-                                }
-                                tmp_prefix
-                              }
-                            }
-                          )
-                        )
-                      )
-
-        # check the number of res columns matching each tmp_prefix
-        col_idx <- unlist(lapply(tmp_prefix, function(x) length(grep(x, meta_cols)) >= 2))
-
-        # if fewer than 2 cluster columns for any prefix, hide 'compare resolutions' tabs
-        if(!any(col_idx)){
-            hideTab(inputId = 'clustree_type',
-                    target='Compare resolutions (Tree)')
-            hideTab(inputId = 'clustree_type',
-                    target='Compare resolutions (Overlay)')
-            showTab(inputId = 'clustree_type',
-                    target = 'Single', select=TRUE)
-
-          updateSelectInput(session, 'clust_col_prefix',
-                            choices='',
-                            selected='')
-
-          updateSelectizeInput(session,
-                               'clust_col_tree_current',
-                               choices='',
-                               selected='')
-        } else {
-          showTab(inputId = 'clustree_type',
-                  target='Compare resolutions (Tree)')
-          showTab(inputId = 'clustree_type',
-                  target='Compare resolutions (Overlay)')
-
-          tmp_prefix <- tmp_prefix[which(col_idx)]
-
-          if(obj_type == 'seurat'){
-
-            # update selection based on selected assay
-            sel_idx <- grep(input$clust_assay, tmp_prefix)
-            if(length(sel_idx) == 0) sel_idx <- 1
-            updateSelectInput(session, 'clust_col_prefix',
-                              choices=tmp_prefix,
-                              selected=tmp_prefix[sel_idx])
-            sel_prefix <- tmp_prefix[sel_idx]
-
-          } else if(obj_type == 'anndata'){
-
-            updateSelectInput(session, 'clust_col_prefix',
-                              choices=tmp_prefix,
-                              selected=tmp_prefix[1])
-
-            sel_prefix <- tmp_prefix[1]
-          }
-
-          # update cluster column menu
-          col_idx <- unique(unlist(lapply(sel_prefix, function(x) grep(x, meta_cols))))
-          col.choices <- meta_cols[col_idx]
-          col_names <- col.choices
-          for(pre in tmp_prefix){
-            col_names <- sub(pre, '', col_names)
-          }
-          names(col.choices) <- col_names
-
-          # save cluster column choices & update 'detected clusterings' menus
-          obj_info$cluster_columns <- col.choices
-          updateSelectizeInput(session,
-                               'clust_col_tree_current',
-                               choices=col.choices,
-                               selected=col.choices)
-        }
-
         showNotification(
           'Loaded cluster tree ...'
         )
@@ -504,44 +358,6 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
 
         updateSelectInput(session, 'clust_tree_dimred',
                           selected=args()$dimred)
-      })
-
-      observeEvent(input$clust_col_prefix %>% debounce(1000), {
-        validate(
-          need(!is.null(obj_info$filtered), '')
-        )
-
-        if(app_object()$obj_type == 'seurat'){
-          meta_cols <- colnames(app_object()$rds@meta.data)
-        } else if(app_object()$obj_type == 'anndata'){
-          meta_cols <- colnames(app_object()$rds$obs)
-        }
-
-        col_idx <- grep(input$clust_col_prefix, meta_cols)
-        col.choices <- meta_cols[col_idx]
-        names(col.choices) <- sub(input$clust_col_prefix,
-                                  '', col.choices)
-        obj_info$cluster_columns <- col.choices
-
-        updateSelectizeInput(session,
-                             'clust_col_tree_current',
-                             choices=col.choices,
-                             selected=col.choices)
-      })
-
-      observeEvent(input$clust_col_tree_none, {
-        updateSelectizeInput(session,
-                             'clust_col_tree_current',
-                             selected='')
-      })
-
-      observeEvent(input$clust_col_tree_all, {
-        if(!is.null(obj_info$cluster_columns)){
-          updateSelectizeInput(session,
-                               'clust_col_tree_current',
-                               choices=obj_info$cluster_columns,
-                               selected=obj_info$cluster_columns)
-        }
       })
 
       ######################### Single view #########################
@@ -657,20 +473,27 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
 
       ################## Compare resolutions - Tree ###############
 
+      ######################### choose cluster tree columns #########################
+
+      tree_col <- controlServer('tree_col',
+                                reactive({ list(all=names(app_object()$metadata_levels$filtered)) }),
+                                'all',
+                                reactive({ obj_info$cluster_columns$selected }))
+
+      observeEvent(input$tree_col_pattern, {
+        validate(
+          need(!all(input$tree_col_pattern == ''), '')
+        )
+        idx <- unique(unlist(lapply(input$tree_col_pattern, function(x){
+                  grep(x, names(app_object()$metadata_levels$filtered))
+               })))
+        obj_info$cluster_columns$selected <- names(app_object()$metadata_levels$filtered)[idx]
+      })
+
+
       observeEvent(c(input$clustree_tree_do, input$plt_tree_do), {
         validate(
           need(!is.null(app_object()$metadata), '')
-        )
-
-        if(length(input$clust_col_tree_current) < 2){
-          showNotification(
-            'Fewer than 2 clusterings selected. Please choose at least two or adjust cluster column prefix and retry',
-            type='error'
-          )
-        }
-
-        validate(
-          need(length(input$clust_col_tree_current) >= 2, '')
         )
 
         # only keep selected columns in metadata
@@ -679,61 +502,38 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
         mdata <- mdata[idx, ]
         mdata <- as.data.frame(mdata)
 
-        mdata <- mdata[,colnames(mdata) %in% input$clust_col_tree_current]
+        # the order of columns matches the input and is the order
+        # in which the tree is rendered, top to bottom
+        #
+        # TODO: add checks for column existence, or that is handled already?
+        mdata <- mdata[, tree_col()]
 
         # remove column prefix and replace with clust_col_rep
-        rep <- input$clust_col_rep
-        if(rep == ''){
-          showNotification(
-              '"Replace with" cannot be empty. Using "X" instead'
-          )
-          rep <- 'X'
-        } else {
-          tmp <- sub(input$clust_col_prefix, '', colnames(mdata))
-          validate(
-            need(sum(is.na(as.numeric(tmp))) == 0,
-                 'Column names could not be converted to a number after removing "Cluster column prefix". Please retry')
-          )
-        }
-        colnames(mdata) <- sub(input$clust_col_prefix,
-                               rep, colnames(mdata))
-
-        # check min in_prop
-        if(is.na(input$min_in_prop)){
-          showNotification(
-            'Minimum incoming node proportion must be > 0. Setting to 0'
-          )
-          min_in_prop <- 0
-
-        } else if(input$min_in_prop < 0){
-          showNotification(
-            'Minimum incoming node proportion must be > 0. Setting to 0'
-          )
-          min_in_prop <- 0
-        } else {
-          min_in_prop <- input$min_in_prop
-        }
+        rep <- 'res.'
+        orig_colnames <- colnames(mdata)
+        colnames(mdata) <- paste0('res.',  seq_len(ncol(mdata)))
 
         withProgress(
           {
 
             p <- clustree(mdata,
                           prefix=rep,
-                          prop_filter=min_in_prop,
+                          prop_filter=input$min_in_prop,
                           node_text_size=3,
                           node_alpha=0.9)
           },
           message='Generating cluster tree'
         )
+
+        # change the color scale legend
+        p <- p + scale_color_discrete(
+                  name = 'clust_col',
+                  labels = orig_colnames
+                )
         clust_tree_obj$tree <- p
       }, ignoreNULL=FALSE)
 
       clust_tree <- eventReactive(clust_tree_obj$tree, {
-        validate(
-          need(length(input$clust_col_tree_current) >= 2,
-               'Fewer than 2 clusterings selected. Please choose at least two or adjust cluster column prefix and retry')
-        )
-
         p <- clust_tree_obj$tree
 
         p + theme(legend.title=element_text(size=15, face='bold'),
@@ -783,16 +583,6 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
           need(!is.null(obj_info$filtered), '')
         )
 
-        if(length(input$clust_col_tree_current) < 2){
-          showNotification(
-            'Fewer than 2 clusterings selected. Please choose at least two or adjust cluster column prefix and retry',
-            type='error'
-          )
-        }
-        validate(
-          need(length(input$clust_col_tree_current) >= 2, '')
-        )
-
         # subset metadata to keep current barcodes
         mdata <- data.table::as.data.table(app_object()$metadata, keep.rownames=TRUE)
         idx <- mdata$rn %in% obj_info$filtered
@@ -800,40 +590,12 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
         mdata <- as.data.frame(mdata)
 
         # only keep selected columns in metadata
-        mdata <- mdata[,colnames(mdata) %in% input$clust_col_tree_current]
+        mdata <- mdata[, tree_col()]
 
         # remove column prefix and replace with clust_col_rep
-        rep <- input$clust_col_rep
-        if(rep == ''){
-          showNotification(
-              '"Replace with" cannot be empty. Using "X" instead'
-          )
-          rep <- 'X'
-        } else {
-          tmp <- sub(input$clust_col_prefix, '', colnames(mdata))
-          validate(
-            need(sum(is.na(as.numeric(tmp))) == 0,
-                 'Column names could not be converted to a number after removing "Cluster column prefix". Please retry')
-          )
-        }
-        colnames(mdata) <- sub(input$clust_col_prefix,
-                               rep, colnames(mdata))
-
-        # check min in_prop
-        if(is.na(input$min_in_prop)){
-          showNotification(
-            'Minimum incoming node proportion must be > 0. Setting to 0'
-          )
-          min_in_prop <- 0
-
-        } else if(input$min_in_prop < 0){
-          showNotification(
-            'Minimum incoming node proportion must be > 0. Setting to 0'
-          )
-          min_in_prop <- 0
-        } else {
-          min_in_prop <- input$min_in_prop
-        }
+        rep <- 'res.'
+        orig_colnames <- colnames(mdata)
+        colnames(mdata) <- paste0(rep, seq_len(ncol(mdata)))
 
         red_dim <- input$clust_tree_dimred
         if(input$clust_tree_label == 'yes') label_nodes <- TRUE
@@ -854,11 +616,21 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
         #clust_tree_obj$overlay <- future_promise({
         p_list <- clustree_overlay(x=mdata,
                                    prefix=rep,
-                                   prop_filter=min_in_prop,
+                                   prop_filter=input$min_in_prop,
                                    x_value=colnames(df)[1],
                                    y_value=colnames(df)[2],
                                    label_nodes=label_nodes,
                                    plot_sides=TRUE)
+
+        # change the color scale legend
+        p_list <- lapply(p_list, function(p){
+                    p <- p + scale_fill_discrete(
+                               name = 'clust_col',
+                               labels = orig_colnames
+                             )
+                    p
+                  })
+
         #  })
           },
           message='Generating cluster tree - overlay'
@@ -867,10 +639,6 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
       })
 
       clust_overlay <- eventReactive(clust_tree_obj$overlay, {
-        validate(
-          need(length(input$clust_col_tree_current) >= 2,
-               'Fewer than 2 clusterings selected. Please choose at least two or adjust cluster column prefix and retry')
-        )
 
         p_list <- clust_tree_obj$overlay
         if(input$clust_tree_side == 'no'){
@@ -896,21 +664,7 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
           need(!is.null(app_object()$rds), '')
         )
 
-        isolate({
-          l <- length(input$clust_col_tree_current)
-        })
-        if(l >= 2){
-
-          p <- clust_tree()
-
-          p
-        } else {
-          showNotification(
-            'Fewer than 2 clusterings found in object. Need at least 2 to compare',
-            type='error'
-          )
-          NULL
-        }
+        clust_tree()
       })
 
       output$clustree_overlay <- renderPlot({
@@ -918,18 +672,7 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
           need(!is.null(app_object()$rds), '')
         )
 
-        isolate({
-          l <- length(input$clust_col_tree_current)
-        })
-
-        if(l >= 2){
-
-          p <- clust_overlay()
-
-          p
-        } else {
-          NULL
-        }
+        clust_overlay()
       })
 
       get_clustree_single <- reactive({
