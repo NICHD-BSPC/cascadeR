@@ -558,12 +558,6 @@ dimredServer <- function(id, obj,
 
         df <- as.data.frame(df)
         rownames(df) <- rownames(mdata)
-        if(nrow(df) >= 100000){
-          showNotification(
-            'Plotting a large number of cells! This could take a while ...',
-            type='warning'
-          )
-        }
 
         xcol <- colnames(df)[1]
         ycol <- colnames(df)[2]
@@ -616,8 +610,8 @@ dimredServer <- function(id, obj,
 
             downsample_target <- round(nrow(df)*input$downsample_target_prop)
             showNotification(
-              paste('Downsampling to',
-              downsample_target, 'cells'),
+              paste0('Downsampling by ', input$downsample_target_prop*100, '% to ',
+              downsample_target, ' cells'),
               type='warning'
             )
 
@@ -660,7 +654,7 @@ dimredServer <- function(id, obj,
             df <- as.data.frame(df)
           } else {
             showNotification(
-              'Number of cells very large! Consider downsampling for faster plotting',
+              'Number of cells very large, consider downsampling for faster plotting',
               type='warning'
             )
           }
@@ -1022,8 +1016,8 @@ dimredServer <- function(id, obj,
             downsample_target <- round(nrow(plot_df)*input$downsample_target_prop)
             if(input$downsample == 'yes'){
               showNotification(
-                paste('Downsampling to',
-                downsample_target, 'cells'),
+                paste0('Downsampling by ', input$downsample_target_prop*100, '% to ',
+                downsample_target, ' cells'),
                 type='warning'
               )
 
