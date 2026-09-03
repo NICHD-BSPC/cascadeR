@@ -669,12 +669,16 @@ get_marker_plot_data <- function(g, app_object, filtered, args,
     # large datasets
     #
     # first we slice to get a 'view', then
-    # we access X
+    # we access X and glue together by column
     gidx <- which(rownames(app_object()$rds$var) %in% g)
-    tmp_obj <- app_object()$rds[which(idx), gidx]
 
-    gdat <- tmp_obj$X
-    gdat <- as.matrix(gdat)
+    # slice, then get X slot
+    X_list <- lapply(gidx, function(x)
+                      app_object()$rds[which(idx), x]$X
+                    )
+
+    # glue together and convert to matrix
+    gdat <- as.matrix(do.call('cbind', X_list))
 
     if(reduction){
       dimred <- app_object()$rds$obsm[[ args()$dimred ]][idx,]
