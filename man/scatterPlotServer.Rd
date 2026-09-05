@@ -46,6 +46,9 @@ scatterPlotServer(
 
 \item{config}{reactive list with config settings}
 }
+\value{
+reactive expression containing selected points from the scatter plot
+}
 \description{
 Gene-gene scatter plot module server
 }

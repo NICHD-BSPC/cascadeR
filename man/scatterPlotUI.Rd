@@ -11,6 +11,9 @@ scatterPlotUI(id, panel)
 
 \item{panel}{string, can be 'sidebar' or 'main'}
 }
+\value{
+Shiny UI elements for the scatter plot module
+}
 \description{
 Gene-gene scatter plot module ui
 }

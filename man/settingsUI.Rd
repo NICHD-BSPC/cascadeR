@@ -13,6 +13,9 @@ settingsUI(id, panel, username)
 
 \item{username}{user name}
 }
+\value{
+Shiny UI elements for the settings module
+}
 \description{
 This generates the settings tab that allows users to
 add data areas and app user/user groups.

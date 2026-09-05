@@ -19,6 +19,9 @@ metadata}
 
 \item{gene_choices}{reactive list with all genes present in object}
 }
+\value{
+reactive expression containing filtered cell barcodes
+}
 \description{
 Filter settings module server
 }

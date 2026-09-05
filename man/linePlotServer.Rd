@@ -37,6 +37,9 @@ linePlotServer(
 
 \item{config}{reactive list with config settings}
 }
+\value{
+Shiny module server return value; called for the side effect of rendering a line plot.
+}
 \description{
 Line plot module server
 }

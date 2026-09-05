@@ -11,6 +11,9 @@ dimredUI(id, panel)
 
 \item{panel}{string, can be 'sidebar' or 'main'}
 }
+\value{
+Shiny UI elements for the cell embeddings module
+}
 \description{
 Cell embeddings module ui
 }

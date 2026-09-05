@@ -11,6 +11,9 @@ featurePlotUI(id, panel)
 
 \item{panel}{string, can be 'sidebar' or 'main'}
 }
+\value{
+Shiny UI elements for the feature plot module
+}
 \description{
 Feature plot module ui
 }

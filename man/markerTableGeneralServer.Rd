@@ -35,6 +35,9 @@ markerTableGeneralServer(
 
 \item{config}{reactive list with config settings}
 }
+\value{
+reactive expression containing marker filters and selected genes
+}
 \description{
 Generalize marker table module server
 }

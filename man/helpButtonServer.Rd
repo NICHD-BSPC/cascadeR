@@ -11,6 +11,9 @@ helpButtonServer(id, ...)
 
 \item{...}{other params passed to helpModal()}
 }
+\value{
+Shiny module server return value; called for the side effect of showing a help modal.
+}
 \description{
 Server for help button module
 }

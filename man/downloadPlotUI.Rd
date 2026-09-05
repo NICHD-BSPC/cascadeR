@@ -9,6 +9,9 @@ downloadPlotUI(id)
 \arguments{
 \item{id}{Input id}
 }
+\value{
+Shiny UI element for the plot download button module
+}
 \description{
 UI for download button module
 }

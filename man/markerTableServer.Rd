@@ -19,6 +19,9 @@ markerTableServer(id, obj, genes_to_plot, reset_genes, reload_global, config)
 
 \item{config}{reactive list with config settings}
 }
+\value{
+reactive expression containing selected marker genes
+}
 \description{
 Marker table module server
 }

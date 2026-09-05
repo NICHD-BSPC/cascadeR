@@ -16,6 +16,9 @@ if credentials have sqlite backend.}
 
 \item{...}{parameters passed to shinyApp() call}
 }
+\value{
+Shiny app object
+}
 \description{
 Interactive shiny dashboard for exploring single-cell or spatial RNA-Seq data.
 }

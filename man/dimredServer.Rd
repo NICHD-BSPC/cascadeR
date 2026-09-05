@@ -36,6 +36,9 @@ and 'dimred' for which dimension reduction to use}
 
 \item{config}{reactive list with config settings}
 }
+\value{
+reactive expression containing selected points from embedding plots
+}
 \description{
 Cell embeddings module server
 }

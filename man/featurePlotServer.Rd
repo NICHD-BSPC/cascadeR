@@ -46,6 +46,9 @@ featurePlotServer(
 
 \item{config}{reactive list with config settings}
 }
+\value{
+reactive expression containing selected points from the feature plot
+}
 \description{
 Feature plot module server
 }
