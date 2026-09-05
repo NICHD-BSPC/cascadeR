@@ -1865,20 +1865,13 @@ add_cascade_analysis <- function(
   }
 
   # set up project using symlinks
-  #
-  # cd analysis_path
-  # ln -s obj_path .
   # ln -s cluster_markers allmarkers.tsv
   # ln -s de_markers demarkers.tsv
   # ln -s conserved_markers consmarkers.tsv
 
-  # save current directory
-  if(execute) cwd <- getwd()
-
   # build command
   cmd <- list(
-           c('cd', analysis_path),
-           c('ln', '-s', obj_path, '.')
+           c('ln', '-s', obj_path, file.path(analysis_path, obj_file))
          )
 
   if(!missing(cluster_markers)){
@@ -1887,7 +1880,8 @@ add_cascade_analysis <- function(
         'Cluster marker file: "', cluster_markers, '" does not exist!'
       )
     }
-    cmd <- c(cmd, list('ln', '-s', cluster_markers, 'allmarkers.tsv'))
+    cmd <- c(cmd, list(c('ln', '-s', cluster_markers,
+                         file.path(analysis_path, 'allmarkers.tsv'))))
   }
 
   if(!missing(de_markers)){
@@ -1896,7 +1890,8 @@ add_cascade_analysis <- function(
         'DE marker file: "', de_markers, '" does not exist!'
       )
     }
-    cmd <- c(cmd, list('ln', '-s', de_markers, 'demarkers.tsv'))
+    cmd <- c(cmd, list(c('ln', '-s', de_markers,
+                         file.path(analysis_path, 'demarkers.tsv'))))
   }
 
   if(!missing(conserved_markers)){
@@ -1905,7 +1900,8 @@ add_cascade_analysis <- function(
         'Conserved marker file: "', conserved_markers, '" does not exist!'
       )
     }
-    cmd <- c(cmd, list('ln', '-s', conserved_markers, 'consmarkers.tsv'))
+    cmd <- c(cmd, list(c('ln', '-s', conserved_markers,
+                         file.path(analysis_path, 'consmarkers.tsv'))))
   }
 
   # print command or execute
@@ -1915,7 +1911,6 @@ add_cascade_analysis <- function(
     message(tmp_msg)
     if(execute){
       system2(x[1], args=x[-1])
-      setwd(cwd)
     }
   })
 
