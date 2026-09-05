@@ -11,6 +11,9 @@ summaryUI(id, panel)
 
 \item{panel}{string, can be 'sidebar' or 'main'}
 }
+\value{
+Shiny UI elements for the summary module
+}
 \description{
 Summary tab module UI
 }

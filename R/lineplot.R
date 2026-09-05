@@ -3,6 +3,8 @@
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
 #'
+#' @return Shiny UI elements for the line plot module
+#'
 #' @export
 #'
 linePlotUI <- function(id, panel){
@@ -122,6 +124,8 @@ linePlotUI <- function(id, panel){
 #' @param refresh reactive to trigger plot refresh from sidebar button
 #' @param config reactive list with config settings
 #'
+#' @return Shiny module server return value; called for the side effect of rendering a line plot.
+#'
 #' @export
 #'
 linePlotServer <- function(id, app_object, filtered, genes_to_plot,
@@ -147,7 +151,7 @@ linePlotServer <- function(id, app_object, filtered, genes_to_plot,
         g <- genes_to_plot()
 
         if(any(g != '')){
-          choices <- c(g, setdiff(gene_choices(), g))
+          choices <- list(gene_scratchpad=g, other=setdiff(gene_choices(), g))
 
           ## NOTE: default returned value for selectizeInput with *multiple=TRUE*
           ##       is NULL, not ''

@@ -9,6 +9,9 @@ helpButtonUI(id)
 \arguments{
 \item{id}{Input id}
 }
+\value{
+Shiny UI element for the help button module
+}
 \description{
 UI for help button module
 }

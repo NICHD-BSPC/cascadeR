@@ -11,6 +11,9 @@ markerPlotUI(id, panel)
 
 \item{panel}{string, can be 'sidebar' or 'main'}
 }
+\value{
+Shiny UI elements for the marker plot module
+}
 \description{
 Marker plots module ui
 }

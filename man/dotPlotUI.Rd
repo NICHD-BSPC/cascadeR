@@ -11,6 +11,9 @@ dotPlotUI(id, panel)
 
 \item{panel}{string, can be 'sidebar' or 'main'}
 }
+\value{
+Shiny UI elements for the dotplot module
+}
 \description{
 Dotplot module ui
 }

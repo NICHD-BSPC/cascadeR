@@ -3,6 +3,8 @@
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
 #'
+#' @return Shiny UI elements for the spatial coexpression plot module
+#'
 #' @export
 #'
 spatialCoexpressionPlotUI <- function(id, panel){
@@ -207,6 +209,8 @@ spatialCoexpressionPlotUI <- function(id, panel){
 #' @param refresh reactive to trigger plot refresh from sidebar button
 #' @param config reactive list with config settings
 #'
+#' @return reactive expression containing selected points from the spatial coexpression plot
+#'
 #' @export
 #'
 spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
@@ -241,7 +245,7 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
         g <- genes_to_plot()
 
         if(any(g != '')){
-          choices <- c(g, setdiff(gene_choices(), g))
+          choices <- list(gene_scratchpad=g, other=setdiff(gene_choices(), g))
 
           ## NOTE: default returned value for selectizeInput with *multiple=TRUE*
           ##       is NULL, not ''
@@ -281,7 +285,7 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
           showNotification(
             'More that 2 genes selected, using first two ...'
           )
-          g <- g[1:2]
+          g <- g[seq_len(2)]
         }
 
         obj_type <- app_object()$obj_type
@@ -307,14 +311,18 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
         # downsample 0 expression rows
         if(length(g) > 1) zero_rows <- rowSums(gdat > crange[1]) == 0
         else zero_rows <- gdat == crange[1]
-        if(sum(zero_rows) > 50000){
+
+        # downsample to these many cells
+        downsample_target <- config()$server$downsample_target
+        if(sum(zero_rows) > downsample_target){
           if(input$downsample == 'yes'){
             showNotification(
-              'Number of empty cells very large! Downsampling to 50000',
+              paste('Number of empty cells very large! Downsampling to',
+              downsample_target),
               type='warning'
             )
             # find sample indices, then reorder to maintain original order
-            idx <- c(which(!zero_rows), sample(which(zero_rows), 50000))
+            idx <- c(which(!zero_rows), sample(which(zero_rows), downsample_target))
             idx <- idx[order(idx)]
             df <- data.table::as.data.table(df)
             df <- df[idx,]
@@ -399,8 +407,7 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
                             alpha=alpha,
                             source=source,
                             free_axes=free_axes,
-                            num_traces=num_traces,
-                            downsample=downsample)
+                            num_traces=num_traces)
         plot_labeled(FALSE)
 
         # save trace names for split-view restyle alignment
@@ -487,7 +494,7 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
         validate(
           need(length(g) >= 2, '')
         )
-        g <- g[1:2]
+        g <- g[seq_len(2)]
 
         p1 <- get_coexp_legend(colors[2:4],
                                dimnames=g,

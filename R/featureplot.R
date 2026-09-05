@@ -3,6 +3,8 @@
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
 #'
+#' @return Shiny UI elements for the feature plot module
+#'
 #' @export
 #'
 featurePlotUI <- function(id, panel){
@@ -75,6 +77,15 @@ featurePlotUI <- function(id, panel){
                       label=NULL,
                       value=1.0, step=0.1,
                       min=0.5, max=2, ticks=FALSE)
+        ) # column
+      ), # fluidRow
+
+      fluidRow(
+        column(col1, 'Aspect ratio'),
+        column(col2,
+          selectInput(ns('plot_aspect'),
+                      label=NULL,
+                      choices=c('narrow', 'wide'))
         ) # column
       ), # fluidRow
 
@@ -173,6 +184,8 @@ featurePlotUI <- function(id, panel){
 #' @param refresh reactive to trigger plot refresh from sidebar button
 #' @param config reactive list with config settings
 #'
+#' @return reactive expression containing selected points from the feature plot
+#'
 #' @export
 #'
 featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
@@ -205,7 +218,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
         g <- genes_to_plot()
 
         if(any(g != '')){
-          choices <- c(g, setdiff(gene_choices(), g))
+          choices <- list(gene_scratchpad=g, other=setdiff(gene_choices(), g))
 
           ## NOTE: default returned value for selectizeInput with *multiple=TRUE*
           ##       is NULL, not ''
@@ -269,7 +282,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
                    ' genes at a time. Using first ', max_genes),
             type='warning'
           )
-          g <- g[1:max_genes]
+          g <- g[seq_len(max_genes)]
         }
 
         # adjust plot height based on number of genes
@@ -330,13 +343,17 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
         # downsample 0 expression rows
         if(length(g) > 1) zero_rows <- rowSums(df[,g] > crange[1]) == 0
         else zero_rows <- df[,g] == crange[1]
-        if(sum(zero_rows) > 50000){
+
+        # downsample to these many cells
+        downsample_target <- config()$server$downsample_target
+        if(sum(zero_rows) > downsample_target){
           if(input$downsample == 'yes'){
             showNotification(
-              'Number of empty cells very large! Downsampling to 50000',
+              paste('Number of empty cells very large! Downsampling to',
+              downsample_target),
               type='warning'
             )
-            idx <- c(which(!zero_rows), sample(which(zero_rows), 50000))
+            idx <- c(which(!zero_rows), sample(which(zero_rows), downsample_target))
             idx <- idx[order(idx)]
             df <- data.table::as.data.table(df)
             df <- df[idx,]
@@ -350,6 +367,10 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
         }
 
         ht <- ht*input$scale
+
+        # change aspect ratio
+        if(input$plot_aspect == 'narrow') wd <- 1.15*ht
+        else wd <- NULL
 
         lvls <- plt_split_lvls()
 
@@ -388,7 +409,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
           }
 
           # get list of plotly handles
-          plist <- lapply(1:length(g), function(x){
+          plist <- lapply(seq_len(length(g)), function(x){
                      if(x == 1) showscale <- TRUE
                      else showscale <- FALSE
 
@@ -406,6 +427,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
                                      reorder=TRUE,
                                      split=split_var,
                                      free_axes=free_axes,
+                                     width=wd,
                                      height=0.75*ht*length(g),
                                      source=source)
                      p
@@ -431,6 +453,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
                           reorder=FALSE, # df already sorted by exp
                           split=split_var,
                           free_axes=free_axes,
+                          width=wd,
                           height=ht,
                           margin=0.05,
                           source=source)

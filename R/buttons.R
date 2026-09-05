@@ -4,6 +4,8 @@
 #'
 #' @param id Input id
 #'
+#' @return Shiny UI element for the help button module
+#'
 #' @export
 helpButtonUI <- function(id){
   ns <- NS(id)
@@ -20,6 +22,8 @@ helpButtonUI <- function(id){
 #'
 #' @param id Input id
 #' @param ... other params passed to helpModal()
+#'
+#' @return Shiny module server return value; called for the side effect of showing a help modal.
 #'
 #' @export
 helpButtonServer <- function(id, ...){
@@ -55,6 +59,8 @@ helpButtonServer <- function(id, ...){
 #' @param title Title of modal dialog
 #' @param ... other params passed to modalDialog()
 #'
+#' @return Shiny modal dialog
+#'
 #' @export
 helpModal <- function(mdfile, title=NULL, ...){
   modalDialog(
@@ -74,6 +80,8 @@ helpModal <- function(mdfile, title=NULL, ...){
 #'
 #' @param id Input id
 #'
+#' @return Shiny UI element for the plot download button module
+#'
 #' @export
 downloadPlotUI <- function(id){
   ns <- NS(id)
@@ -92,6 +100,8 @@ downloadPlotUI <- function(id){
 #' @param outplot reactive plot handle
 #' @param plot_type reactive/static value used for output filename
 #' @param direction direction of phylogenetic tree
+#'
+#' @return Shiny module server return value; called for the side effect of registering a plot download handler.
 #'
 #' @export
 downloadPlotServer <- function(id, outplot, plot_type, direction=NULL){
@@ -230,6 +240,8 @@ downloadPlotServer <- function(id, outplot, plot_type, direction=NULL){
 #'
 #' @param id Input id
 #'
+#' @return Shiny UI element for the file download button module
+#'
 #' @export
 downloadFileUI <- function(id){
   ns <- NS(id)
@@ -254,6 +266,8 @@ downloadFileUI <- function(id){
 #' @param id Input id
 #' @param data reactive w data frame
 #' @param file_type reactive/static value used for output filename
+#'
+#' @return Shiny module server return value; called for the side effect of registering a file download handler.
 #'
 #' @export
 downloadFileServer <- function(id, data, file_type){
@@ -300,4 +314,3 @@ downloadFileServer <- function(id, data, file_type){
     }   # function
   ) # moduleServer
 }
-

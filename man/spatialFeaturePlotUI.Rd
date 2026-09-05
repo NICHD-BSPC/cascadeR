@@ -11,6 +11,9 @@ spatialFeaturePlotUI(id, panel)
 
 \item{panel}{string, can be 'sidebar' or 'main'}
 }
+\value{
+Shiny UI elements for the spatial feature plot module
+}
 \description{
 Spatial feature plot module ui
 }

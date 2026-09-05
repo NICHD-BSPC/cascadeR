@@ -13,6 +13,9 @@ downloadFileServer(id, data, file_type)
 
 \item{file_type}{reactive/static value used for output filename}
 }
+\value{
+Shiny module server return value; called for the side effect of registering a file download handler.
+}
 \description{
 Server for download file module
 }

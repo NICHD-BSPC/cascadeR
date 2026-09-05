@@ -8,6 +8,8 @@
 #'        if credentials have sqlite backend.
 #' @param ... parameters passed to shinyApp() call
 #'
+#' @return Shiny app object
+#'
 #' @export
 run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ...){
 
@@ -23,14 +25,14 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     # check to see if shinymanager is available
     if(!requireNamespace('shinymanager', quietly=TRUE)){
       stop(
-        paste('Login functionality using SQL/sqlite credentials requires "shinymanager".',
-              'Please install using "install.packages(\'shinymanager\')"'),
+        'Login functionality using SQL/sqlite credentials requires "shinymanager".',
+        'Please install using "install.packages(\'shinymanager\')"',
         .call=FALSE
       )
     } else if(!file.exists(credentials)){
       stop(
-        paste0('Credentials specified, but file not found: "',
-               credentials, '"')
+        'Credentials specified, but file not found: "',
+        credentials, '"'
       )
     }
   }
@@ -311,7 +313,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
         tabPanel('Load data',
           fluidRow(
-            column(3,
+            column(2, style='margin-top: 20px',
               introBox(
                 selectizeInput('proj',
                                label=h5('Available projects'),
@@ -338,7 +340,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
               br(), br(),
               uiOutput('current_obj')
             ), # column
-            column(9, style='margin-top: 20px',
+            column(10, style='margin-top: 20px',
               fluidRow(
                 column(6,
                   tags$div(
@@ -965,7 +967,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                                         })
             coords_list <- lapply(names(obj@images), function(x){
                              coords <- obj@images[[ x ]]@coordinates
-                             tmp <- data.table::as.data.table(coords, keep.rownames=T)
+                             tmp <- data.table::as.data.table(coords, keep.rownames=TRUE)
                              tmp$slice <- x
                              tmp
                            })
@@ -990,7 +992,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
         }
 
       } else if(app_object$obj_type == 'anndata'){
-        obj <- read_h5ad(input$analysis)
+        obj <- read_h5ad(input$analysis, backed='r')
 
         if(!inherits(obj, 'AnnDataR6')){
           showModal(
@@ -1077,7 +1079,8 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
             lvls <- unique(tmp[!is.na(tmp)])
             lvls <- lvls[order(lvls)]
             if(any(is.na(tmp))){
-              lvls <- c(lvls, 'NA')
+              # add 'NA' level if not already present
+              if(!'NA' %in% lvls) lvls <- c(lvls, 'NA')
               na_idx <- is.na(tmp)
               tmp[na_idx] <- 'NA'
 
@@ -1258,9 +1261,9 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                                            tmp <- as.vector(col2rgb(x))
                                            rgb(tmp[1], tmp[2], tmp[3], maxColorValue=255)
                                          }))
-                              cols <- c(cols, grayhex[1:sum(idx)])
+                              cols <- c(cols, grayhex[seq_len(sum(idx))])
 
-                              if(sum(idx) > 1) names(cols) <- c(nona, paste0('NA', seq(1:sum(idx))))
+                              if(sum(idx) > 1) names(cols) <- c(nona, paste0('NA', seq_len(sum(idx))))
                               else names(cols) <- c(nona, 'NA')
                             } else {
                               cols <- scales::hue_pal()(length(lvls))
@@ -1375,7 +1378,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
       # subset metadata levels
       idx <- which(rownames(app_object$metadata) %in% bc)
-      mdata.dt <- data.table::as.data.table(app_object$metadata, keep.rownames=T)
+      mdata.dt <- data.table::as.data.table(app_object$metadata, keep.rownames=TRUE)
       mdata.dt <- mdata.dt[idx,]
       for(mc in names(app_object$metadata_levels$all)){
         lvls <- t(unique(mdata.dt[[ mc ]]))
@@ -1569,7 +1572,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
         bc <- unique(unlist(selected_points$bc))
 
         # only output unique barcodes
-        mdata <- data.table::as.data.table(app_object$metadata, keep.rownames=T)
+        mdata <- data.table::as.data.table(app_object$metadata, keep.rownames=TRUE)
         idx <- mdata$rn %in% bc
 
         mdata_sel <- as.data.frame(mdata[idx,])

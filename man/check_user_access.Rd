@@ -13,6 +13,9 @@ check_user_access(al, u, admin = "admin")
 
 \item{admin}{Admin user group}
 }
+\value{
+list with user_group and data_area entries, or NULL if no access is found
+}
 \description{
 This function takes a username and returns a
 list with two elements:

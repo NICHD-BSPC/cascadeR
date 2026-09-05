@@ -15,6 +15,9 @@ markerTableGeneralUI(id, panel, type, label = NULL)
 
 \item{label}{string, label for table}
 }
+\value{
+Shiny UI elements for a generalized marker table module
+}
 \description{
 Generalized marker tables module UI
 }

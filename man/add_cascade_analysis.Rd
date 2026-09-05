@@ -37,6 +37,9 @@ rank_genes_groups.}
 
 \item{execute}{boolean, set this to TRUE to actually run the commands (default=FALSE)}
 }
+\value{
+Invisibly returns NULL; called for the side effect of printing or executing setup commands.
+}
 \description{
 Add new cascade analysis
 }

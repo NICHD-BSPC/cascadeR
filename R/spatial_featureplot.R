@@ -3,6 +3,8 @@
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
 #'
+#' @return Shiny UI elements for the spatial feature plot module
+#'
 #' @export
 #'
 spatialFeaturePlotUI <- function(id, panel){
@@ -123,6 +125,8 @@ spatialFeaturePlotUI <- function(id, panel){
 #' @param refresh reactive to trigger plot refresh from sidebar button
 #' @param config reactive list with config settings
 #'
+#' @return reactive expression containing selected points from the spatial feature plot
+#'
 #' @export
 #'
 spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
@@ -155,7 +159,7 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
         g <- genes_to_plot()
 
         if(any(g != '')){
-          choices <- c(g, setdiff(gene_choices(), g))
+          choices <- list(gene_scratchpad=g, other=setdiff(gene_choices(), g))
 
           ## NOTE: default returned value for selectizeInput with *multiple=TRUE*
           ##       is NULL, not ''
@@ -200,7 +204,7 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
                    ' genes at a time. Using first ', max_genes),
             type='warning'
           )
-          g <- g[1:max_genes]
+          g <- g[seq_len(max_genes)]
         }
 
         obj_type <- app_object()$obj_type
@@ -229,13 +233,17 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
         # downsample 0 expression rows
         if(length(g) > 1) zero_rows <- rowSums(gdat > crange[1]) == 0
         else zero_rows <- gdat == crange[1]
-        if(sum(zero_rows) > 50000){
+
+        # downsample to these many cells
+        downsample_target <- config()$server$downsample_target
+        if(sum(zero_rows) > downsample_target){
           if(input$downsample == 'yes'){
             showNotification(
-              'Number of empty cells very large! Downsampling to 50000',
+              paste('Number of empty cells very large! Downsampling to',
+              downsample_target),
               type='warning'
             )
-            idx <- c(which(!zero_rows), sample(which(zero_rows), 50000))
+            idx <- c(which(!zero_rows), sample(which(zero_rows), downsample_target))
             idx <- idx[order(idx)]
             df <- data.table::as.data.table(df)
             df <- df[idx,]
@@ -325,7 +333,7 @@ spatialFeaturePlotServer <- function(id, app_object, filtered, genes_to_plot,
           }
 
           # get list of plotly handles
-          plist <- lapply(1:length(g), function(x){
+          plist <- lapply(seq_len(length(g)), function(x){
                      if(x == 1) showscale <- TRUE
                      else showscale <- FALSE
 

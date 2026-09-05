@@ -19,6 +19,9 @@ settingsServer(id, details, depth, end_offset, assay_fun, config)
 
 \item{config}{reactive list with config settings}
 }
+\value{
+reactive expression containing app settings and reload state
+}
 \description{
 Server code for settings module
 }

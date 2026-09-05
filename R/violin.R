@@ -3,6 +3,8 @@
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
 #'
+#' @return Shiny UI elements for the violin plot module
+#'
 #' @export
 #'
 violinUI <- function(id, panel){
@@ -112,6 +114,8 @@ violinUI <- function(id, panel){
 #' @param refresh reactive to trigger plot refresh from sidebar button
 #' @param config reactive list with config settings
 #'
+#' @return Shiny module server return value; called for the side effect of rendering a violin plot.
+#'
 #' @export
 #'
 violinServer <- function(id, app_object, filtered, genes_to_plot,
@@ -137,7 +141,7 @@ violinServer <- function(id, app_object, filtered, genes_to_plot,
         g <- genes_to_plot()
 
         if(any(g != '')){
-          choices <- c(g, setdiff(gene_choices(), g))
+          choices <- list(gene_scratchpad=g, other=setdiff(gene_choices(), g))
 
           ## NOTE: default returned value for selectizeInput with *multiple=TRUE*
           ##       is NULL, not ''
@@ -214,7 +218,7 @@ violinServer <- function(id, app_object, filtered, genes_to_plot,
                    'Plotting first ', max_vlnplt_genes),
             type='warning'
           )
-          g <- g[1:max_vlnplt_genes]
+          g <- g[seq_len(max_vlnplt_genes)]
         }
 
         if(input$split_by == 'none') split_var <- NULL

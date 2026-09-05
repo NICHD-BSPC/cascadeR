@@ -11,6 +11,9 @@ coexpressionPlotUI(id, panel)
 
 \item{panel}{string, can be 'sidebar' or 'main'}
 }
+\value{
+Shiny UI elements for the coexpression plot module
+}
 \description{
 Coexpression plot module ui
 }

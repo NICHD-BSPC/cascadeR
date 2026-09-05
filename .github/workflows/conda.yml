@@ -45,15 +45,6 @@ jobs:
           bash Miniforge3.sh -b -p "${HOME}/conda"
           echo "^Miniforge3\.sh$" >> .Rbuildignore
 
-      - name: conda env pinned
-        run: |
-          source "${HOME}/conda/etc/profile.d/conda.sh"
-          conda config --add channels conda-forge
-          conda config --set channel_priority strict
-
-          # make env one above WORKDIR
-          conda env create -p ../env --file requirements-pinned.yaml
-
       - name: conda env unpinned
         run: |
           source "${HOME}/conda/etc/profile.d/conda.sh"
@@ -76,7 +67,7 @@ jobs:
       - name: Check, install & load library
         run: |
           source "${HOME}/conda/etc/profile.d/conda.sh"
-          conda activate ../env
+          conda activate ../env-unpinned
 
           # create tmp dir for build and check
           cd .. && mkdir tmp && cd tmp
@@ -86,12 +77,29 @@ jobs:
           R CMD check --as-cran --no-manual --no-build-vignettes cascadeR_${VERSION}.tar.gz
 
           mv cascadeR_${VERSION}.tar.gz ${WORKDIR}/cascadeR.tar.gz
+          tar cvf rcmdcheck.tar.gz cascadeR.Rcheck
+          mv rcmdcheck.tar.gz ${WORKDIR}/rcmdcheck.tar.gz
 
       - name: env tarball
         uses: actions/upload-artifact@v4
         with:
           name: cascadeR-bundle
           path: cascadeR.tar.gz
+
+      - name: R CMD check log
+        uses: actions/upload-artifact@v4
+        with:
+          name: cascadeR-rcmdcheck
+          path: rcmdcheck.tar.gz
+
+      - name: conda env pinned
+        run: |
+          source "${HOME}/conda/etc/profile.d/conda.sh"
+          conda config --add channels conda-forge
+          conda config --set channel_priority strict
+
+          # make env one above WORKDIR
+          conda env create -p ../env --file requirements-pinned.yaml
 
       - name: remotes install
         run: |

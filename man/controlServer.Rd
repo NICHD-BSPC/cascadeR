@@ -19,6 +19,9 @@ used to generate controls}
 \item{default}{numeric vector or string, which elements to initialize with. If 'all' (default)
 all elements are selected, otherwise, can specify indices as numeric integer(s).}
 }
+\value{
+reactive expression containing the selected filter values
+}
 \description{
 Filter control module server
 }

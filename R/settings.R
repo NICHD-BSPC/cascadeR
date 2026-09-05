@@ -7,6 +7,8 @@
 #' @param panel context for generating ui elements ('sidebar' or 'main')
 #' @param username user name
 #'
+#' @return Shiny UI elements for the settings module
+#'
 #' @export
 settingsUI <- function(id, panel, username){
   ns <- NS(id)
@@ -134,6 +136,8 @@ settingsUI <- function(id, panel, username){
 #' @param end_offset project name end offset
 #' @param assay_fun function to parse assay names from file path
 #' @param config reactive list with config settings
+#'
+#' @return reactive expression containing app settings and reload state
 #'
 #' @export
 settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
@@ -1028,7 +1032,7 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
             # if not admin, filter out staged data
             if(!is_admin){
               idx <- grep(staging_dir(), names(tmp_desc))
-              tmp_desc <- tmp_desc[ -idx ]
+              if(length(idx) > 0) tmp_desc <- tmp_desc[ -idx ]
             }
 
             project_descriptions[[ name ]] <- tmp_desc
@@ -1052,4 +1056,3 @@ settingsServer <- function(id, details, depth, end_offset, assay_fun, config){
     }   # function
   ) # moduleServer
 }
-

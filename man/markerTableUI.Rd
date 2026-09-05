@@ -11,6 +11,9 @@ markerTableUI(id, panel)
 
 \item{panel}{string, can be 'sidebar' or 'main'}
 }
+\value{
+Shiny UI elements for the marker table module
+}
 \description{
 This is a master wrapper for generalized marker tables.
 }

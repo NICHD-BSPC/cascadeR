@@ -3,6 +3,8 @@
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
 #'
+#' @return Shiny UI elements for the marker plot module
+#'
 #' @export
 #'
 markerPlotUI <- function(id, panel){
@@ -207,6 +209,8 @@ markerPlotUI <- function(id, panel){
 #' @param reset_selection reactive to reset selection
 #' @param reload_global reactive to trigger reload
 #' @param config reactive list with config settings
+#'
+#' @return reactive expression containing selected points from marker plot modules
 #'
 #' @export
 #'
@@ -665,14 +669,26 @@ get_marker_plot_data <- function(g, app_object, filtered, args,
       dimred <- app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings[didx, ]
     }
   } else if(obj_type == 'anndata'){
-    gdat <- app_object()$rds$X[idx, g]
-    gdat <- as.matrix(gdat)
+    # here we use a 2-step slice approach to help handle
+    # large datasets
+    #
+    # first we slice to get a 'view', then
+    # we access X and glue together by column
+    gidx <- which(rownames(app_object()$rds$var) %in% g)
+
+    # slice, then get X slot
+    X_list <- lapply(gidx, function(x)
+                      app_object()$rds[which(idx), x]$X
+                    )
+
+    # glue together and convert to matrix
+    gdat <- as.matrix(do.call('cbind', X_list))
 
     if(reduction){
       dimred <- app_object()$rds$obsm[[ args()$dimred ]][idx,]
 
       label <- sub('X_', '', args()$dimred)
-      colnames(dimred) <- paste0(label, 1:2)
+      colnames(dimred) <- paste0(label, seq_len(2))
     }
   }
 
@@ -688,5 +704,4 @@ get_marker_plot_data <- function(g, app_object, filtered, args,
 
   df
 }
-
 

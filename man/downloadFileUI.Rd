@@ -9,6 +9,9 @@ downloadFileUI(id)
 \arguments{
 \item{id}{Input id}
 }
+\value{
+Shiny UI element for the file download button module
+}
 \description{
 UI for download file module
 }

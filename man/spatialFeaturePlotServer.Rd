@@ -49,6 +49,9 @@ spatialFeaturePlotServer(
 
 \item{config}{reactive list with config settings}
 }
+\value{
+reactive expression containing selected points from the spatial feature plot
+}
 \description{
 Spatial feature plot module server
 }

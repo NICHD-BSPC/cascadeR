@@ -13,6 +13,9 @@ summaryServer(id, obj, args)
 
 \item{args}{reactive with global arguments, 'project' & 'analysis'}
 }
+\value{
+Shiny module server return value; called for the side effect of rendering summary output.
+}
 \description{
 Summary tab module server
 }

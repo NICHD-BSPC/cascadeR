@@ -43,6 +43,9 @@ markerPlotServer(
 
 \item{config}{reactive list with config settings}
 }
+\value{
+reactive expression containing selected points from marker plot modules
+}
 \description{
 Marker plots module server
 }

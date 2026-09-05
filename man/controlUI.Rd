@@ -11,6 +11,9 @@ controlUI(id, label)
 
 \item{label}{string, heading for controls}
 }
+\value{
+Shiny UI elements for the filter control module
+}
 \description{
 Filter control module UI
 }

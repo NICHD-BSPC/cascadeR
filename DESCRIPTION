@@ -1,14 +1,18 @@
 Package: cascadeR
 Title: Shiny App to Explore Single-Cell Analysis
-Version: 1.1
+Version: 0.99.0
 Authors@R:
-    person("Apratim", "Mitra", , "apratim.mitra@nih.gov", role = c("aut", "cre"),
-           comment = c(ORCID = "0000-0003-3279-0054"))
+    c(
+        person("Apratim", "Mitra", , "apratim.mitra@gmail.com",
+               role = c("aut", "cre"), comment = c(ORCID = "0000-0003-3279-0054")),
+        person("Ryan", "Dale", , "ryan.dale@nih.gov",
+               role = c("fnd"), comment = c(ORCID = "0000-0003-2664-3744"))
+    )
 Description: Interactive dashboard for scRNA-Seq and spatial (Visium) data.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 Imports:
     anndata,
     ape,
@@ -48,4 +52,10 @@ Imports:
     viridis,
     yaml
 Suggests:
-    shinymanager
+    shinymanager,
+    testthat
+BugReports: https://github.com/NICHD-BSPC/cascadeR/issues
+biocViews:
+    Software, SingleCell, Spatial, Transcriptomics, GeneExpression,
+    Visualization, DifferentialExpression, ShinyApps, GUI
+URL: https://nichd-bspc.github.io/cascadeR/

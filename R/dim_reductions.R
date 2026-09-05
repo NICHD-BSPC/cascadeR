@@ -3,6 +3,8 @@
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
 #'
+#' @return Shiny UI elements for the cell embeddings module
+#'
 #' @export
 #'
 dimredUI <- function(id, panel){
@@ -74,7 +76,17 @@ dimredUI <- function(id, panel){
                         value=1.0, step=0.1,
                         min=0.5, max=2, ticks=FALSE)
           ) # column
+        ), # fluidRow
+
+        fluidRow(
+          column(col1, 'Aspect ratio'),
+          column(col2,
+            selectInput(ns('plot_aspect'),
+                        label=NULL,
+                        choices=c('narrow', 'wide'))
+          ) # column
         ) # fluidRow
+
       ), # conditionalPanel
 
       conditionalPanel(paste0('input["', ns('dimplt_type'), '"] == "Spatial Plot"'),
@@ -174,6 +186,40 @@ dimredUI <- function(id, panel){
         ) # conditionalPanel
       ), # conditionalPanel
 
+      fluidRow(
+        column(12, style='margin-bottom: 10px;',
+          strong('Downsampling settings')
+        )
+      ), # fluidRow
+
+      fluidRow(
+        column(col1, 'Downsample cells?'),
+        column(col2,
+          selectInput(ns('downsample'),
+                      label=NULL,
+                      choices=c('yes', 'no'))
+        ) # column
+      ), # fluidRow
+
+      fluidRow(
+        column(col1, 'Target cell proportion'),
+        column(col2,
+          sliderInput(ns('downsample_target_prop'),
+                      label=NULL,
+                      value=0.5, step=0.05,
+                      min=0, max=1, ticks=FALSE)
+        ) # column
+      ), # fluidRow
+
+      fluidRow(
+        column(col1, 'Set seed'),
+        column(col2,
+          numericInput(ns('seed'),
+                       label=NULL,
+                       value=1234)
+        ) # column
+      ), # fluidRow
+
       fluidRow(align='center',
         column(12,
           actionButton(ns('plt_do'), 'Refresh plot',
@@ -217,10 +263,12 @@ dimredUI <- function(id, panel){
           ), # conditionalPanel
 
           conditionalPanel(paste0('input["', ns('spatial_dimplt_switch'), '"] == "no"'),
-            withSpinner(
-              plotOutput(ns('spatial_dimplt1'),
-                         width='100%', height='700px')
-            ) # withSpinner
+            div(align='center',
+              withSpinner(
+                plotOutput(ns('spatial_dimplt1'),
+                           width='100%', height='700px')
+              ) # withSpinner
+            )
           ) # conditionalPanel
 
         ), # tabPanel
@@ -264,6 +312,8 @@ dimredUI <- function(id, panel){
 #' @param reset_selection reactive to reset selection
 #' @param reload_global reactive to trigger reload
 #' @param config reactive list with config settings
+#'
+#' @return reactive expression containing selected points from embedding plots
 #'
 #' @export
 #'
@@ -484,7 +534,7 @@ dimredServer <- function(id, obj,
         mdata <- app_object()$metadata
         idx <- which(rownames(mdata) %in% bc)
 
-        mdata <- data.table::as.data.table(mdata, keep.rownames=T)
+        mdata <- data.table::as.data.table(mdata, keep.rownames=TRUE)
         mdata <- mdata[idx,]
         mdata <- as.data.frame(mdata)
         rownames(mdata) <- mdata$rn
@@ -503,21 +553,15 @@ dimredServer <- function(id, obj,
           }
         } else if(obj_type == 'anndata'){
           df <- app_object()$rds$obsm[[ dimred ]]
-          df <- df[idx, 1:2]
+          df <- df[idx, seq_len(2)]
 
           label <- sub('X_', '', dimred)
-          colnames(df) <- paste0(label, 1:2)
+          colnames(df) <- paste0(label, seq_len(2))
 
         }
 
         df <- as.data.frame(df)
         rownames(df) <- rownames(mdata)
-        if(nrow(df) >= 100000){
-          showNotification(
-            'Plotting a large number of cells! This could take a while ...',
-            type='warning'
-          )
-        }
 
         xcol <- colnames(df)[1]
         ycol <- colnames(df)[2]
@@ -563,6 +607,64 @@ dimredServer <- function(id, obj,
           num_traces <- num_cols
         }
 
+        # downsample cells
+        min_downsample_target <- config()$server$downsample_target
+        if(nrow(df) > min_downsample_target){
+          if(input$downsample == 'yes'){
+
+            downsample_target <- round(nrow(df)*input$downsample_target_prop)
+            showNotification(
+              paste0('Downsampling by ', input$downsample_target_prop*100, '% to ',
+              downsample_target, ' cells'),
+              type='warning'
+            )
+
+            # downsample making sure all colors and splits are represented
+            if(is.null(split_var)){
+              # color groups
+              groups <- df[[ color_var ]]
+            } else {
+              # color x split groups
+              groups <- paste(df[[ color_var ]], df[[ split_var ]])
+            }
+
+            # size of groups
+            freq <- table(groups)
+
+            # group indices into a list
+            grp_idx <- split(seq_len(nrow(df)), f=groups)
+
+            # stratified sampling numbers
+            # - we multiply downsampling target by normalized grp size
+            # - then make sure we get at least 1 cell from each group
+            target_vec <- floor(downsample_target*(freq/sum(freq)))
+            target_vec[target_vec < 1] <- 1
+
+
+            # now sample from each group
+            if(is.na(input$seed)) set.seed(1234)
+            else set.seed(input$seed)
+            sampled_grp_idx <- lapply(names(grp_idx), function(x){
+                                 if(length(grp_idx[[x]]) == 0) return(NULL)
+                                 sample(grp_idx[[x]], size=target_vec[x],
+                                   replace=FALSE)
+                               })
+
+            # concatenate sampled cell indices
+            idx <- unique(unlist(sampled_grp_idx))
+            idx <- idx[order(idx)]
+            df <- data.table::as.data.table(df)
+            df <- df[idx,]
+            df <- as.data.frame(df)
+          } else {
+            showNotification(
+              'Number of cells very large, consider downsampling for faster plotting',
+              type='warning'
+            )
+          }
+        }
+
+
         # add check for empty marker size
         if(is.na(input$marker_size)) marker_size <- 2
         else marker_size <- input$marker_size
@@ -591,6 +693,9 @@ dimredServer <- function(id, obj,
           ht <- 0.6*ht
         }
 
+        if(input$plot_aspect == 'narrow') wd <- 1.5*ht
+        else wd <- NULL
+
         p <- umap_ly(df, xcol=xcol, ycol=ycol,
                      color=color_var,
                      colors=cols,
@@ -599,6 +704,7 @@ dimredServer <- function(id, obj,
                      alpha=alpha,
                      free_axes=free_axes,
                      type='scattergl',
+                     width=wd,
                      height=ht,
                      source=source)
 
@@ -809,7 +915,7 @@ dimredServer <- function(id, obj,
         # filter
         idx <- which(rownames(app_object()$metadata) %in% bc)
 
-        mdata <- data.table::as.data.table(app_object()$metadata, keep.rownames=T)
+        mdata <- data.table::as.data.table(app_object()$metadata, keep.rownames=TRUE)
         mdata <- mdata[idx,]
         mdata <- as.data.frame(mdata)
         rownames(mdata) <- mdata$rn
@@ -890,7 +996,7 @@ dimredServer <- function(id, obj,
           # get final set of columns to pass to umap_ly
           final_cols <- c(xcol, ycol, color, label_col)
 
-          ht <- config()$server$plots$dimplt$base_ht*input$plot_scale
+          ht <- config()$server$plots$dimplt$base_ht*input$spat_plot_scale
           wd <- 1.25*ht
           if(length(slice()) == 2){
             ht <- 0.75*ht
@@ -906,6 +1012,65 @@ dimredServer <- function(id, obj,
 
           final_cols <- unique(final_cols)
           plot_df <- coords[, final_cols, with=FALSE]
+
+          # downsample to these many cells
+          min_downsample_target <- config()$server$downsample_target
+          if(nrow(plot_df) > min_downsample_target){
+
+            downsample_target <- round(nrow(plot_df)*input$downsample_target_prop)
+            if(input$downsample == 'yes'){
+              showNotification(
+                paste0('Downsampling by ', input$downsample_target_prop*100, '% to ',
+                downsample_target, ' cells'),
+                type='warning'
+              )
+
+              # downsample making sure all colors and splits are represented
+
+              # determine groups based on color & split
+              if(is.null(split_var)){
+                # color groups
+                groups <- plot_df[[ color ]]
+              } else {
+                # color x split groups
+                groups <- paste(plot_df[[ color ]], plot_df[[ split_var ]])
+              }
+
+              # size of groups
+              freq <- table(groups)
+
+              # group indices into a list
+              grp_idx <- split(seq_len(nrow(plot_df)), f=groups)
+
+              # stratified sampling numbers
+              # - we multiply downsampling target by normalized grp size
+              # - then make sure we get at least 1 cell from each group
+              target_vec <- floor(downsample_target*(freq/sum(freq)))
+              target_vec[target_vec < 1] <- 1
+
+              # now sample from each group
+              if(is.na(input$seed)) set.seed(1234)
+              else set.seed(input$seed)
+              sampled_grp_idx <- lapply(names(grp_idx), function(x){
+                                   if(length(grp_idx[[x]]) == 0) return(NULL)
+                                   sample(grp_idx[[x]], size=target_vec[x],
+                                     replace=FALSE)
+                                 })
+
+              # concatenate sampled cell indices
+              idx <- unique(unlist(sampled_grp_idx))
+              idx <- idx[order(idx)]
+              plot_df <- data.table::as.data.table(plot_df)
+              plot_df <- plot_df[idx,]
+              plot_df <- as.data.frame(plot_df)
+            } else {
+              showNotification(
+                'Number of cells very large! Consider downsampling for faster plotting',
+                type='warning'
+              )
+            }
+          }
+
 
           # save spatial object
           spatial_obj$df <- list(data=plot_df,

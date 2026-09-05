@@ -15,6 +15,9 @@ downloadPlotServer(id, outplot, plot_type, direction = NULL)
 
 \item{direction}{direction of phylogenetic tree}
 }
+\value{
+Shiny module server return value; called for the side effect of registering a plot download handler.
+}
 \description{
 Server for download button module
 }

@@ -46,6 +46,9 @@ coexpressionPlotServer(
 
 \item{config}{reactive list with config settings}
 }
+\value{
+reactive expression containing selected points from the coexpression plot
+}
 \description{
 Coexpression plot module server
 }

@@ -13,6 +13,9 @@ create_access_yaml(user, user_group, data_area)
 
 \item{data_area}{Path to data area containing RDS files}
 }
+\value{
+Invisibly returns NULL; called for the side effect of writing the access yaml file.
+}
 \description{
 This function creates an access yaml file.
 This is primarily intended for the first run.

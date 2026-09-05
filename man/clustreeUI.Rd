@@ -11,6 +11,9 @@ clustreeUI(id, panel)
 
 \item{panel}{string, can be 'sidebar' or 'main'}
 }
+\value{
+Shiny UI elements for the cluster tree module
+}
 \description{
 Cluster tree module UI
 }

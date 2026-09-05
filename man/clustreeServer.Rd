@@ -20,6 +20,9 @@ and 'dimred' for which dimension reduction to use}
 
 \item{config}{reactive list with config settings}
 }
+\value{
+Shiny module server return value; called for the side effect of rendering cluster tree plots.
+}
 \description{
 Cluster tree module server
 }

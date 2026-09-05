@@ -11,15 +11,15 @@ get_access_path <- function(){
     path <- Sys.getenv('CASCADE_ACCESS_YAML')
     if(!dir.exists(path)){
       stop(
-        paste('Environment variable "CASCADE_ACCESS_YAML" exists',
-              'but specified location does not exist on disk:', path)
+        'Environment variable "CASCADE_ACCESS_YAML" exists',
+        'but specified location does not exist on disk:', path
       )
     }
   } else {
     path <- path.expand('~')
     message(
-      paste('Environment variable "CASCADE_ACCESS_YAML" not found.',
-            'Using default location for access yaml:', path)
+      'Environment variable "CASCADE_ACCESS_YAML" not found.',
+      'Using default location for access yaml:', path
     )
   }
   file.path(path, '.cascade-access.yaml')
@@ -36,6 +36,8 @@ get_access_path <- function(){
 #' @param al list with access settings; should have two elements - user_group & data_area
 #' @param u user name
 #' @param admin Admin user group
+#'
+#' @return list with user_group and data_area entries, or NULL if no access is found
 #'
 #' @export
 #'
@@ -75,5 +77,4 @@ get_config <- function(){
   cfg <- read_yaml(cfg_path)
   cfg
 }
-
 
