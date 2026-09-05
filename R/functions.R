@@ -7,6 +7,8 @@
 #' @param user_group User group
 #' @param data_area Path to data area containing RDS files
 #'
+#' @return Invisibly returns NULL; called for the side effect of writing the access yaml file.
+#'
 #' @export
 create_access_yaml <- function(user, user_group, data_area){
     ug <- setNames(as.list(user_group), user)
@@ -23,6 +25,8 @@ create_access_yaml <- function(user, user_group, data_area){
 #' This function reads the access yaml file and
 #' returns user groups and data areas
 #' as a list of data frames.
+#'
+#' @return list with user group and data area settings
 #'
 #' @export
 read_access_yaml <- function(){
@@ -46,6 +50,8 @@ read_access_yaml <- function(){
 #'
 #' @param lst list of data frames with user_groups and
 #'  data_areas
+#'
+#' @return Invisibly returns NULL; called for the side effect of writing the access yaml file.
 #'
 #' @export
 save_access_yaml <- function(lst){
@@ -1779,6 +1785,8 @@ PseudoBulkExpression2 <- function(
 #' @param conserved_markers (optional) path to tab-delimited file containing conserved markers from Seurat's FindConservedMarkers function.
 #' @param overwrite boolean, if TRUE, existing analysis folder will be overwritten (default=FALSE)
 #' @param execute boolean, set this to TRUE to actually run the commands (default=FALSE)
+#'
+#' @return Invisibly returns NULL; called for the side effect of printing or executing setup commands.
 #'
 #' @export
 #'
