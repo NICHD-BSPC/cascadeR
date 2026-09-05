@@ -6,6 +6,9 @@
 \usage{
 read_access_yaml()
 }
+\value{
+list with user group and data area settings
+}
 \description{
 This function reads the access yaml file and
 returns user groups and data areas

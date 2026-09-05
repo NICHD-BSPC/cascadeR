@@ -10,6 +10,9 @@ save_access_yaml(lst)
 \item{lst}{list of data frames with user_groups and
 data_areas}
 }
+\value{
+Invisibly returns NULL; called for the side effect of writing the access yaml file.
+}
 \description{
 This function saves access details (user groups
 and data areas) to the designated access yaml file.
