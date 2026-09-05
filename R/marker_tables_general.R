@@ -5,6 +5,8 @@
 #' @param type string, used to define type of table
 #' @param label string, label for table
 #'
+#' @return Shiny UI elements for a generalized marker table module
+#'
 #' @export
 #'
 markerTableGeneralUI <- function(id, panel, type, label=NULL){
@@ -195,6 +197,8 @@ markerTableGeneralUI <- function(id, panel, type, label=NULL){
 #' @param args reactive list with 'max_padj', 'max_lfc'
 #' @param reload_global reactive to trigger global args reload
 #' @param config reactive list with config settings
+#'
+#' @return reactive expression containing marker filters and selected genes
 #'
 #' @export
 #'

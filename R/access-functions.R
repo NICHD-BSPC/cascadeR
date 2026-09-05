@@ -37,6 +37,8 @@ get_access_path <- function(){
 #' @param u user name
 #' @param admin Admin user group
 #'
+#' @return list with user_group and data_area entries, or NULL if no access is found
+#'
 #' @export
 #'
 check_user_access <- function(al, u, admin='admin'){
@@ -75,5 +77,4 @@ get_config <- function(){
   cfg <- read_yaml(cfg_path)
   cfg
 }
-
 

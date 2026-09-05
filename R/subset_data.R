@@ -2,6 +2,8 @@
 #'
 #' @param id Input id
 #'
+#' @return Shiny UI elements for the filter settings module
+#'
 #' @export
 #'
 subsetUI <- function(id){
@@ -145,6 +147,8 @@ subsetUI <- function(id){
 #'        categorical metadata & 'numeric_dist' that has distributions of numeric
 #'        metadata
 #' @param gene_choices reactive list with all genes present in object
+#'
+#' @return reactive expression containing filtered cell barcodes
 #'
 #' @export
 #'

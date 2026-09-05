@@ -5,6 +5,8 @@
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
 #'
+#' @return Shiny UI elements for the marker table module
+#'
 #' @export
 #'
 markerTableUI <- function(id, panel){
@@ -142,6 +144,8 @@ markerTableUI <- function(id, panel){
 #' @param reset_genes reactive to trigger gene selection reset
 #' @param reload_global reactive to trigger reload
 #' @param config reactive list with config settings
+#'
+#' @return reactive expression containing selected marker genes
 #'
 #' @export
 #'

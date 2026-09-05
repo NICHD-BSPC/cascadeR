@@ -3,6 +3,8 @@
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
 #'
+#' @return Shiny UI elements for the marker plot module
+#'
 #' @export
 #'
 markerPlotUI <- function(id, panel){
@@ -207,6 +209,8 @@ markerPlotUI <- function(id, panel){
 #' @param reset_selection reactive to reset selection
 #' @param reload_global reactive to trigger reload
 #' @param config reactive list with config settings
+#'
+#' @return reactive expression containing selected points from marker plot modules
 #'
 #' @export
 #'
@@ -700,5 +704,4 @@ get_marker_plot_data <- function(g, app_object, filtered, args,
 
   df
 }
-
 

@@ -3,6 +3,8 @@
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
 #'
+#' @return Shiny UI elements for the coexpression plot module
+#'
 #' @export
 #'
 coexpressionPlotUI <- function(id, panel){
@@ -239,6 +241,8 @@ coexpressionPlotUI <- function(id, panel){
 #' @param reload_global reactive to trigger reload
 #' @param refresh reactive to trigger plot refresh from sidebar button
 #' @param config reactive list with config settings
+#'
+#' @return reactive expression containing selected points from the coexpression plot
 #'
 #' @export
 #'

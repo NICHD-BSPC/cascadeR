@@ -3,6 +3,8 @@
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
 #'
+#' @return Shiny UI elements for the summary module
+#'
 #' @export
 #'
 summaryUI <- function(id, panel){
@@ -32,6 +34,8 @@ summaryUI <- function(id, panel){
 #' @param id Input id
 #' @param obj Cascade app object
 #' @param args reactive with global arguments, 'project' & 'analysis'
+#'
+#' @return Shiny module server return value; called for the side effect of rendering summary output.
 #'
 #' @export
 #'

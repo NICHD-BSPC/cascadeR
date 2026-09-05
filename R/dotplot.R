@@ -3,6 +3,8 @@
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
 #'
+#' @return Shiny UI elements for the dotplot module
+#'
 #' @export
 #'
 dotPlotUI <- function(id, panel){
@@ -109,6 +111,8 @@ dotPlotUI <- function(id, panel){
 #' @param reload_global reactive to trigger reload
 #' @param refresh reactive to trigger plot refresh from sidebar button
 #' @param config reactive list with config settings
+#'
+#' @return Shiny module server return value; called for the side effect of rendering a dotplot.
 #'
 #' @export
 #'

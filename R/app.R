@@ -8,6 +8,8 @@
 #'        if credentials have sqlite backend.
 #' @param ... parameters passed to shinyApp() call
 #'
+#' @return Shiny app object
+#'
 #' @export
 run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ...){
 

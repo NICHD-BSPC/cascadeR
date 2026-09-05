@@ -3,6 +3,8 @@
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
 #'
+#' @return Shiny UI elements for the cluster tree module
+#'
 #' @export
 #'
 clustreeUI <- function(id, panel){
@@ -236,6 +238,8 @@ clustreeUI <- function(id, panel){
 #'        and 'dimred' for which dimension reduction to use
 #' @param reload_global reactive to reload module
 #' @param config reactive list with config settings
+#'
+#' @return Shiny module server return value; called for the side effect of rendering cluster tree plots.
 #'
 #' @export
 #'

@@ -3,6 +3,8 @@
 #' @param id string, input id
 #' @param label string, heading for controls
 #'
+#' @return Shiny UI elements for the filter control module
+#'
 #' @export
 #'
 controlUI <- function(id, label){
@@ -50,6 +52,8 @@ controlUI <- function(id, label){
 #' @param global reactive list used to set input externally
 #' @param default numeric vector or string, which elements to initialize with. If 'all' (default)
 #'        all elements are selected, otherwise, can specify indices as numeric integer(s).
+#'
+#' @return reactive expression containing the selected filter values
 #'
 #' @export
 #'
@@ -124,4 +128,3 @@ controlServer <- function(id, full_obj, column, global, default='all'){
     } # function
   ) # moduleServer
 } # server
-

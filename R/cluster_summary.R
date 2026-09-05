@@ -3,6 +3,8 @@
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
 #'
+#' @return Shiny UI elements for the metadata viewer module
+#'
 #' @export
 #'
 clustSummaryUI <- function(id, panel){
@@ -531,6 +533,8 @@ clustSummaryUI <- function(id, panel){
 #'        and 'dimred' for which dimension reduction to use
 #' @param reload_global reactive to trigger reload
 #' @param config reactive list with config settings
+#'
+#' @return Shiny module server return value; called for the side effect of rendering metadata summary outputs.
 #'
 #' @export
 #'
