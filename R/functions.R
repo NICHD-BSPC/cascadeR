@@ -9,6 +9,25 @@
 #'
 #' @return Invisibly returns NULL; called for the side effect of writing the access yaml file.
 #'
+#' @examplesIf interactive()
+#' local({
+#'   access_dir <- tempfile("cascade-access-")
+#'   dir.create(access_dir)
+#'
+#'   old <- Sys.getenv("CASCADE_ACCESS_YAML", unset = NA_character_)
+#'   Sys.setenv(CASCADE_ACCESS_YAML = access_dir)
+#'   on.exit({
+#'     if (is.na(old)) {
+#'       Sys.unsetenv("CASCADE_ACCESS_YAML")
+#'     } else {
+#'       Sys.setenv(CASCADE_ACCESS_YAML = old)
+#'     }
+#'     unlink(access_dir, recursive = TRUE)
+#'   })
+#'
+#'   create_access_yaml("user1", "lab1", "/data/lab1")
+#' })
+#'
 #' @export
 create_access_yaml <- function(user, user_group, data_area){
     ug <- setNames(as.list(user_group), user)
@@ -27,6 +46,26 @@ create_access_yaml <- function(user, user_group, data_area){
 #' as a list of data frames.
 #'
 #' @return list with user group and data area settings
+#'
+#' @examplesIf interactive()
+#' local({
+#'   access_dir <- tempfile("cascade-access-")
+#'   dir.create(access_dir)
+#'
+#'   old <- Sys.getenv("CASCADE_ACCESS_YAML", unset = NA_character_)
+#'   Sys.setenv(CASCADE_ACCESS_YAML = access_dir)
+#'   on.exit({
+#'     if (is.na(old)) {
+#'       Sys.unsetenv("CASCADE_ACCESS_YAML")
+#'     } else {
+#'       Sys.setenv(CASCADE_ACCESS_YAML = old)
+#'     }
+#'     unlink(access_dir, recursive = TRUE)
+#'   })
+#'
+#'   create_access_yaml("user1", "lab1", "/data/lab1")
+#'   read_access_yaml()
+#' })
 #'
 #' @export
 read_access_yaml <- function(){
@@ -53,6 +92,29 @@ read_access_yaml <- function(){
 #'
 #' @return Invisibly returns NULL; called for the side effect of writing the access yaml file.
 #'
+#' @examplesIf interactive()
+#' local({
+#'   access_dir <- tempfile("cascade-access-")
+#'   dir.create(access_dir)
+#'
+#'   old <- Sys.getenv("CASCADE_ACCESS_YAML", unset = NA_character_)
+#'   Sys.setenv(CASCADE_ACCESS_YAML = access_dir)
+#'   on.exit({
+#'     if (is.na(old)) {
+#'       Sys.unsetenv("CASCADE_ACCESS_YAML")
+#'     } else {
+#'       Sys.setenv(CASCADE_ACCESS_YAML = old)
+#'     }
+#'     unlink(access_dir, recursive = TRUE)
+#'   })
+#'
+#'   save_access_yaml(list(
+#'     user_group = list(user1 = "lab1", user2 = "lab2"),
+#'     data_area = list(lab1 = "/data/lab1", lab2 = "/data/lab2")
+#'   ))
+#'   read_access_yaml()
+#' })
+#'
 #' @export
 save_access_yaml <- function(lst){
     # get access file
@@ -78,6 +140,20 @@ save_access_yaml <- function(lst){
 #' @param fsep file separator to split path with
 #'
 #' @return project name
+#'
+#' @examples
+#' get_project_name_from_path(
+#'   "/path/to/project/test/clustered.Rds",
+#'   depth = 2,
+#'   fsep = "/"
+#' )
+#'
+#' get_project_name_from_path(
+#'   "/path/project/staged/test/clustered.Rds",
+#'   depth = 2,
+#'   staging_dir = "staged",
+#'   fsep = "/"
+#' )
 #'
 #' @export
 #'
@@ -172,6 +248,22 @@ sanitize_colnames <- function(cnames,
 #' @param source name of source to return data from
 #'
 #' @return plotly handle
+#'
+#' @examplesIf interactive()
+#' df <- data.frame(
+#'   UMAP_1 = c(-1, 0, 1, 2),
+#'   UMAP_2 = c(0, 1, 0, -1),
+#'   cluster = factor(c("A", "A", "B", "B"))
+#' )
+#' colors <- c(A = "#4477aa", B = "#cc6677")
+#'
+#' umap_ly(
+#'   df,
+#'   xcol = "UMAP_1",
+#'   ycol = "UMAP_2",
+#'   color = "cluster",
+#'   colors = colors
+#' )
 #'
 #' @export
 #'
@@ -495,6 +587,25 @@ umap_ly <- function(df, xcol, ycol,
 #'
 #' @return list with plot data and plotly handle
 #'
+#' @examplesIf interactive()
+#' df <- data.frame(
+#'   UMAP_1 = c(-1, 0, 1, 2),
+#'   UMAP_2 = c(0, 1, 0, -1),
+#'   GeneA = c(0, 5, 0, 10),
+#'   GeneB = c(0, 0, 8, 10)
+#' )
+#'
+#' blended <- feature_blend(
+#'   df,
+#'   xcol = "UMAP_1",
+#'   ycol = "UMAP_2",
+#'   blend_cols = c("GeneA", "GeneB"),
+#'   colors = c("#ff0000", "#0000ff", "#ff00ff"),
+#'   n = 10
+#' )
+#' names(blended)
+#' blended$data
+#'
 #' @export
 #'
 feature_blend <- function(df, xcol, ycol, blend_cols,
@@ -587,6 +698,14 @@ feature_blend <- function(df, xcol, ycol, blend_cols,
 #'        n bins) or 'quantile' (cells binned into n bins by expression quantiles)
 #'
 #' @return data.frame with co-expression counts
+#'
+#' @examples
+#' df <- data.frame(
+#'   GeneA = c(0, 10, 0, 10),
+#'   GeneB = c(0, 0, 10, 10)
+#' )
+#'
+#' get_coexp_tbl(df, genes = c("GeneA", "GeneB"), n = 10)
 #'
 #' @export
 #'
@@ -778,6 +897,16 @@ BlendExpression2 <- function (data, n=1){
 #'
 #' @return plotly handle
 #'
+#' @examplesIf interactive()
+#' get_coexp_legend(
+#'   colors = c("#ff0000", "#0000ff", "#ff00ff"),
+#'   dimnames = c("GeneA", "GeneB"),
+#'   xline = 0.25,
+#'   yline = 0.75,
+#'   n = 20,
+#'   neutral_color = "#eeeeee"
+#' )
+#'
 #' @export
 #'
 get_coexp_legend <- function(colors,
@@ -908,6 +1037,22 @@ get_coexp_legend <- function(colors,
 #' @param source name of source to return data from
 #'
 #' @return plotly handle
+#'
+#' @examplesIf interactive()
+#' df <- data.frame(
+#'   UMAP_1 = c(-1, 0, 1, 2),
+#'   UMAP_2 = c(0, 1, 0, -1),
+#'   GeneA = c(0, 2, 4, 8)
+#' )
+#'
+#' feature_ly(
+#'   df,
+#'   xcol = "UMAP_1",
+#'   ycol = "UMAP_2",
+#'   color = "GeneA",
+#'   colors = "Viridis",
+#'   crange = c(0, 8)
+#' )
 #'
 #' @export
 #'
@@ -1187,6 +1332,15 @@ feature_ly <- function(df, xcol, ycol,
 #'
 #' @return ggplot2 handle
 #'
+#' @examples
+#' df <- data.frame(
+#'   cluster = factor(rep(c("A", "B"), each = 4)),
+#'   variable = rep(c("GeneA", "GeneB"), times = 4),
+#'   value = c(0, 2, 4, 5, 1, 3, 6, 8)
+#' )
+#'
+#' violin2(df, xcol = "cluster", ycol = "value")
+#'
 #' @export
 #'
 violin2 <- function(df, xcol, ycol,
@@ -1327,6 +1481,17 @@ violin_ly <- function(df, xcol, ycol,
 #' @param col.max if data is scaled, this is the upper limit of values (default: 2.5)
 #'
 #' @return ggplot2 handle
+#'
+#' @examples
+#' df <- data.frame(
+#'   cluster = factor(rep(c("A", "B"), each = 4)),
+#'   condition = factor(rep(c("ctrl", "stim"), times = 4)),
+#'   GeneA = c(0, 2, 4, 5, 1, 3, 6, 8),
+#'   GeneB = c(1, 0, 3, 2, 5, 0, 7, 4)
+#' )
+#'
+#' dotplot(df, xcol = "cluster", ycol = c("GeneA", "GeneB"), scale = FALSE)
+#' dotplot(df, xcol = "cluster", ycol = "GeneA", split = "condition")
 #'
 #' @export
 #'
@@ -1787,6 +1952,25 @@ PseudoBulkExpression2 <- function(
 #' @param execute boolean, set this to TRUE to actually run the commands (default=FALSE)
 #'
 #' @return Invisibly returns NULL; called for the side effect of printing or executing setup commands.
+#'
+#' @examplesIf interactive()
+#' local({
+#'   data_dir <- tempfile("cascade-data-")
+#'   dir.create(data_dir)
+#'
+#'   obj_path <- tempfile("object-", fileext = ".rds")
+#'   file.create(obj_path)
+#'
+#'   on.exit(unlink(c(data_dir, obj_path), recursive = TRUE))
+#'
+#'   add_cascade_analysis(
+#'     obj_path = obj_path,
+#'     data_dir = data_dir,
+#'     project = "project1",
+#'     analysis = "analysis1",
+#'     execute = FALSE
+#'   )
+#' })
 #'
 #' @export
 #'
