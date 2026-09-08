@@ -1,12 +1,50 @@
-#' Filter control module UI
+#' Filter control module server
 #'
 #' @param id string, input id
 #' @param label string, heading for controls
+#' @param full_obj reactive, object used to generate controls. can be data frame or list
+#' @param column string or reactive list, name of column or list element present in full_obj
+#'        used to generate controls
+#' @param global reactive list used to set input externally
+#' @param default numeric vector or string, which elements to initialize with. If 'all' (default)
+#'        all elements are selected, otherwise, can specify indices as numeric integer(s).
 #'
-#' @return Shiny UI elements for the filter control module
+#' @return reactive expression containing the selected filter values
 #'
+#' @examplesIf interactive()
+#' metadata <- data.frame(
+#'   cluster = factor(rep(c("A", "B"), each = 4), levels = c("A", "B")),
+#'   condition = factor(rep(c("ctrl", "stim"), times = 4),
+#'                      levels = c("ctrl", "stim"))
+#' )
+#'
+#' ui <- shiny::fluidPage(
+#'   controlUI("cluster_filter", "Cluster"),
+#'   shiny::verbatimTextOutput("selected")
+#' )
+#'
+#' server <- function(input, output, session) {
+#'   selected <- controlServer(
+#'     "cluster_filter",
+#'     full_obj = shiny::reactive({ metadata }),
+#'     column = "cluster",
+#'     global = shiny::reactive({ NULL })
+#'   )
+#'
+#'   output$selected <- shiny::renderPrint({
+#'     selected()
+#'   })
+#' }
+#'
+#' shiny::shinyApp(ui, server)
+#'
+#' @name controlmod
+#' @rdname controlmod
+#'
+NULL
+
+#' @rdname controlmod
 #' @export
-#'
 controlUI <- function(id, label){
   ns <- NS(id)
 
@@ -43,20 +81,8 @@ controlUI <- function(id, label){
   ) # tagList
 }
 
-#' Filter control module server
-#'
-#' @param id string, input id
-#' @param full_obj reactive, object used to generate controls. can be data frame or list
-#' @param column string or reactive list, name of column or list element present in full_obj
-#'        used to generate controls
-#' @param global reactive list used to set input externally
-#' @param default numeric vector or string, which elements to initialize with. If 'all' (default)
-#'        all elements are selected, otherwise, can specify indices as numeric integer(s).
-#'
-#' @return reactive expression containing the selected filter values
-#'
+#' @rdname controlmod
 #' @export
-#'
 controlServer <- function(id, full_obj, column, global, default='all'){
   moduleServer(
     id,
