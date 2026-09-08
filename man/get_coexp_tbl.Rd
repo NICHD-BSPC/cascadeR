@@ -43,3 +43,12 @@ two genes
 \item gene A high, gene B high
 }
 }
+\examples{
+df <- data.frame(
+  GeneA = c(0, 10, 0, 10),
+  GeneB = c(0, 0, 10, 10)
+)
+
+get_coexp_tbl(df, genes = c("GeneA", "GeneB"), n = 10)
+
+}

@@ -13,3 +13,8 @@ list containing config items
 This function reads the config.yaml and
 returns the list
 }
+\examples{
+
+cfg <- get_config()
+
+}
