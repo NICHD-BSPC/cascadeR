@@ -1,12 +1,49 @@
-#' Summary tab module UI
+#' Summary tab module server
 #'
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
+#' @param obj Cascade app object
+#' @param args reactive with global arguments, 'project' & 'analysis'
 #'
-#' @return Shiny UI elements for the summary module
+#' @return Shiny module server return value; called for the side effect of rendering summary output.
 #'
+#' @examplesIf interactive()
+#' obj <- make_example_seurat_object()
+#'
+#' app_object <- list(
+#'   rds = obj,
+#'   obj_type = "seurat",
+#'   metadata = obj@meta.data,
+#'   qc = NULL
+#' )
+#'
+#' ui <- shiny::fluidPage(
+#'   shiny::sidebarPanel(summaryUI("summary", "sidebar")),
+#'   shiny::mainPanel(summaryUI("summary", "main"))
+#' )
+#'
+#' server <- function(input, output, session) {
+#'   summaryServer(
+#'     "summary",
+#'     obj = app_object,
+#'     args = shiny::reactive({
+#'       list(
+#'         project = file.path(tempdir(), "project1"),
+#'         analysis = file.path(tempdir(), "project1", "analysis1", "object.rds")
+#'       )
+#'     })
+#'   )
+#' }
+#'
+#' shiny::shinyApp(ui, server)
+#'
+#' @name summarymod
+#' @rdname summarymod
+#'
+NULL
+
+#' @rdname summarymod
 #' @export
-#'
 summaryUI <- function(id, panel){
   ns <- NS(id)
 
@@ -29,16 +66,8 @@ summaryUI <- function(id, panel){
 } # summaryUI
 
 
-#' Summary tab module server
-#'
-#' @param id Input id
-#' @param obj Cascade app object
-#' @param args reactive with global arguments, 'project' & 'analysis'
-#'
-#' @return Shiny module server return value; called for the side effect of rendering summary output.
-#'
+#' @rdname summarymod
 #' @export
-#'
 summaryServer <- function(id, obj, args){
   moduleServer(
     id,
