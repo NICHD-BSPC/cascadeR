@@ -48,10 +48,20 @@ make_test_metadata <- function(cells = paste0("cell", seq_len(8))) {
 }
 
 make_test_seurat <- function(
-  counts = make_test_counts(),
-  metadata = make_test_metadata(colnames(counts)),
+  counts,
+  metadata,
   assay = "RNA"
 ) {
+  if (missing(counts) && missing(metadata)) {
+    return(make_example_seurat_object(assay = assay))
+  }
+  if (missing(counts)) {
+    counts <- make_test_counts()
+  }
+  if (missing(metadata)) {
+    metadata <- make_test_metadata(colnames(counts))
+  }
+
   obj <- Seurat::CreateSeuratObject(
     counts = counts,
     assay = assay,

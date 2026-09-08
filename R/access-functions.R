@@ -71,6 +71,12 @@ check_user_access <- function(al, u, admin='admin'){
 #' returns the list
 #'
 #' @return list containing config items
+#'
+#' @examples
+#'
+#' cfg <- get_config()
+#'
+#' @export
 get_config <- function(){
   cfg_path <- system.file('extdata', 'config.yaml',
                           package=packageName())
