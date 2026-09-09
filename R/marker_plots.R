@@ -101,12 +101,6 @@ markerPlotUI <- function(id, panel){
 
       ), # conditionalPanel
 
-      conditionalPanel(paste0('input["', ns('markerplt_type'), '"] == "Line Plot"'),
-
-        linePlotUI(ns('lineplt'), panel='sidebar')
-
-      ), # conditionalPanel
-
       fluidRow(align='center',
         column(12,
           actionButton(ns('plt_do'), 'Refresh plot',
@@ -185,8 +179,6 @@ markerPlotUI <- function(id, panel){
         ), # tabPanel
 
         scatterPlotUI(ns('scatter'), panel='main'),
-
-        linePlotUI(ns('lineplt'), panel='main')
 
       ) # tabsetPanel
     ) # tagList
@@ -514,19 +506,6 @@ markerPlotServer <- function(id, obj, filtered, genes_to_plot,
                         reload_global,
                         reactive({ input$plt_do }),
                         config)
-
-      ##################### Line plot ########################
-
-      linePlotServer('lineplt',
-                     app_object,
-                     reactive({ obj_info$filtered }),
-                     genes_to_plot,
-                     reactive({ list(grp_by=args()$grp_by, assay=input$assay, slot=obj_info$slot) }),
-                     gene_choices,
-                     reload_global,
-                     reactive({ input$plt_do }),
-                     config)
-
 
       #################### Help buttons ####################
 
