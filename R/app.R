@@ -10,6 +10,11 @@
 #'
 #' @return Shiny app object
 #'
+#' @examplesIf interactive()
+#' shiny::runApp(
+#'   run_cascade()
+#' )
+#'
 #' @export
 run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ...){
 

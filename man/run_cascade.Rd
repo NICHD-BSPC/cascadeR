@@ -22,3 +22,10 @@ Shiny app object
 \description{
 Interactive shiny dashboard for exploring single-cell or spatial RNA-Seq data.
 }
+\examples{
+\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
+shiny::runApp(
+  run_cascade()
+)
+\dontshow{\}) # examplesIf}
+}

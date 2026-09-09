@@ -19,3 +19,9 @@ This function installs 'plotly' and 'kaleido' python packages
 in an environment to allow PDF downloads from plotly plots,
 and 'anndata' to allow h5ad files.
 }
+\examples{
+\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
+
+install_cascade()
+\dontshow{\}) # examplesIf}
+}

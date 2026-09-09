@@ -39,6 +39,23 @@ get_access_path <- function(){
 #'
 #' @return list with user_group and data_area entries, or NULL if no access is found
 #'
+#' @examples
+#' # save access details to file
+#' home <- Sys.getenv('HOME')
+#'
+#' # create carnation data area if it doesn't exist
+#' cascade_home <- file.path(home, 'cascade/data')
+#' if(!dir.exists(cascade_home)) dir.create(cascade_home)
+#'
+#' create_access_yaml(user = 'admin',
+#'                    user_group = 'admin',
+#'                    data_area = cascade_home)
+#'
+#' # get current user access details
+#' al <- read_access_yaml()
+#'
+#' lst <- check_user_access(al, u='admin')
+#'
 #' @export
 #'
 check_user_access <- function(al, u, admin='admin'){
