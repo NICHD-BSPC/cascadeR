@@ -64,7 +64,7 @@ Gene-gene scatter plot module
 obj <- make_example_seurat_object()
 
 # prep metadata
-metadata <- obj@meta.data
+metadata <- obj[[]]
 metadata_levels <- lapply(
   metadata[c("cluster", "condition", "orig.ident", "seurat_clusters")],
   levels

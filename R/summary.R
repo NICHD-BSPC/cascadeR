@@ -13,7 +13,7 @@
 #' app_object <- list(
 #'   rds = obj,
 #'   obj_type = "seurat",
-#'   metadata = obj@meta.data,
+#'   metadata = obj[[]],
 #'   qc = NULL
 #' )
 #'

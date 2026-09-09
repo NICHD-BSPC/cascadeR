@@ -32,7 +32,7 @@ obj <- make_example_seurat_object()
 app_object <- list(
   rds = obj,
   obj_type = "seurat",
-  metadata = obj@meta.data,
+  metadata = obj[[]],
   qc = NULL
 )
 
