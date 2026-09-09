@@ -77,7 +77,6 @@ helpButtonServer <- function(id, ...){
 #'
 #' @return Shiny modal dialog
 #'
-#' @export
 helpModal <- function(mdfile, title=NULL, ...){
   modalDialog(
       title=title,
