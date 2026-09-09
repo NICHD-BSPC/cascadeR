@@ -44,7 +44,8 @@ violinServer(
 \item{config}{reactive list with config settings}
 }
 \value{
-Shiny module server return value; called for the side effect of rendering a violin plot.
+UI returns sidebar/main panel UI elements for violin plot
+Server called for the side effect of rendering a violin plot.
 }
 \description{
 Violin plot module

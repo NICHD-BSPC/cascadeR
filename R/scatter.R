@@ -16,7 +16,9 @@
 #' @param refresh reactive to trigger plot refresh from sidebar button
 #' @param config reactive list with config settings
 #'
-#' @return reactive expression containing selected points from the scatter plot
+#' @returns
+#' UI returns sidebar/main panel UI elements for scatter plot
+#' Server returns reactive expression containing selected points from the scatter plot
 #'
 #' @examplesIf interactive()
 #' # example obj

@@ -4,7 +4,7 @@
 \alias{summarymod}
 \alias{summaryUI}
 \alias{summaryServer}
-\title{Summary tab module server}
+\title{Summary tab module}
 \usage{
 summaryUI(id, panel)
 
@@ -20,10 +20,11 @@ summaryServer(id, obj, args)
 \item{args}{reactive with global arguments, 'project' & 'analysis'}
 }
 \value{
-Shiny module server return value; called for the side effect of rendering summary output.
+UI returns sidebar and main panel UI elements for summary module
+Server called for the side effect of rendering summary output.
 }
 \description{
-Summary tab module server
+Summary tab module
 }
 \examples{
 \dontshow{if (interactive()) withAutoprint(\{ # examplesIf}

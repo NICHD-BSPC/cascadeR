@@ -4,7 +4,7 @@
 \alias{controlmod}
 \alias{controlUI}
 \alias{controlServer}
-\title{Filter control module server}
+\title{Filter control module}
 \usage{
 controlUI(id, label)
 
@@ -26,10 +26,11 @@ used to generate controls}
 all elements are selected, otherwise, can specify indices as numeric integer(s).}
 }
 \value{
-reactive expression containing the selected filter values
+UI returns filter controls UI
+Server returns reactive expression containing the selected filter values
 }
 \description{
-Filter control module server
+Filter control module
 }
 \examples{
 \dontshow{if (interactive()) withAutoprint(\{ # examplesIf}

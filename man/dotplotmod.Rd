@@ -44,7 +44,8 @@ dotPlotServer(
 \item{config}{reactive list with config settings}
 }
 \value{
-Shiny module server return value; called for the side effect of rendering a dotplot.
+UI returns sidebar/main panel UI elements for dotplot module
+Server called for the side effect of rendering a dotplot.
 }
 \description{
 Dotplot module

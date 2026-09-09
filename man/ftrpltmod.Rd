@@ -53,7 +53,8 @@ featurePlotServer(
 \item{config}{reactive list with config settings}
 }
 \value{
-reactive expression containing selected points from the feature plot
+UI returns sidebar/main panel UI elements for feature plot
+Server returns reactive expression containing selected points from the feature plot
 }
 \description{
 Feature plot module

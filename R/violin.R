@@ -13,7 +13,9 @@
 #' @param refresh reactive to trigger plot refresh from sidebar button
 #' @param config reactive list with config settings
 #'
-#' @return Shiny module server return value; called for the side effect of rendering a violin plot.
+#' @returns
+#' UI returns sidebar/main panel UI elements for violin plot
+#' Server called for the side effect of rendering a violin plot.
 #'
 #' @examplesIf interactive()
 #' # example obj

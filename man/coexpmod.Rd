@@ -53,7 +53,8 @@ coexpressionPlotServer(
 \item{config}{reactive list with config settings}
 }
 \value{
-reactive expression containing selected points from the coexpression plot
+UI returns sidebar/main panel UI elements for coexpression plot
+Server returns reactive expression containing selected points from the coexpression plot
 }
 \description{
 Coexpression plot module

@@ -1,11 +1,13 @@
-#' Summary tab module server
+#' Summary tab module
 #'
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
 #' @param obj Cascade app object
 #' @param args reactive with global arguments, 'project' & 'analysis'
 #'
-#' @return Shiny module server return value; called for the side effect of rendering summary output.
+#' @returns
+#' UI returns sidebar and main panel UI elements for summary module
+#' Server called for the side effect of rendering summary output.
 #'
 #' @examplesIf interactive()
 #' obj <- make_example_seurat_object()

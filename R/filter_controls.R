@@ -1,4 +1,4 @@
-#' Filter control module server
+#' Filter control module
 #'
 #' @param id string, input id
 #' @param label string, heading for controls
@@ -9,7 +9,9 @@
 #' @param default numeric vector or string, which elements to initialize with. If 'all' (default)
 #'        all elements are selected, otherwise, can specify indices as numeric integer(s).
 #'
-#' @return reactive expression containing the selected filter values
+#' @returns
+#' UI returns filter controls UI
+#' Server returns reactive expression containing the selected filter values
 #'
 #' @examplesIf interactive()
 #' metadata <- data.frame(
