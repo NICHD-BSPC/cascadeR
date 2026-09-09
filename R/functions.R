@@ -1605,8 +1605,6 @@ dotplot <- function(df,
 #'
 #' @return plotly handle
 #'
-#' @export
-#'
 get_label_trace <- function(plot_data, labeled_pts,
                             split=FALSE){
 
