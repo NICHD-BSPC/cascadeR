@@ -721,8 +721,8 @@ dimredServer <- function(id, obj,
 
 
             # now sample from each group
-            if(is.na(input$seed)) set.seed(1234)
-            else set.seed(input$seed)
+            if(is.na(input$seed)) do.call("set.seed", list(1234))
+            else do.call("set.seed", list(input$seed))
             sampled_grp_idx <- lapply(names(grp_idx), function(x){
                                  if(length(grp_idx[[x]]) == 0) return(NULL)
                                  sample(grp_idx[[x]], size=target_vec[x],
@@ -1128,8 +1128,8 @@ dimredServer <- function(id, obj,
               target_vec[target_vec < 1] <- 1
 
               # now sample from each group
-              if(is.na(input$seed)) set.seed(1234)
-              else set.seed(input$seed)
+              if(is.na(input$seed)) do.call("set.seed", list(1234))
+              else do.call("set.seed", list(input$seed))
               sampled_grp_idx <- lapply(names(grp_idx), function(x){
                                    if(length(grp_idx[[x]]) == 0) return(NULL)
                                    sample(grp_idx[[x]], size=target_vec[x],
