@@ -5,7 +5,7 @@
 \title{Create a tiny example Seurat object}
 \usage{
 make_example_seurat_object(
-  genes = paste0("Gene", LETTERS[1:4]),
+  genes = paste0("Gene", LETTERS[seq_len(4)]),
   cells = paste0("cell", seq_len(8)),
   assay = "RNA"
 )
