@@ -404,7 +404,7 @@ markerTableGeneralServer <- function(id, obj, type,
         )
 
         for(col in marker_info$filter_cols){
-          if(col %in% colnames(df)){
+          if(col %in% colnames(app_object()$markers)){
             validate(
               need(!is.null(filters[[ col ]]), '')
             )
