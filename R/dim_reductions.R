@@ -1,10 +1,103 @@
-#' Cell embeddings module ui
+#' Cell embeddings module
 #'
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
+#' @param obj Cascade app object
+#' @param filtered barcodes to filter object
+#' @param args reactive list with global args, 'grp_by' for grouping variable
+#'        and 'dimred' for which dimension reduction to use
+#' @param all_selected reactive containing list of selected points
+#' @param show_selection reactive to show selection
+#' @param reset_selection reactive to reset selection
+#' @param reload_global reactive to trigger reload
+#' @param config reactive list with config settings
 #'
-#' @return Shiny UI elements for the cell embeddings module
+#' @returns
+#' UI returns sidebar/main panel UI elements for cell embeddings
+#' Server returns reactive expression containing selected points from embedding plots
 #'
+#' @examplesIf interactive()
+#' # example obj
+#' obj <- make_example_seurat_object()
+#'
+#' # prep metadata
+#' metadata <- obj[[]]
+#' metadata_levels <- lapply(
+#'   metadata[c("cluster", "condition", "orig.ident", "seurat_clusters")],
+#'   levels
+#' )
+#'
+#' # get grouping vars and colors
+#' grouping_vars <- names(metadata_levels)
+#' names(grouping_vars) <- paste0(
+#'   grouping_vars,
+#'   " (n = ",
+#'   lengths(metadata_levels),
+#'   ")"
+#' )
+#' cluster_colors <- lapply(metadata_levels, function(lvls) {
+#'   stats::setNames(rep_len(c("#4477aa", "#cc6677"), length(lvls)), lvls)
+#' })
+#'
+#' app_object <- list(
+#'   rds = obj,
+#'   obj_type = "seurat",
+#'   metadata = metadata,
+#'   metadata_levels = list(
+#'     all = metadata_levels,
+#'     filtered = metadata_levels
+#'   ),
+#'   cluster_colors = cluster_colors,
+#'   grouping_vars = grouping_vars,
+#'   spatial_coords = NULL,
+#'   imagerow_max = NULL,
+#'   imagerow_min = NULL
+#' )
+#'
+#' global_args <- list(
+#'   grp_by = "cluster",
+#'   dimred = "umap"
+#' )
+#'
+#' config <- get_config()
+#'
+#' ui <- shiny::fluidPage(
+#'   shinyjs::useShinyjs(),
+#'   shiny::sidebarLayout(
+#'     shiny::sidebarPanel(dimredUI("dimred", "sidebar")),
+#'     shiny::mainPanel(
+#'       dimredUI("dimred", "main"),
+#'       shiny::verbatimTextOutput("selected")
+#'     )
+#'   )
+#' )
+#'
+#' server <- function(input, output, session) {
+#'   selected <- dimredServer(
+#'     "dimred",
+#'     obj = app_object,
+#'     filtered = shiny::reactive({ colnames(obj) }),
+#'     args = shiny::reactive({ global_args }),
+#'     all_selected = shiny::reactive({ list() }),
+#'     show_selection = shiny::reactive({ NULL }),
+#'     reset_selection = shiny::reactive({ NULL }),
+#'     reload_global = shiny::reactiveVal(0),
+#'     config = shiny::reactive({ config })
+#'   )
+#'
+#'   output$selected <- shiny::renderPrint({
+#'     selected()
+#'   })
+#' }
+#'
+#' shiny::shinyApp(ui, server)
+#'
+#' @name dimredmod
+#' @rdname dimredmod
+#'
+NULL
+
+#' @rdname dimredmod
 #' @export
 #'
 dimredUI <- function(id, panel){
@@ -300,21 +393,7 @@ dimredUI <- function(id, panel){
   }
 }
 
-#' Cell embeddings module server
-#'
-#' @param id Input id
-#' @param obj Cascade app object
-#' @param filtered barcodes to filter object
-#' @param args reactive list with global args, 'grp_by' for grouping variable
-#'        and 'dimred' for which dimension reduction to use
-#' @param all_selected reactive containing list of selected points
-#' @param show_selection reactive to show selection
-#' @param reset_selection reactive to reset selection
-#' @param reload_global reactive to trigger reload
-#' @param config reactive list with config settings
-#'
-#' @return reactive expression containing selected points from embedding plots
-#'
+#' @rdname dimredmod
 #' @export
 #'
 dimredServer <- function(id, obj,
