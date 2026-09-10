@@ -1,8 +1,101 @@
-#' Metadata viewer module UI
+#' Metadata viewer module
 #'
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
+#' @param obj Cascade app object
+#' @param filtered cell barcodes for filtering object
+#' @param args reactive list with elements, 'grp_by' for grouping variable
+#'        and 'dimred' for which dimension reduction to use
+#' @param reload_global reactive to trigger reload
+#' @param config reactive list with config settings
 #'
+#' @returns
+#' UI returns sidebar/main panel UI elements for the metadata viewer
+#' Server called for the side effect of rendering metadata summary outputs.
+#'
+#' @examplesIf interactive()
+#' # example obj
+#' obj <- make_example_seurat_object()
+#'
+#' # prep metadata
+#' metadata <- obj[[]]
+#' metadata_levels <- lapply(
+#'   metadata[c("cluster", "condition", "orig.ident", "seurat_clusters")],
+#'   levels
+#' )
+#'
+#' numeric_cols <- vapply(metadata, is.numeric, logical(1))
+#' metadata_numeric <- lapply(metadata[numeric_cols], function(x) {
+#'   x <- x[!is.na(x)]
+#'   hh <- graphics::hist(x, breaks = 20, plot = FALSE)
+#'   data.frame(mids = hh$mids, counts = hh$counts)
+#' })
+#'
+#' # get grouping vars and colors
+#' grouping_vars <- names(metadata_levels)
+#' names(grouping_vars) <- paste0(
+#'   grouping_vars,
+#'   " (n = ",
+#'   lengths(metadata_levels),
+#'   ")"
+#' )
+#' cluster_colors <- lapply(metadata_levels, function(lvls) {
+#'   stats::setNames(rep_len(c("#4477aa", "#cc6677"), length(lvls)), lvls)
+#' })
+#'
+#' app_object <- list(
+#'   rds = obj,
+#'   obj_type = "seurat",
+#'   metadata = metadata,
+#'   metadata_levels = list(
+#'     all = metadata_levels,
+#'     filtered = metadata_levels
+#'   ),
+#'   metadata_numeric = list(
+#'     all = metadata_numeric,
+#'     filtered = metadata_numeric
+#'   ),
+#'   cluster_colors = cluster_colors,
+#'   grouping_vars = grouping_vars,
+#'   spatial_coords = NULL,
+#'   imagerow_max = NULL,
+#'   imagerow_min = NULL
+#' )
+#'
+#' global_args <- list(
+#'   grp_by = "cluster",
+#'   dimred = "umap"
+#' )
+#'
+#' config <- get_config()
+#'
+#' ui <- shiny::fluidPage(
+#'   shinyjs::useShinyjs(),
+#'   shiny::sidebarLayout(
+#'     shiny::sidebarPanel(clustSummaryUI("metadata", "sidebar")),
+#'     shiny::mainPanel(clustSummaryUI("metadata", "main"))
+#'   )
+#' )
+#'
+#' server <- function(input, output, session) {
+#'   clustSummaryServer(
+#'     "metadata",
+#'     obj = app_object,
+#'     filtered = shiny::reactive({ colnames(obj) }),
+#'     args = shiny::reactive({ global_args }),
+#'     reload_global = shiny::reactiveVal(0),
+#'     config = shiny::reactive({ config })
+#'   )
+#' }
+#'
+#' shiny::shinyApp(ui, server)
+#'
+#' @name clustsummarymod
+#' @rdname clustsummarymod
+#'
+NULL
+
+#' @rdname clustsummarymod
 #' @export
 #'
 clustSummaryUI <- function(id, panel){
@@ -271,8 +364,16 @@ clustSummaryUI <- function(id, panel){
                         value=0.5, step=0.1,
                         min=0, max=1, ticks=FALSE)
           ) # column
-        ) # fluidRow
+        ), # fluidRow
 
+        fluidRow(
+          column(col1, 'Aspect ratio'),
+          column(col2,
+            selectInput(ns('plot_aspect'),
+                        label=NULL,
+                        choices=c('narrow', 'wide'))
+          ) # column
+        ) # fluidRow
       ), # conditionalPanel
 
       conditionalPanel(
@@ -514,16 +615,7 @@ clustSummaryUI <- function(id, panel){
   }
 }
 
-#' Metadata viewer module server
-#'
-#' @param id Input id
-#' @param obj Cascade app object
-#' @param filtered cell barcodes for filtering object
-#' @param args reactive list with elements, 'grp_by' for grouping variable
-#'        and 'dimred' for which dimension reduction to use
-#' @param reload_global reactive to trigger reload
-#' @param config reactive list with config settings
-#'
+#' @rdname clustsummarymod
 #' @export
 #'
 clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
@@ -651,7 +743,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
         # make sure splitting variables don't have too many levels
         max_split_levels <- config()$server$max_split_levels
         split_idx <- NULL
-        for(i in 1:length(grouping_vars)){
+        for(i in seq_len(length(grouping_vars))){
           gv <- grouping_vars[i]
           if(length(app_object()$metadata_levels[[ gv ]]) <= max_split_levels){
             split_idx <- c(split_idx, i)
@@ -1195,7 +1287,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
       #
       get_var_data <- function(var, reduction=FALSE){
         obj_type <- app_object()$obj_type
-        mdata <- data.table::as.data.table(app_object()$metadata, keep.rownames=T)
+        mdata <- data.table::as.data.table(app_object()$metadata, keep.rownames=TRUE)
         bc <- obj_info$filtered
 
         # get metadata
@@ -1217,7 +1309,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
             dimred <- app_object()$rds$obsm[[ args()$dimred ]][idx,]
 
             label <- sub('X_', '', args()$dimred)
-            colnames(dimred) <- paste0(label, 1:2)
+            colnames(dimred) <- paste0(label, seq_len(2))
           }
 
           # if using sketch reductions, the dimensions might not match
@@ -1273,7 +1365,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
                    ' variables at a time. Using first ', max_var),
             type='warning'
           )
-          var <- var[1:max_var]
+          var <- var[seq_len(max_var)]
         }
 
         # adjust plot height based on number of genes
@@ -1328,6 +1420,10 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
         crange <- c(min(df[, var], na.rm=TRUE), max(df[, var], na.rm=TRUE))
         if(crange[1] < 0) crange[1] <- 0
 
+        # change aspect ratio
+        if(input$plot_aspect == 'narrow') wd <- 1.15*ht
+        else wd <- NULL
+
         lvls <- ftrplt_split()
         # arrange multi-var view into rows
         if(length(var) > 1){
@@ -1342,7 +1438,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
           }
 
           # get list of plotly handles
-          plist <- lapply(1:length(var), function(x){
+          plist <- lapply(seq_len(length(var)), function(x){
                      if(x == 1) showscale <- TRUE
                      else showscale <- FALSE
 
@@ -1359,6 +1455,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
                                      alpha=alpha,
                                      split=split_var,
                                      free_axes=free_axes,
+                                     width=wd,
                                      height=0.5*ht*length(var))
                      p
                    })
@@ -1382,6 +1479,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
                           alpha=alpha,
                           split=split_var,
                           free_axes=free_axes,
+                          width=wd,
                           height=ht,
                           margin=0.05)
         }
@@ -1429,7 +1527,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
                    ' genes at a time. Using first ', max_var),
             type='warning'
           )
-          var <- var[1:max_var]
+          var <- var[seq_len(max_var)]
         }
 
         # adjust plot height based on number of variables
@@ -1439,7 +1537,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
         bc <- obj_info$filtered
 
         # get metadata & barcode indices
-        mdata <- data.table::as.data.table(app_object()$metadata, keep.rownames=T)
+        mdata <- data.table::as.data.table(app_object()$metadata, keep.rownames=TRUE)
         idx <- mdata$rn %in% bc
         mdata <- mdata[idx, ]
 
@@ -1540,7 +1638,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
           }
 
           # get list of plotly handles
-          plist <- lapply(1:length(var), function(x){
+          plist <- lapply(seq_len(length(var)), function(x){
                      if(x == 1) showscale <- TRUE
                      else showscale <- FALSE
 

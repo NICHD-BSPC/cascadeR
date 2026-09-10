@@ -1,10 +1,110 @@
-#' Feature plot module ui
+#' Feature plot module
 #'
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
+#' @param app_object Cascade app object
+#' @param filtered barcodes to filter object
+#' @param genes_to_plot reactive list with genes in scratchpad
+#' @param args reactive list with elements: 'assay' for selected assay,
+#'        'dimred' for which dimension reduction to use and
+#'        'grp_by' for grouping variable
+#' @param gene_choices reactive list with all genes present in object
+#' @param all_selected reactive containing list of selected points
+#' @param show_selection reactive to show selection
+#' @param reset_selection reactive to reset selection
+#' @param reload_global reactive to trigger reload
+#' @param refresh reactive to trigger plot refresh from sidebar button
+#' @param config reactive list with config settings
 #'
+#' @returns
+#' UI returns sidebar/main panel UI elements for feature plot
+#' Server returns reactive expression containing selected points from the feature plot
+#'
+#' @examplesIf interactive()
+#' # example obj
+#' obj <- make_example_seurat_object()
+#'
+#' # prep metadata
+#' metadata <- obj[[]]
+#' metadata_levels <- lapply(
+#'   metadata[c("cluster", "condition", "orig.ident", "seurat_clusters")],
+#'   levels
+#' )
+#'
+#' # get grouping vars and colors
+#' grouping_vars <- names(metadata_levels)
+#' names(grouping_vars) <- paste0(
+#'   grouping_vars,
+#'   " (n = ",
+#'   lengths(metadata_levels),
+#'   ")"
+#' )
+#' cluster_colors <- lapply(metadata_levels, function(lvls) {
+#'   stats::setNames(rep_len(c("#4477aa", "#cc6677"), length(lvls)), lvls)
+#' })
+#'
+#' app_object <- list(
+#'   rds = obj,
+#'   obj_type = "seurat",
+#'   metadata = metadata,
+#'   metadata_levels = metadata_levels,
+#'   cluster_colors = cluster_colors,
+#'   grouping_vars = grouping_vars,
+#'   spatial_coords = NULL,
+#'   imagerow_max = NULL,
+#'   imagerow_min = NULL
+#' )
+#'
+#' global_args <- list(
+#'   assay = "RNA",
+#'   slot = "data",
+#'   grp_by = "cluster",
+#'   dimred = "umap"
+#' )
+#'
+#' config <- get_config()
+#'
+#' ui <- shiny::fluidPage(
+#'   shinyjs::useShinyjs(),
+#'   shiny::sidebarLayout(
+#'     shiny::sidebarPanel(featurePlotUI("feature", "sidebar")),
+#'     shiny::mainPanel(
+#'       shiny::tabsetPanel(featurePlotUI("feature", "main")),
+#'       shiny::verbatimTextOutput("selected")
+#'     )
+#'   )
+#' )
+#'
+#' server <- function(input, output, session) {
+#'   selected <- featurePlotServer(
+#'     "feature",
+#'     app_object = shiny::reactive({ app_object }),
+#'     filtered = shiny::reactive({ colnames(obj) }),
+#'     genes_to_plot = shiny::reactive({ "GeneA" }),
+#'     args = shiny::reactive({ global_args }),
+#'     gene_choices = shiny::reactive({ rownames(obj) }),
+#'     all_selected = shiny::reactive({ list() }),
+#'     show_selection = shiny::reactive({ NULL }),
+#'     reset_selection = shiny::reactive({ NULL }),
+#'     reload_global = shiny::reactiveVal(0),
+#'     refresh = shiny::reactiveVal(0),
+#'     config = shiny::reactive({ config })
+#'   )
+#'
+#'   output$selected <- shiny::renderPrint({
+#'     selected()
+#'   })
+#' }
+#'
+#' shiny::shinyApp(ui, server)
+#'
+#' @name ftrpltmod
+#' @rdname ftrpltmod
+#'
+NULL
+
+#' @rdname ftrpltmod
 #' @export
-#'
 featurePlotUI <- function(id, panel){
   ns <- NS(id)
 
@@ -75,6 +175,15 @@ featurePlotUI <- function(id, panel){
                       label=NULL,
                       value=1.0, step=0.1,
                       min=0.5, max=2, ticks=FALSE)
+        ) # column
+      ), # fluidRow
+
+      fluidRow(
+        column(col1, 'Aspect ratio'),
+        column(col2,
+          selectInput(ns('plot_aspect'),
+                      label=NULL,
+                      choices=c('narrow', 'wide'))
         ) # column
       ), # fluidRow
 
@@ -156,25 +265,8 @@ featurePlotUI <- function(id, panel){
 } # featurePlotUI
 
 
-#' Feature plot module server
-#'
-#' @param id Input id
-#' @param app_object Cascade app object
-#' @param filtered barcodes to filter object
-#' @param genes_to_plot reactive list with genes in scratchpad
-#' @param args reactive list with elements: 'assay' for selected assay,
-#'        'dimred' for which dimension reduction to use and
-#'        'grp_by' for grouping variable
-#' @param gene_choices reactive list with all genes present in object
-#' @param all_selected reactive containing list of selected points
-#' @param show_selection reactive to show selection
-#' @param reset_selection reactive to reset selection
-#' @param reload_global reactive to trigger reload
-#' @param refresh reactive to trigger plot refresh from sidebar button
-#' @param config reactive list with config settings
-#'
+#' @rdname ftrpltmod
 #' @export
-#'
 featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
                               args, gene_choices,
                               all_selected, show_selection, reset_selection,
@@ -205,7 +297,9 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
         g <- genes_to_plot()
 
         if(any(g != '')){
-          choices <- c(g, setdiff(gene_choices(), g))
+          if(length(g) > 1)
+            choices <- list(gene_scratchpad=g, other=setdiff(gene_choices(), g))
+          else choices <- c(g, setdiff(gene_choices(), g))
 
           ## NOTE: default returned value for selectizeInput with *multiple=TRUE*
           ##       is NULL, not ''
@@ -269,7 +363,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
                    ' genes at a time. Using first ', max_genes),
             type='warning'
           )
-          g <- g[1:max_genes]
+          g <- g[seq_len(max_genes)]
         }
 
         # adjust plot height based on number of genes
@@ -330,13 +424,17 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
         # downsample 0 expression rows
         if(length(g) > 1) zero_rows <- rowSums(df[,g] > crange[1]) == 0
         else zero_rows <- df[,g] == crange[1]
-        if(sum(zero_rows) > 50000){
+
+        # downsample to these many cells
+        downsample_target <- config()$server$downsample_target
+        if(sum(zero_rows) > downsample_target){
           if(input$downsample == 'yes'){
             showNotification(
-              'Number of empty cells very large! Downsampling to 50000',
+              paste('Number of empty cells very large! Downsampling to',
+              downsample_target),
               type='warning'
             )
-            idx <- c(which(!zero_rows), sample(which(zero_rows), 50000))
+            idx <- c(which(!zero_rows), sample(which(zero_rows), downsample_target))
             idx <- idx[order(idx)]
             df <- data.table::as.data.table(df)
             df <- df[idx,]
@@ -350,6 +448,10 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
         }
 
         ht <- ht*input$scale
+
+        # change aspect ratio
+        if(input$plot_aspect == 'narrow') wd <- 1.15*ht
+        else wd <- NULL
 
         lvls <- plt_split_lvls()
 
@@ -388,7 +490,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
           }
 
           # get list of plotly handles
-          plist <- lapply(1:length(g), function(x){
+          plist <- lapply(seq_len(length(g)), function(x){
                      if(x == 1) showscale <- TRUE
                      else showscale <- FALSE
 
@@ -406,6 +508,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
                                      reorder=TRUE,
                                      split=split_var,
                                      free_axes=free_axes,
+                                     width=wd,
                                      height=0.75*ht*length(g),
                                      source=source)
                      p
@@ -431,6 +534,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
                           reorder=FALSE, # df already sorted by exp
                           split=split_var,
                           free_axes=free_axes,
+                          width=wd,
                           height=ht,
                           margin=0.05,
                           source=source)

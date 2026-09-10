@@ -39,3 +39,15 @@ ggplot2 handle
 Lightweight dotplot reimplementation to run only on data frame with
 gene expression and metadata.
 }
+\examples{
+df <- data.frame(
+  cluster = factor(rep(c("A", "B"), each = 4)),
+  condition = factor(rep(c("ctrl", "stim"), times = 4)),
+  GeneA = c(0, 2, 4, 5, 1, 3, 6, 8),
+  GeneB = c(1, 0, 3, 2, 5, 0, 7, 4)
+)
+
+dotplot(df, xcol = "cluster", ycol = c("GeneA", "GeneB"), scale = FALSE)
+dotplot(df, xcol = "cluster", ycol = "GeneA", split = "condition")
+
+}

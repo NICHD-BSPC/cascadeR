@@ -28,8 +28,12 @@ dependencies:
   - r-anndata
   - r-rintrojs
   - r-rsconnect
+  - r-testthat
   - r-dynamictreecut
   - anndata
   - plotly
   - python-kaleido
+
+  - bioconductor-biocstyle
+  - r-rmarkdown
 

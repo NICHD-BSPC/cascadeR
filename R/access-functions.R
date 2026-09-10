@@ -11,15 +11,15 @@ get_access_path <- function(){
     path <- Sys.getenv('CASCADE_ACCESS_YAML')
     if(!dir.exists(path)){
       stop(
-        paste('Environment variable "CASCADE_ACCESS_YAML" exists',
-              'but specified location does not exist on disk:', path)
+        'Environment variable "CASCADE_ACCESS_YAML" exists',
+        'but specified location does not exist on disk:', path
       )
     }
   } else {
     path <- path.expand('~')
     message(
-      paste('Environment variable "CASCADE_ACCESS_YAML" not found.',
-            'Using default location for access yaml:', path)
+      'Environment variable "CASCADE_ACCESS_YAML" not found.',
+      'Using default location for access yaml:', path
     )
   }
   file.path(path, '.cascade-access.yaml')
@@ -36,6 +36,25 @@ get_access_path <- function(){
 #' @param al list with access settings; should have two elements - user_group & data_area
 #' @param u user name
 #' @param admin Admin user group
+#'
+#' @return list with user_group and data_area entries, or NULL if no access is found
+#'
+#' @examples
+#' # save access details to file
+#' home <- Sys.getenv('HOME')
+#'
+#' # create carnation data area if it doesn't exist
+#' cascade_home <- file.path(home, 'cascade/data')
+#' if(!dir.exists(cascade_home)) dir.create(cascade_home)
+#'
+#' create_access_yaml(user = 'admin',
+#'                    user_group = 'admin',
+#'                    data_area = cascade_home)
+#'
+#' # get current user access details
+#' al <- read_access_yaml()
+#'
+#' lst <- check_user_access(al, u='admin')
 #'
 #' @export
 #'
@@ -69,11 +88,16 @@ check_user_access <- function(al, u, admin='admin'){
 #' returns the list
 #'
 #' @return list containing config items
+#'
+#' @examples
+#'
+#' cfg <- get_config()
+#'
+#' @export
 get_config <- function(){
   cfg_path <- system.file('extdata', 'config.yaml',
                           package=packageName())
   cfg <- read_yaml(cfg_path)
   cfg
 }
-
 

@@ -68,3 +68,21 @@ plotly handle
 \description{
 Interactive umap plot
 }
+\examples{
+\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
+df <- data.frame(
+  UMAP_1 = c(-1, 0, 1, 2),
+  UMAP_2 = c(0, 1, 0, -1),
+  cluster = factor(c("A", "A", "B", "B"))
+)
+colors <- c(A = "#4477aa", B = "#cc6677")
+
+umap_ly(
+  df,
+  xcol = "UMAP_1",
+  ycol = "UMAP_2",
+  color = "cluster",
+  colors = colors
+)
+\dontshow{\}) # examplesIf}
+}

@@ -1,10 +1,106 @@
-#' Coexpression plot module ui
+#' Coexpression plot module
 #'
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
+#' @param app_object Cascade app object
+#' @param filtered barcodes to filter object
+#' @param genes_to_plot reactive list with genes in scratchpad
+#' @param args reactive list with elements: 'assay' for selected assay,
+#'        'dimred' for which dimension reduction to use and
+#'        'grp_by' for grouping variable
+#' @param gene_choices reactive list with all genes present in object
+#' @param all_selected reactive containing list of selected points
+#' @param show_selection reactive to show selection
+#' @param reset_selection reactive to reset selection
+#' @param reload_global reactive to trigger reload
+#' @param refresh reactive to trigger plot refresh from sidebar button
+#' @param config reactive list with config settings
 #'
+#' @returns
+#' UI returns sidebar/main panel UI elements for coexpression plot
+#' Server returns reactive expression containing selected points from the coexpression plot
+#'
+#' @examplesIf interactive()
+#' # example obj
+#' obj <- make_example_seurat_object()
+#'
+#' # prep metadata
+#' metadata <- obj[[]]
+#' metadata_levels <- lapply(
+#'   metadata[c("cluster", "condition", "orig.ident", "seurat_clusters")],
+#'   levels
+#' )
+#'
+#' # get grouping vars and colors
+#' grouping_vars <- names(metadata_levels)
+#' names(grouping_vars) <- paste0(
+#'   grouping_vars,
+#'   " (n = ",
+#'   lengths(metadata_levels),
+#'   ")"
+#' )
+#' cluster_colors <- lapply(metadata_levels, function(lvls) {
+#'   stats::setNames(rep_len(c("#4477aa", "#cc6677"), length(lvls)), lvls)
+#' })
+#'
+#' app_object <- list(
+#'   rds = obj,
+#'   obj_type = "seurat",
+#'   metadata = metadata,
+#'   metadata_levels = metadata_levels,
+#'   cluster_colors = cluster_colors,
+#'   grouping_vars = grouping_vars,
+#'   spatial_coords = NULL,
+#'   imagerow_max = NULL,
+#'   imagerow_min = NULL
+#' )
+#'
+#' global_args <- list(
+#'   assay = "RNA",
+#'   slot = "data",
+#'   grp_by = "cluster",
+#'   dimred = "umap"
+#' )
+#'
+#' config <- get_config()
+#'
+#' ui <- shiny::fluidPage(
+#'   shiny::sidebarPanel(coexpressionPlotUI("coexpression", "sidebar")),
+#'   shiny::mainPanel(
+#'     shiny::tabsetPanel(coexpressionPlotUI("coexpression", "main")),
+#'     shiny::verbatimTextOutput("selected")
+#'   )
+#' )
+#'
+#' server <- function(input, output, session) {
+#'   selected <- coexpressionPlotServer(
+#'     "coexpression",
+#'     app_object = shiny::reactive({ app_object }),
+#'     filtered = shiny::reactive({ colnames(obj) }),
+#'     genes_to_plot = shiny::reactive({ c("GeneA", "GeneB") }),
+#'     args = shiny::reactive({ global_args }),
+#'     gene_choices = shiny::reactive({ rownames(obj) }),
+#'     all_selected = shiny::reactive({ list() }),
+#'     show_selection = shiny::reactive({ NULL }),
+#'     reset_selection = shiny::reactive({ NULL }),
+#'     reload_global = shiny::reactiveVal(0),
+#'     refresh = shiny::reactiveVal(0),
+#'     config = shiny::reactive({ config })
+#'   )
+#'
+#'   output$selected <- shiny::renderPrint({
+#'     selected()
+#'   })
+#' }
+#'
+#' shiny::shinyApp(ui, server)
+#'
+#' @name coexpmod
+#' @rdname coexpmod
+NULL
+
+#' @rdname coexpmod
 #' @export
-#'
 coexpressionPlotUI <- function(id, panel){
   ns <- NS(id)
 
@@ -121,6 +217,15 @@ coexpressionPlotUI <- function(id, panel){
       ), # fluidRow
 
       fluidRow(
+        column(col1, 'Aspect ratio'),
+        column(col2,
+          selectInput(ns('plot_aspect'),
+                      label=NULL,
+                      choices=c('narrow', 'wide'))
+        ) # column
+      ), # fluidRow
+
+      fluidRow(
         column(col1, 'Downsample empty cells'),
         column(col2,
           selectInput(ns('downsample'),
@@ -194,10 +299,12 @@ coexpressionPlotUI <- function(id, panel){
             ) # column
           ), # fluidRow
           fluidRow(
+            div(align='center',
             withSpinner(
               plotlyOutput(ns('coexplt'),
                            height='700px')
             ) # withSpinner
+            )
           )
         ),
         column(3, align='center',
@@ -212,25 +319,8 @@ coexpressionPlotUI <- function(id, panel){
 } # coexpressionPlotUI
 
 
-#' Coexpression plot module server
-#'
-#' @param id Input id
-#' @param app_object Cascade app object
-#' @param filtered barcodes to filter object
-#' @param genes_to_plot reactive list with genes in scratchpad
-#' @param args reactive list with elements: 'assay' for selected assay,
-#'        'dimred' for which dimension reduction to use and
-#'        'grp_by' for grouping variable
-#' @param gene_choices reactive list with all genes present in object
-#' @param all_selected reactive containing list of selected points
-#' @param show_selection reactive to show selection
-#' @param reset_selection reactive to reset selection
-#' @param reload_global reactive to trigger reload
-#' @param refresh reactive to trigger plot refresh from sidebar button
-#' @param config reactive list with config settings
-#'
+#' @rdname coexpmod
 #' @export
-#'
 coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
                                    args, gene_choices,
                                    all_selected, show_selection, reset_selection,
@@ -263,7 +353,9 @@ coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
         g <- genes_to_plot()
 
         if(any(g != '')){
-          choices <- c(g, setdiff(gene_choices(), g))
+          if(length(g) > 1)
+            choices <- list(gene_scratchpad=g, other=setdiff(gene_choices(), g))
+          else choices <- c(g, setdiff(gene_choices(), g))
 
           ## NOTE: default returned value for selectizeInput with *multiple=TRUE*
           ##       is NULL, not ''
@@ -320,7 +412,7 @@ coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
           showNotification(
             'More that 2 genes selected, using first two ...'
           )
-          g <- g[1:2]
+          g <- g[seq_len(2)]
         }
 
         df <- get_marker_plot_data(g, app_object, filtered(), args, reduction=TRUE)
@@ -361,13 +453,17 @@ coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
         # downsample 0 expression rows
         if(length(g) > 1) zero_rows <- rowSums(df[,g] > crange[1]) == 0
         else zero_rows <- df[,g] == crange[1]
-        if(sum(zero_rows) > 50000){
+
+        # downsample to these many cells
+        downsample_target <- config()$server$downsample_target
+        if(sum(zero_rows) > downsample_target){
           if(input$downsample == 'yes'){
             showNotification(
-              'Number of empty cells very large! Downsampling to 50000',
+              paste('Number of empty cells very large! Downsampling to',
+                    downsample_target),
               type='warning'
             )
-            idx <- c(which(!zero_rows), sample(which(zero_rows), 50000))
+            idx <- c(which(!zero_rows), sample(which(zero_rows), downsample_target))
             idx <- idx[order(idx)]
             df <- data.table::as.data.table(df)
             df <- df[idx,]
@@ -399,6 +495,10 @@ coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
             ht <- 0.75*ht
         }
 
+        # change aspect ratio
+        if(input$plot_aspect == 'narrow') wd <- 1.35*ht
+        else wd <- NULL
+
         source <- 'coexpression_plot'
 
         pp <- feature_blend(df,
@@ -416,6 +516,7 @@ coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
                             marker_size=marker_size,
                             alpha=alpha,
                             free_axes=free_axes,
+                            width=wd,
                             height=ht,
                             margin=0.05,
                             source=source)
@@ -528,7 +629,7 @@ coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
         validate(
           need(length(g) >= 2, '')
         )
-        g <- g[1:2]
+        g <- g[seq_len(2)]
 
         p1 <- get_coexp_legend(colors[2:4],
                                dimnames=g,

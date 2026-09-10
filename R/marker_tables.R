@@ -1,10 +1,79 @@
-#' Marker tables module UI
+#' Marker tables module
 #'
 #' This is a master wrapper for generalized marker tables.
 #'
 #' @param id Input id
-#' @param panel string, can be 'sidebar' or 'main'
+#' @param panel string, can be 'global', 'sidebar', 'selection' or 'main'
+#' @param obj Cascade app object
+#' @param genes_to_plot reactive with list of genes to be plotted/selected
+#' @param reset_genes reactive to trigger gene selection reset
+#' @param reload_global reactive to trigger reload
+#' @param config reactive list with config settings
 #'
+#' @returns
+#' UI returns global/sidebar/selection/main panel UI elements for marker tables
+#' Server returns reactive expression containing selected marker genes
+#'
+#' @examplesIf interactive()
+#' # example obj
+#' obj <- make_example_seurat_object()
+#'
+#' marker_tbl <- data.frame(
+#'   gene = c("GeneA", "GeneB", "GeneC", "GeneD"),
+#'   cluster = c("A", "A", "B", "B"),
+#'   avg_log2FC = c(1.2, 0.7, 1.1, 0.8),
+#'   pct.1 = c(0.9, 0.8, 0.85, 0.75),
+#'   pct.2 = c(0.2, 0.3, 0.25, 0.35),
+#'   p_val_adj = c(0.001, 0.02, 0.005, 0.03)
+#' )
+#'
+#' app_object <- list(
+#'   rds = obj,
+#'   allmarkers = marker_tbl,
+#'   consmarkers = NULL,
+#'   demarkers = NULL
+#' )
+#'
+#' config <- get_config()
+#'
+#' ui <- shiny::fluidPage(
+#'   shinyjs::useShinyjs(),
+#'   shiny::sidebarLayout(
+#'     shiny::sidebarPanel(
+#'       markerTableUI("markers", "global"),
+#'       markerTableUI("markers", "sidebar"),
+#'       markerTableUI("markers", "selection")
+#'     ),
+#'     shiny::mainPanel(
+#'       markerTableUI("markers", "main"),
+#'       shiny::verbatimTextOutput("selected")
+#'     )
+#'   )
+#' )
+#'
+#' server <- function(input, output, session) {
+#'   selected <- markerTableServer(
+#'     "markers",
+#'     obj = app_object,
+#'     genes_to_plot = shiny::reactive({ character() }),
+#'     reset_genes = shiny::reactive({ NULL }),
+#'     reload_global = shiny::reactiveVal(0),
+#'     config = shiny::reactive({ config })
+#'   )
+#'
+#'   output$selected <- shiny::renderPrint({
+#'     selected()
+#'   })
+#' }
+#'
+#' shiny::shinyApp(ui, server)
+#'
+#' @name markertablemod
+#' @rdname markertablemod
+#'
+NULL
+
+#' @rdname markertablemod
 #' @export
 #'
 markerTableUI <- function(id, panel){
@@ -134,15 +203,7 @@ markerTableUI <- function(id, panel){
   }
 } # markerTableUI
 
-#' Marker table module server
-#'
-#' @param id Input id
-#' @param obj Cascade app object
-#' @param genes_to_plot reactive with list of genes to be plotted/selected
-#' @param reset_genes reactive to trigger gene selection reset
-#' @param reload_global reactive to trigger reload
-#' @param config reactive list with config settings
-#'
+#' @rdname markertablemod
 #' @export
 #'
 markerTableServer <- function(id, obj,

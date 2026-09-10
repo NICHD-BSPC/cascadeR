@@ -40,3 +40,13 @@ Lightweight reimplementation of violin plot with additional splitting features.
 This works on just a data frame and does not need to be
 passed the entire object.
 }
+\examples{
+df <- data.frame(
+  cluster = factor(rep(c("A", "B"), each = 4)),
+  variable = rep(c("GeneA", "GeneB"), times = 4),
+  value = c(0, 2, 4, 5, 1, 3, 6, 8)
+)
+
+violin2(df, xcol = "cluster", ycol = "value")
+
+}

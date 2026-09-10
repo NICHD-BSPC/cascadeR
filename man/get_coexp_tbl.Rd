@@ -25,7 +25,7 @@ get_coexp_tbl(
 \item{threshold2}{percentile to define expression for gene 2}
 
 \item{bin_mode}{how to bin? can be 'range' (gene expression binned into
-n bins) or 'quantile' (cells binned into n bins by exp)}
+n bins) or 'quantile' (cells binned into n bins by expression quantiles)}
 }
 \value{
 data.frame with co-expression counts
@@ -42,4 +42,13 @@ two genes
 \item gene A high, gene B low
 \item gene A high, gene B high
 }
+}
+\examples{
+df <- data.frame(
+  GeneA = c(0, 10, 0, 10),
+  GeneB = c(0, 0, 10, 10)
+)
+
+get_coexp_tbl(df, genes = c("GeneA", "GeneB"), n = 10)
+
 }

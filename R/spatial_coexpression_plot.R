@@ -1,8 +1,125 @@
-#' Spatial coexpression plot module ui
+#' Spatial coexpression plot module
 #'
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
+#' @param app_object Cascade app object
+#' @param filtered barcodes to filter object
+#' @param genes_to_plot reactive list with genes in scratchpad
+#' @param args reactive list with elements: 'assay' for selected assay,
+#'        'dimred' for which dimension reduction to use and
+#'        'grp_by' for grouping variable
+#' @param gene_choices reactive list with all genes present in object
+#' @param slice reactive with slices to be used for plotting
+#' @param all_selected reactive containing list of selected points
+#' @param show_selection reactive to show selection
+#' @param reset_selection reactive to reset selection
+#' @param reload_global reactive to trigger reload
+#' @param refresh reactive to trigger plot refresh from sidebar button
+#' @param config reactive list with config settings
 #'
+#' @returns
+#' UI returns sidebar/main panel UI elements for spatial coexpression plot
+#' Server returns reactive expression containing selected points from the spatial coexpression plot
+#'
+#' @examplesIf interactive()
+#' # example obj
+#' obj <- make_example_seurat_object()
+#'
+#' # prep metadata
+#' metadata <- obj[[]]
+#' metadata_levels <- lapply(
+#'   metadata[c("cluster", "condition", "orig.ident", "seurat_clusters")],
+#'   levels
+#' )
+#'
+#' spatial_coords <- data.frame(
+#'   rn = colnames(obj),
+#'   slice = as.character(metadata$orig.ident),
+#'   imagecol = rep(c(1, 2, 1, 2), length.out = ncol(obj)),
+#'   imagerow = rep(c(1, 1, 2, 2), length.out = ncol(obj)),
+#'   stringsAsFactors = FALSE
+#' )
+#' imagerow_max <- as.list(
+#'   tapply(spatial_coords$imagerow, spatial_coords$slice, max)
+#' )
+#' imagerow_min <- as.list(
+#'   tapply(spatial_coords$imagerow, spatial_coords$slice, min)
+#' )
+#'
+#' # get grouping vars and colors
+#' grouping_vars <- names(metadata_levels)
+#' names(grouping_vars) <- paste0(
+#'   grouping_vars,
+#'   " (n = ",
+#'   lengths(metadata_levels),
+#'   ")"
+#' )
+#' cluster_colors <- lapply(metadata_levels, function(lvls) {
+#'   stats::setNames(rep_len(c("#4477aa", "#cc6677"), length(lvls)), lvls)
+#' })
+#'
+#' app_object <- list(
+#'   rds = obj,
+#'   obj_type = "seurat",
+#'   metadata = metadata,
+#'   metadata_levels = metadata_levels,
+#'   cluster_colors = cluster_colors,
+#'   grouping_vars = grouping_vars,
+#'   spatial_coords = spatial_coords,
+#'   imagerow_max = imagerow_max,
+#'   imagerow_min = imagerow_min
+#' )
+#'
+#' global_args <- list(
+#'   assay = "RNA",
+#'   slot = "data",
+#'   grp_by = "cluster",
+#'   dimred = "umap"
+#' )
+#'
+#' config <- get_config()
+#'
+#' ui <- shiny::fluidPage(
+#'   shinyjs::useShinyjs(),
+#'   shiny::sidebarLayout(
+#'     shiny::sidebarPanel(spatialCoexpressionPlotUI("spatial_coexp", "sidebar")),
+#'     shiny::mainPanel(
+#'       shiny::tabsetPanel(spatialCoexpressionPlotUI("spatial_coexp", "main")),
+#'       shiny::verbatimTextOutput("selected")
+#'     )
+#'   )
+#' )
+#'
+#' server <- function(input, output, session) {
+#'   selected <- spatialCoexpressionPlotServer(
+#'     "spatial_coexp",
+#'     app_object = shiny::reactive({ app_object }),
+#'     filtered = shiny::reactive({ colnames(obj) }),
+#'     genes_to_plot = shiny::reactive({ c("GeneA", "GeneB") }),
+#'     args = shiny::reactive({ global_args }),
+#'     gene_choices = shiny::reactive({ rownames(obj) }),
+#'     slice = shiny::reactive({ unique(spatial_coords$slice)[1] }),
+#'     all_selected = shiny::reactive({ list() }),
+#'     show_selection = shiny::reactive({ NULL }),
+#'     reset_selection = shiny::reactive({ NULL }),
+#'     reload_global = shiny::reactiveVal(0),
+#'     refresh = shiny::reactiveVal(0),
+#'     config = shiny::reactive({ config })
+#'   )
+#'
+#'   output$selected <- shiny::renderPrint({
+#'     selected()
+#'   })
+#' }
+#'
+#' shiny::shinyApp(ui, server)
+#'
+#' @name spatialcoexpmod
+#' @rdname spatialcoexpmod
+#'
+NULL
+
+#' @rdname spatialcoexpmod
 #' @export
 #'
 spatialCoexpressionPlotUI <- function(id, panel){
@@ -189,24 +306,7 @@ spatialCoexpressionPlotUI <- function(id, panel){
 } # spatialCoexpressionPlotUI
 
 
-#' Spatial coexpression plot module server
-#'
-#' @param id Input id
-#' @param app_object Cascade app object
-#' @param filtered barcodes to filter object
-#' @param genes_to_plot reactive list with genes in scratchpad
-#' @param args reactive list with elements: 'assay' for selected assay,
-#'        'dimred' for which dimension reduction to use and
-#'        'grp_by' for grouping variable
-#' @param gene_choices reactive list with all genes present in object
-#' @param slice reactive with slices to be used for plotting
-#' @param all_selected reactive containing list of selected points
-#' @param show_selection reactive to show selection
-#' @param reset_selection reactive to reset selection
-#' @param reload_global reactive to trigger reload
-#' @param refresh reactive to trigger plot refresh from sidebar button
-#' @param config reactive list with config settings
-#'
+#' @rdname spatialcoexpmod
 #' @export
 #'
 spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
@@ -241,7 +341,9 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
         g <- genes_to_plot()
 
         if(any(g != '')){
-          choices <- c(g, setdiff(gene_choices(), g))
+          if(length(g) > 1)
+            choices <- list(gene_scratchpad=g, other=setdiff(gene_choices(), g))
+          else choices <- c(g, setdiff(gene_choices(), g))
 
           ## NOTE: default returned value for selectizeInput with *multiple=TRUE*
           ##       is NULL, not ''
@@ -281,7 +383,7 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
           showNotification(
             'More that 2 genes selected, using first two ...'
           )
-          g <- g[1:2]
+          g <- g[seq_len(2)]
         }
 
         obj_type <- app_object()$obj_type
@@ -307,14 +409,18 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
         # downsample 0 expression rows
         if(length(g) > 1) zero_rows <- rowSums(gdat > crange[1]) == 0
         else zero_rows <- gdat == crange[1]
-        if(sum(zero_rows) > 50000){
+
+        # downsample to these many cells
+        downsample_target <- config()$server$downsample_target
+        if(sum(zero_rows) > downsample_target){
           if(input$downsample == 'yes'){
             showNotification(
-              'Number of empty cells very large! Downsampling to 50000',
+              paste('Number of empty cells very large! Downsampling to',
+              downsample_target),
               type='warning'
             )
             # find sample indices, then reorder to maintain original order
-            idx <- c(which(!zero_rows), sample(which(zero_rows), 50000))
+            idx <- c(which(!zero_rows), sample(which(zero_rows), downsample_target))
             idx <- idx[order(idx)]
             df <- data.table::as.data.table(df)
             df <- df[idx,]
@@ -399,8 +505,7 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
                             alpha=alpha,
                             source=source,
                             free_axes=free_axes,
-                            num_traces=num_traces,
-                            downsample=downsample)
+                            num_traces=num_traces)
         plot_labeled(FALSE)
 
         # save trace names for split-view restyle alignment
@@ -487,7 +592,7 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
         validate(
           need(length(g) >= 2, '')
         )
-        g <- g[1:2]
+        g <- g[seq_len(2)]
 
         p1 <- get_coexp_legend(colors[2:4],
                                dimnames=g,

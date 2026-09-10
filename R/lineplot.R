@@ -1,10 +1,25 @@
-#' Line plot module ui
+#' Line plot module
 #'
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
+#' @param app_object Cascade app object
+#' @param filtered barcodes to filter object
+#' @param genes_to_plot reactive list with genes in scratchpad
+#' @param args reactive list with elements: 'assay' for selected assay,
+#'        'dimred' for which dimension reduction to use and
+#'        'grp_by' for grouping variable
+#' @param gene_choices reactive list with all genes present in object
+#' @param reload_global reactive to trigger reload
+#' @param refresh reactive to trigger plot refresh from sidebar button
+#' @param config reactive list with config settings
 #'
-#' @export
+#' @return Shiny UI & server elements for the line plot module
 #'
+#' @rdname linemod
+#' @name linemod
+NULL
+
+#' @rdname linemod
 linePlotUI <- function(id, panel){
   ns <- NS(id)
 
@@ -108,21 +123,8 @@ linePlotUI <- function(id, panel){
 } # linePlotUI
 
 
-#' Line plot module server
-#'
-#' @param id Input id
-#' @param app_object Cascade app object
-#' @param filtered barcodes to filter object
-#' @param genes_to_plot reactive list with genes in scratchpad
-#' @param args reactive list with elements: 'assay' for selected assay,
-#'        'dimred' for which dimension reduction to use and
-#'        'grp_by' for grouping variable
-#' @param gene_choices reactive list with all genes present in object
-#' @param reload_global reactive to trigger reload
-#' @param refresh reactive to trigger plot refresh from sidebar button
-#' @param config reactive list with config settings
-#'
-#' @export
+#' @rdname linemod
+#' @return Shiny module server return value; called for the side effect of rendering a line plot.
 #'
 linePlotServer <- function(id, app_object, filtered, genes_to_plot,
                               args, gene_choices, reload_global, refresh, config){
@@ -147,7 +149,7 @@ linePlotServer <- function(id, app_object, filtered, genes_to_plot,
         g <- genes_to_plot()
 
         if(any(g != '')){
-          choices <- c(g, setdiff(gene_choices(), g))
+          choices <- list(gene_scratchpad=list(g), other=setdiff(gene_choices(), g))
 
           ## NOTE: default returned value for selectizeInput with *multiple=TRUE*
           ##       is NULL, not ''

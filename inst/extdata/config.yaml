@@ -124,6 +124,9 @@ server:
   # max number of levels for splitting variable
   max_split_levels: 25
 
+  # downsample cell target number
+  downsample_target: 50000
+
   # columns used for grouping (cluster/split/color)
   # NOTE:
   # - 'regex' matches will be used specifically for clustering columns

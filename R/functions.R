@@ -7,6 +7,27 @@
 #' @param user_group User group
 #' @param data_area Path to data area containing RDS files
 #'
+#' @return Invisibly returns NULL; called for the side effect of writing the access yaml file.
+#'
+#' @examplesIf interactive()
+#' local({
+#'   access_dir <- tempfile("cascade-access-")
+#'   dir.create(access_dir)
+#'
+#'   old <- Sys.getenv("CASCADE_ACCESS_YAML", unset = NA_character_)
+#'   Sys.setenv(CASCADE_ACCESS_YAML = access_dir)
+#'   on.exit({
+#'     if (is.na(old)) {
+#'       Sys.unsetenv("CASCADE_ACCESS_YAML")
+#'     } else {
+#'       Sys.setenv(CASCADE_ACCESS_YAML = old)
+#'     }
+#'     unlink(access_dir, recursive = TRUE)
+#'   })
+#'
+#'   create_access_yaml("user1", "lab1", "/data/lab1")
+#' })
+#'
 #' @export
 create_access_yaml <- function(user, user_group, data_area){
     ug <- setNames(as.list(user_group), user)
@@ -23,6 +44,28 @@ create_access_yaml <- function(user, user_group, data_area){
 #' This function reads the access yaml file and
 #' returns user groups and data areas
 #' as a list of data frames.
+#'
+#' @return list with user group and data area settings
+#'
+#' @examplesIf interactive()
+#' local({
+#'   access_dir <- tempfile("cascade-access-")
+#'   dir.create(access_dir)
+#'
+#'   old <- Sys.getenv("CASCADE_ACCESS_YAML", unset = NA_character_)
+#'   Sys.setenv(CASCADE_ACCESS_YAML = access_dir)
+#'   on.exit({
+#'     if (is.na(old)) {
+#'       Sys.unsetenv("CASCADE_ACCESS_YAML")
+#'     } else {
+#'       Sys.setenv(CASCADE_ACCESS_YAML = old)
+#'     }
+#'     unlink(access_dir, recursive = TRUE)
+#'   })
+#'
+#'   create_access_yaml("user1", "lab1", "/data/lab1")
+#'   read_access_yaml()
+#' })
 #'
 #' @export
 read_access_yaml <- function(){
@@ -46,6 +89,31 @@ read_access_yaml <- function(){
 #'
 #' @param lst list of data frames with user_groups and
 #'  data_areas
+#'
+#' @return Invisibly returns NULL; called for the side effect of writing the access yaml file.
+#'
+#' @examplesIf interactive()
+#' local({
+#'   access_dir <- tempfile("cascade-access-")
+#'   dir.create(access_dir)
+#'
+#'   old <- Sys.getenv("CASCADE_ACCESS_YAML", unset = NA_character_)
+#'   Sys.setenv(CASCADE_ACCESS_YAML = access_dir)
+#'   on.exit({
+#'     if (is.na(old)) {
+#'       Sys.unsetenv("CASCADE_ACCESS_YAML")
+#'     } else {
+#'       Sys.setenv(CASCADE_ACCESS_YAML = old)
+#'     }
+#'     unlink(access_dir, recursive = TRUE)
+#'   })
+#'
+#'   save_access_yaml(list(
+#'     user_group = list(user1 = "lab1", user2 = "lab2"),
+#'     data_area = list(lab1 = "/data/lab1", lab2 = "/data/lab2")
+#'   ))
+#'   read_access_yaml()
+#' })
 #'
 #' @export
 save_access_yaml <- function(lst){
@@ -72,6 +140,20 @@ save_access_yaml <- function(lst){
 #' @param fsep file separator to split path with
 #'
 #' @return project name
+#'
+#' @examples
+#' get_project_name_from_path(
+#'   "/path/to/project/test/clustered.Rds",
+#'   depth = 2,
+#'   fsep = "/"
+#' )
+#'
+#' get_project_name_from_path(
+#'   "/path/project/staged/test/clustered.Rds",
+#'   depth = 2,
+#'   staging_dir = "staged",
+#'   fsep = "/"
+#' )
 #'
 #' @export
 #'
@@ -132,11 +214,12 @@ get_limits <- function(gq,
 #' @return sanitized string vector
 #'
 sanitize_colnames <- function(cnames,
-                              bad_char='(\\-|\\+|\\/|\\*|\\:|\\-|\\.)',
+                              bad_char='\\W+',
                               repl='_'){
 
-  sanitized_names <- sapply(1:length(cnames),
-                       function(x) gsub(bad_char, repl, cnames[x])
+  sanitized_names <- vapply(seq_len(length(cnames)),
+                       function(x) gsub(bad_char, repl, cnames[x]),
+                       character(1)
                      )
 
   return(sanitized_names)
@@ -166,6 +249,24 @@ sanitize_colnames <- function(cnames,
 #'
 #' @return plotly handle
 #'
+#' @examplesIf interactive()
+#' df <- data.frame(
+#'   UMAP_1 = c(-1, 0, 1, 2),
+#'   UMAP_2 = c(0, 1, 0, -1),
+#'   cluster = factor(c("A", "A", "B", "B"))
+#' )
+#' colors <- c(A = "#4477aa", B = "#cc6677")
+#'
+#' umap_ly(
+#'   df,
+#'   xcol = "UMAP_1",
+#'   ycol = "UMAP_2",
+#'   color = "cluster",
+#'   colors = colors
+#' )
+#'
+#' @export
+#'
 umap_ly <- function(df, xcol, ycol,
                     color,
                     colors,
@@ -189,9 +290,17 @@ umap_ly <- function(df, xcol, ycol,
   new_xcol <- sanitize_colnames(xcol)
   new_ycol <- sanitize_colnames(ycol)
   new_color <- sanitize_colnames(color)
+
+  # save original names
+  orig_names <- colnames(df)
+
+  # set df columns to new names
   colnames(df)[colnames(df) == xcol] <- new_xcol
   colnames(df)[colnames(df) == ycol] <- new_ycol
   colnames(df)[colnames(df) == color] <- new_color
+
+  # set names of original to new names
+  names(orig_names) <- colnames(df)
 
   if(!is.null(label_cols)){
     label_cols[label_cols == xcol] <- new_xcol
@@ -202,6 +311,14 @@ umap_ly <- function(df, xcol, ycol,
   xcol <- new_xcol
   ycol <- new_ycol
   color <- new_color
+
+  if(!is.null(split)){
+    new_split <- sanitize_colnames(split)
+    colnames(df)[colnames(df) == split] <- new_split
+    if(!is.null(label_cols))
+      label_cols[label_cols == split] <- new_split
+    split <- new_split
+  }
 
   xlims <- range(df[, xcol])
   ylims <- range(df[, ycol])
@@ -222,7 +339,7 @@ umap_ly <- function(df, xcol, ycol,
                          yanchor='bottom',
                          showarrow=FALSE,
                          font=list(size=17),
-                         text=xcol),
+                         text=orig_names[xcol]),
                     list(x=-1.2*margin,
                          y=0.5,
                          xref='paper',
@@ -232,7 +349,7 @@ umap_ly <- function(df, xcol, ycol,
                          textangle=-90,
                          showarrow=FALSE,
                          font=list(size=17),
-                         text=ycol)
+                         text=orig_names[ycol])
                  )
 
   # build hover text
@@ -428,7 +545,7 @@ umap_ly <- function(df, xcol, ycol,
     yloc <- rep(ydelta*((nrows):1), each=ncols) #+ 0.05*ydelta
 
     # arrange plot titles
-    subplt_titles <- lapply(1:length(lvls),
+    subplt_titles <- lapply(seq_len(length(lvls)),
                        function(x){
                          list(x=xloc[x], y=yloc[x],
                               xref='paper', yref='paper',
@@ -478,6 +595,27 @@ umap_ly <- function(df, xcol, ycol,
 #'
 #' @return list with plot data and plotly handle
 #'
+#' @examplesIf interactive()
+#' df <- data.frame(
+#'   UMAP_1 = c(-1, 0, 1, 2),
+#'   UMAP_2 = c(0, 1, 0, -1),
+#'   GeneA = c(0, 5, 0, 10),
+#'   GeneB = c(0, 0, 8, 10)
+#' )
+#'
+#' blended <- feature_blend(
+#'   df,
+#'   xcol = "UMAP_1",
+#'   ycol = "UMAP_2",
+#'   blend_cols = c("GeneA", "GeneB"),
+#'   colors = c("#ff0000", "#0000ff", "#ff00ff"),
+#'   n = 10
+#' )
+#' names(blended)
+#' blended$data
+#'
+#' @export
+#'
 feature_blend <- function(df, xcol, ycol, blend_cols,
                           colors,
                           split=NULL,
@@ -521,7 +659,7 @@ feature_blend <- function(df, xcol, ycol, blend_cols,
   names(col_idx)[3] <- paste(blend_cols[2], 'only')
 
   color <- rep('', nrow(df))
-  for(i in 1:length(col_idx)){
+  for(i in seq_len(length(col_idx))){
     color[col_idx[[i]]] <- rep(names(col_idx)[i], length(col_idx[[i]]))
   }
   df[[ 'color' ]] <- factor(color, levels=names(col_idx))
@@ -565,9 +703,19 @@ feature_blend <- function(df, xcol, ycol, blend_cols,
 #' @param threshold1 percentile to define expression for gene 1
 #' @param threshold2 percentile to define expression for gene 2
 #' @param bin_mode how to bin? can be 'range' (gene expression binned into
-#'        n bins) or 'quantile' (cells binned into n bins by exp)
+#'        n bins) or 'quantile' (cells binned into n bins by expression quantiles)
 #'
 #' @return data.frame with co-expression counts
+#'
+#' @examples
+#' df <- data.frame(
+#'   GeneA = c(0, 10, 0, 10),
+#'   GeneB = c(0, 0, 10, 10)
+#' )
+#'
+#' get_coexp_tbl(df, genes = c("GeneA", "GeneB"), n = 10)
+#'
+#' @export
 #'
 get_coexp_tbl <- function(df, genes, n = 100,
                           threshold1=0.5, threshold2=0.5,
@@ -575,7 +723,7 @@ get_coexp_tbl <- function(df, genes, n = 100,
 
   if(inherits(df, 'data.table')) df <- as.data.frame(df)
 
-  if(length(genes) > 2){
+  if(length(genes) != 2){
     stop('Need exactly 2 genes to get coexpression')
   }
 
@@ -618,6 +766,10 @@ get_coexp_tbl <- function(df, genes, n = 100,
 
 #' Bin gene expression in columns of a data frame
 #'
+#' The expression of a gene present in columns of a data frame
+#' are binned based either on the range of observed
+#' expression ('range') or quantiles of cells where the gene is expressed.
+#'
 #' @param df data.frame with expression data
 #' @param bins number of bins
 #' @param mode how to calculate bins? options are 'range' or 'quantile'
@@ -627,9 +779,14 @@ get_coexp_tbl <- function(df, genes, n = 100,
 get_binned_exp <- function(df, bins=100, mode='range'){
   bin_fun <- function(x){
     if(mode == 'range'){
+      if(min(x) == max(x)){
+        if(min(x) == 0) return(rep(0, length(x)))
+        return(rep(bins - 1, length(x)))
+      }
       return(round(x = (bins - 1) * (x - min(x))/(max(x) - min(x))))
     } else if(mode == 'quantile'){
-      qq <- quantile(x, probs=seq(0, 1, by=1/bins))
+      if(length(unique(x)) == 1) return(as.factor(rep(1, length(x))))
+      qq <- unique(quantile(x, probs=seq(0, 1, by=1/bins)))
       binned <- cut(x, breaks=qq, include.lowest=TRUE, right=FALSE)
       return(as.factor(as.numeric(binned)))
     } else {
@@ -653,17 +810,17 @@ get_binned_exp <- function(df, bins=100, mode='range'){
 #' @return plotly handle
 #'
 BlendMap2 <- function(color.matrix, dimnames=NULL){
-  color.heat <- matrix(data = 1:prod(dim(x = color.matrix)) -
+  color.heat <- matrix(data = seq_len(prod(dim(x = color.matrix))) -
       1, nrow = nrow(x = color.matrix), ncol = ncol(x = color.matrix),
-      dimnames = list(1:nrow(x = color.matrix), 1:ncol(x = color.matrix)))
+      dimnames = list(seq_len(nrow(x = color.matrix)), seq_len(ncol(x = color.matrix))))
 
   ll <- list()
   txt <- list()
   mat_dims <- c(nrow(color.matrix), ncol(color.matrix))
-  for(i in 1:mat_dims[1]){
+  for(i in seq_len(mat_dims[1])){
     ll[[i]] <- list()
     txt[[i]] <- list()
-    for(j in 1:mat_dims[2]){
+    for(j in seq_len(mat_dims[2])){
       xind <- mat_dims[1] - i + 1
       yind <- j
       ll[[i]][[j]] <- as.vector(col2rgb(color.matrix[xind, yind]))
@@ -727,7 +884,7 @@ BlendExpression2 <- function (data, n=1){
     }))
     data[, 3] <- data[, 1] + data[, 2] * (10^n)
     colnames(x = data) <- c(features, paste(features, collapse = "_"))
-    for (i in 1:ncol(x = data)) {
+    for (i in seq_len(ncol(x = data))) {
         data[, i] <- factor(x = data[, i])
     }
     return(data)
@@ -747,6 +904,19 @@ BlendExpression2 <- function (data, n=1){
 #' @param margin plot margin
 #'
 #' @return plotly handle
+#'
+#' @examplesIf interactive()
+#' get_coexp_legend(
+#'   colors = c("#ff0000", "#0000ff", "#ff00ff"),
+#'   dimnames = c("GeneA", "GeneB"),
+#'   xline = 0.25,
+#'   yline = 0.75,
+#'   n = 20,
+#'   neutral_color = "#eeeeee"
+#' )
+#'
+#' @export
+#'
 get_coexp_legend <- function(colors,
                              dimnames,
                              xline,
@@ -875,6 +1045,25 @@ get_coexp_legend <- function(colors,
 #' @param source name of source to return data from
 #'
 #' @return plotly handle
+#'
+#' @examplesIf interactive()
+#' df <- data.frame(
+#'   UMAP_1 = c(-1, 0, 1, 2),
+#'   UMAP_2 = c(0, 1, 0, -1),
+#'   GeneA = c(0, 2, 4, 8)
+#' )
+#'
+#' feature_ly(
+#'   df,
+#'   xcol = "UMAP_1",
+#'   ycol = "UMAP_2",
+#'   color = "GeneA",
+#'   colors = "Viridis",
+#'   crange = c(0, 8)
+#' )
+#'
+#' @export
+#'
 feature_ly <- function(df, xcol, ycol,
                        color, colors,
                        crange=NULL,
@@ -924,12 +1113,17 @@ feature_ly <- function(df, xcol, ycol,
   }
 
   # sanitize plotting column names
+  orig_names <- colnames(df)
+
   new_xcol <- sanitize_colnames(xcol)
   new_ycol <- sanitize_colnames(ycol)
   new_color <- sanitize_colnames(color)
   colnames(df)[colnames(df) == xcol] <- new_xcol
   colnames(df)[colnames(df) == ycol] <- new_ycol
   colnames(df)[colnames(df) == color] <- new_color
+
+  # set names of orig_names to new names
+  names(orig_names) <- colnames(df)
 
   if(!is.null(label_cols)){
     label_cols[label_cols == xcol] <- new_xcol
@@ -947,8 +1141,8 @@ feature_ly <- function(df, xcol, ycol,
       xtitle <- ''
       ytitle <- ''
     } else if(title_mode == 'xy'){
-      xtitle <- xcol
-      ytitle <- ycol
+      xtitle <- orig_names[xcol]
+      ytitle <- orig_names[ycol]
     }
 
     p <- plot_ly(df,
@@ -996,7 +1190,7 @@ feature_ly <- function(df, xcol, ycol,
                              textangle=-90,
                              showarrow=FALSE,
                              font=list(size=17),
-                             text=paste('<b>', color,'<b>'))
+                             text=paste('<b>', orig_names[color],'<b>'))
                      )
 
       p <- p %>% layout(annotations=axis_titles)
@@ -1099,7 +1293,7 @@ feature_ly <- function(df, xcol, ycol,
     xloc <- rep(xdelta*(0:(ncols-1)), nrows) + 0.5*xdelta
     yloc <- rep(ydelta*((nrows):1), each=ncols)
 
-    subplt_titles <- lapply(1:length(lvls),
+    subplt_titles <- lapply(seq_len(length(lvls)),
                             function(x){
                               list(x=xloc[x],
                                    y=yloc[x],
@@ -1124,7 +1318,7 @@ feature_ly <- function(df, xcol, ycol,
                            textangle=-90,
                            showarrow=FALSE,
                            font=list(size=17),
-                           text=paste('<b>', color,'<b>'))
+                           text=paste('<b>', orig_names[color],'<b>'))
                    )
 
     p <- p %>% layout(annotations=c(axis_titles, subplt_titles),
@@ -1150,6 +1344,18 @@ feature_ly <- function(df, xcol, ycol,
 #' @param text_scale scaling factor for text labels. If < 1, text size is reduced and vice-versa
 #'
 #' @return ggplot2 handle
+#'
+#' @examples
+#' df <- data.frame(
+#'   cluster = factor(rep(c("A", "B"), each = 4)),
+#'   variable = rep(c("GeneA", "GeneB"), times = 4),
+#'   value = c(0, 2, 4, 5, 1, 3, 6, 8)
+#' )
+#'
+#' violin2(df, xcol = "cluster", ycol = "value")
+#'
+#' @export
+#'
 violin2 <- function(df, xcol, ycol,
                     color=NULL, colors=NULL,
                     draw_points=FALSE,
@@ -1264,7 +1470,7 @@ violin_ly <- function(df, xcol, ycol,
   p <- p %>%
     layout(
       yaxis = list(
-        zeroline = F
+        zeroline = FALSE
       ),
       violinmode = 'group',
       violingroupgap = 0
@@ -1288,10 +1494,24 @@ violin_ly <- function(df, xcol, ycol,
 #' @param col.max if data is scaled, this is the upper limit of values (default: 2.5)
 #'
 #' @return ggplot2 handle
+#'
+#' @examples
+#' df <- data.frame(
+#'   cluster = factor(rep(c("A", "B"), each = 4)),
+#'   condition = factor(rep(c("ctrl", "stim"), times = 4)),
+#'   GeneA = c(0, 2, 4, 5, 1, 3, 6, 8),
+#'   GeneB = c(1, 0, 3, 2, 5, 0, 7, 4)
+#' )
+#'
+#' dotplot(df, xcol = "cluster", ycol = c("GeneA", "GeneB"), scale = FALSE)
+#' dotplot(df, xcol = "cluster", ycol = "GeneA", split = "condition")
+#'
+#' @export
+#'
 dotplot <- function(df,
-                    xcol, # grouping variable
-                    ycol, # gene names (can be multiple)
-                    split=NULL, # faceting variable
+                    xcol,
+                    ycol,
+                    split=NULL,
                     scale=TRUE,
                     dot.scale=10,
                     col.min=-2.5,
@@ -1397,6 +1617,7 @@ dotplot <- function(df,
 #' @param split column by which plot is split
 #'
 #' @return plotly handle
+#'
 get_label_trace <- function(plot_data, labeled_pts,
                             split=FALSE){
 
@@ -1461,15 +1682,15 @@ get_label_trace <- function(plot_data, labeled_pts,
 
     # plot indices
     pind <- list()
-    for(i in 1:nrows){
-      for(j in 1:ncols){
+    for(i in seq_len(nrows)){
+      for(j in seq_len(ncols)){
         pind[[ length(pind) + 1 ]] <- c(i, j)
       }
     }
     names(pind) <- lvls
 
     new_trace <- list()
-    for(i in 1:length(lvls)){
+    for(i in seq_len(length(lvls))){
       grp <- lvls[i]
       ind <- ldf[, plot_data$split] == grp
       if(sum(ind) > 0){
@@ -1565,9 +1786,9 @@ BuildClusterTree2 <- function(
   if (!is.null(x = dims)) {
 
     if(!reduction %in% names(object$obsm)){
-      stop(paste0('Reduction: "', reduction, '" not found in object! ',
-                  'Possible values are: ',
-                  paste(names(object$obsm), sep=', ')))
+      tmp_names <- paste(names(object$obsm), sep=', ')
+      stop('Reduction: "', reduction, '" not found in object! ',
+           'Possible values are: ', tmp_names)
     }
     embeddings <- object$obsm[[ reduction ]][, dims]
     idents <- object$obs[[ clust_column ]]
@@ -1628,19 +1849,20 @@ PseudoBulkExpression2 <- function(
   } else {
     data <- object$obs[, rev(group.by)]
   }
-  data <- data[which(rowSums(x = is.na(x = data)) == 0), , drop = F]
+  data <- data[which(rowSums(x = is.na(x = data)) == 0), , drop = FALSE]
   if (nrow(x = data) < nrow(x = object)) {
     message("Removing cells with NA for 1 or more grouping variables")
     object <- object[rownames(data),]
   }
-  for (i in 1:ncol(x = data)) {
+  for (i in seq_len(ncol(x = data))) {
     data[, i] <- as.factor(x = data[, i])
   }
-  num.levels <- sapply(
-    X = 1:ncol(x = data),
+  num.levels <- vapply(
+    X = seq_len(ncol(x = data)),
     FUN = function(i) {
       length(x = levels(x = data[, i]))
-    }
+    },
+    numeric(1)
   )
   if (any(num.levels == 1)) {
     message(
@@ -1650,7 +1872,7 @@ PseudoBulkExpression2 <- function(
       )
     )
     group.by <- colnames(x = data)[which(num.levels > 1)]
-    data <- data[, which(num.levels > 1), drop = F]
+    data <- data[, which(num.levels > 1), drop = FALSE]
   }
   if (ncol(x = data) == 0) {
     message("All grouping variables have 1 value only. Computing across all cells.")
@@ -1668,7 +1890,7 @@ PseudoBulkExpression2 <- function(
         '~0+',
         paste0(
           "data[,",
-          1:length(x = group.by),
+          seq_len(length(x = group.by)),
           "]",
           collapse = ":"
         )
@@ -1684,12 +1906,14 @@ PseudoBulkExpression2 <- function(
         STATS = colsums,
         FUN = "/")
     }
-    colnames(x = category.matrix) <- sapply(
+    colnames(x = category.matrix) <- vapply(
       X = colnames(x = category.matrix),
       FUN = function(name) {
         name <- gsub(pattern = "data\\[, [1-9]*\\]", replacement = "", x = name)
         return(paste0(rev(x = unlist(x = strsplit(x = name, split = ":"))), collapse = "_"))
-      })
+      },
+      character(1)
+    )
   }
 
   # NOTE: using the 'X' slot here.
@@ -1738,6 +1962,27 @@ PseudoBulkExpression2 <- function(
 #' @param overwrite boolean, if TRUE, existing analysis folder will be overwritten (default=FALSE)
 #' @param execute boolean, set this to TRUE to actually run the commands (default=FALSE)
 #'
+#' @return Invisibly returns NULL; called for the side effect of printing or executing setup commands.
+#'
+#' @examplesIf interactive()
+#' local({
+#'   data_dir <- tempfile("cascade-data-")
+#'   dir.create(data_dir)
+#'
+#'   obj_path <- tempfile("object-", fileext = ".rds")
+#'   file.create(obj_path)
+#'
+#'   on.exit(unlink(c(data_dir, obj_path), recursive = TRUE))
+#'
+#'   add_cascade_analysis(
+#'     obj_path = obj_path,
+#'     data_dir = data_dir,
+#'     project = "project1",
+#'     analysis = "analysis1",
+#'     execute = FALSE
+#'   )
+#' })
+#'
 #' @export
 #'
 add_cascade_analysis <- function(
@@ -1762,27 +2007,34 @@ add_cascade_analysis <- function(
   # check to see if data_dir exists
   if(!dir.exists(data_dir)){
     stop(
-      paste0('Data directory:"', data_dir, '" does not exist!')
+      'Data directory:"', data_dir, '" does not exist!'
     )
   } else {
     message(
-      paste0('\n- Data directory:"', data_dir, '" already exists')
+      '\n- Data directory:"', data_dir, '" already exists'
     )
   }
+
+  if(!file.exists(obj_path)){
+    stop(
+      'Object file: "', obj_path, '" does not exist!'
+    )
+  }
+  obj_path <- normalizePath(obj_path, mustWork=TRUE)
 
   # check to see if project directory exists, if not create it
   proj_path <- file.path(data_dir, project)
   if(!dir.exists(proj_path)){
     message(
-      paste0('\n- Project directory:"', proj_path, '" does not exist. Creating it')
+      '\n- Project directory:"', proj_path, '" does not exist. Creating it'
     )
 
     cmd <- paste0("mkdir -p ", proj_path)
-    message(paste0('\n', cmd, '\n'))
-    if(execute) system(cmd)
+    message('\n', cmd, '\n')
+    if(execute) system2("mkdir", args=c("-p", proj_path))
   } else {
     message(
-      paste0('\n- Project directory:"', proj_path, '" already exists')
+      '\n- Project directory:"', proj_path, '" already exists'
     )
   }
 
@@ -1791,83 +2043,86 @@ add_cascade_analysis <- function(
   if(dir.exists(analysis_path)){
     if(!overwrite){
       stop(
-        paste0('\nAnalysis directory "', analysis_path, '" already exists! To overwrite, rerun with "overwrite=TRUE"')
+        '\nAnalysis directory "', analysis_path, '" already exists! To overwrite, rerun with "overwrite=TRUE"'
       )
     } else {
       message(
-        paste0('\n- Analysis directory "', analysis_path, '" exists, but "overwrite=TRUE". Removing it')
+        '\n- Analysis directory "', analysis_path, '" exists, but "overwrite=TRUE". Removing it'
       )
 
       cmd <- paste0("rm -r ", analysis_path, '/*')
-      message(paste0('\n', cmd, '\n'))
+      message('\n', cmd, '\n')
       if(execute){
-        system(cmd)
+        system2("rm", args=c("-r", paste0(analysis_path, "/*")))
       }
     }
   } else {
     message(
-      paste0('- Analysis directory "', analysis_path, '" does not exist, creating it')
+      '- Analysis directory "', analysis_path, '" does not exist, creating it'
     )
 
     cmd <- paste0("mkdir -p ", analysis_path)
-    message(paste0('\n', cmd, '\n'))
-    if(execute) system(cmd)
+    message('\n', cmd, '\n')
+    if(execute) system2("mkdir", args=c("-p", analysis_path))
   }
 
   # set up project using symlinks
-  #
-  # cd analysis_path
-  # ln -s obj_path .
   # ln -s cluster_markers allmarkers.tsv
   # ln -s de_markers demarkers.tsv
   # ln -s conserved_markers consmarkers.tsv
 
-  # save current directory
-  if(execute) cwd <- getwd()
-
   # build command
-  cmd <- c(paste0('cd ', analysis_path),
-           paste0('ln -s ', obj_path, ' .'))
+  cmd <- list(
+           c('ln', '-s', obj_path, file.path(analysis_path, obj_file))
+         )
 
-  if(!missing(cluster_markers)){
+  if(!is.null(cluster_markers)){
     if(!file.exists(cluster_markers)){
       stop(
-        paste0('Cluster marker file: "', cluster_markers, '" does not exist!')
+        'Cluster marker file: "', cluster_markers, '" does not exist!'
       )
     }
-    cmd <- c(cmd, paste0('ln -s ', cluster_markers, ' allmarkers.tsv'))
+    cluster_markers <- normalizePath(cluster_markers, mustWork=TRUE)
+    cmd <- c(cmd, list(c('ln', '-s', cluster_markers,
+                         file.path(analysis_path, 'allmarkers.tsv'))))
   }
 
-  if(!missing(de_markers)){
+  if(!is.null(de_markers)){
     if(!file.exists(de_markers)){
       stop(
-        paste0('DE marker file: "', de_markers, '" does not exist!')
+        'DE marker file: "', de_markers, '" does not exist!'
       )
     }
-    cmd <- c(cmd, paste0('ln -s ', de_markers, ' demarkers.tsv'))
+    de_markers <- normalizePath(de_markers, mustWork=TRUE)
+    cmd <- c(cmd, list(c('ln', '-s', de_markers,
+                         file.path(analysis_path, 'demarkers.tsv'))))
   }
 
-  if(!missing(conserved_markers)){
+  if(!is.null(conserved_markers)){
     if(!file.exists(conserved_markers)){
       stop(
-        paste0('Conserved marker file: "', conserved_markers, '" does not exist!')
+        'Conserved marker file: "', conserved_markers, '" does not exist!'
       )
     }
-    cmd <- c(cmd, paste0('ln -s ', conserved_markers, ' consmarkers.tsv'))
+    conserved_markers <- normalizePath(conserved_markers, mustWork=TRUE)
+    cmd <- c(cmd, list(c('ln', '-s', conserved_markers,
+                         file.path(analysis_path, 'consmarkers.tsv'))))
   }
 
   # print command or execute
   message('Setting up project:\n')
-  message(paste(cmd, collapse='\n'))
-  if(execute){
-    system(paste(cmd, collapse='\n'))
-    setwd(cwd)
-  }
+  tmp <- lapply(cmd, function(x){
+    tmp_msg <- paste(x, collapse=' ')
+    message(tmp_msg)
+    if(execute){
+      system2(x[1], args=x[-1])
+    }
+  })
 
   if(!execute){
     message('\nIf everything looks good, rerun with "execute=TRUE" to create new analysis')
   } else {
-    message(paste0('\nAll done! Remember to add "', data_dir, '" to Cascade data areas to view new analysis'))
+    message('\nAll done! Remember to add "', data_dir, '" to Cascade data areas to view new analysis')
   }
 }
 
@@ -1884,8 +2139,9 @@ get_coexplt_colors <- function(x){
   } else if(x == 'red-green'){
     # orange, red, darkgreen
     colors <- c('#d3d3d3', '#ff0000', '#006400', '#ff6400')
+  } else {
+    stop('color maps can only be "red-blue" or "red-green"')
   }
 
   return(colors)
 }
-
