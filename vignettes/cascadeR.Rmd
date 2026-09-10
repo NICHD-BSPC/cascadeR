@@ -44,7 +44,7 @@ BiocManager::install('cascadeR')
 Now we load a small dataset with 230 cells. It contains
 two dimension reductions: *pca* and *tsne*.
 
-```{r}
+```{r load}
 library(Seurat)
 
 data("pbmc_small", package="SeuratObject")
@@ -56,8 +56,8 @@ pbmc_small
 
 Next, let's take a look at the metadata of this object.
 
-```{r}
-head(pbmc_small@meta.data)
+```{r metadata}
+head(pbmc_small)
 ```
 
 There are two columns with standard quality control metrics:
@@ -74,7 +74,7 @@ cell clusters.
 
 We visualize the resolution = `1.0` clustering using `Seurat::DimPlot`:
 
-```{r}
+```{r dimplot}
 Seurat::DimPlot(pbmc_small, group.by='RNA_snn_res.1')
 ```
 
@@ -85,22 +85,22 @@ clusters for one of the resolutions using the `Seurat::FindAllMarkers`
 function. Setting `Idents()` here to `RNA_snn_res.0.8` sets the
 cell groups to clusters at resolution = `0.8`.
 
-```{r}
-Idents(pbmc_small) <- pbmc_small@meta.data$RNA_snn_res.0.8
+```{r markers}
+Idents(pbmc_small) <- pbmc_small$RNA_snn_res.0.8
 df <- FindAllMarkers(pbmc_small)
 ```
 
 Now we have marker genes for each of the clusters at this resolution.
 
-```{r}
+```{r head_markers}
 head(df)
 ```
 
 We often like to compare different resolutions, so let's do the
 same for resolution = `1.0`.
 
-```{r warning=FALSE}
-Idents(pbmc_small) <- pbmc_small@meta.data$RNA_snn_res.1
+```{r markers2, warning=FALSE}
+Idents(pbmc_small) <- pbmc_small$RNA_snn_res.1
 df2 <- FindAllMarkers(pbmc_small)
 ```
 
@@ -109,7 +109,7 @@ to compare, e.g. different resolutions, "assays" or arbitrary "groups".
 To do this, we concatenate our two marker gene sets and add a
 "resolution" column.
 
-```{r}
+```{r join_df}
 df$resolution <- '0.8'
 df2$resolution <- '1.0'
 
@@ -121,7 +121,7 @@ marker_df <- rbind(df, df2)
 
 Next, we save our results.
 
-```{r}
+```{r save}
 saveRDS(pbmc_small, 'seurat_pbmc_small.Rds', compress=FALSE)
 write.table(marker_df, 'allmarkers_combined.tsv', sep='\t', row.names=FALSE, quote=FALSE)
 ```
@@ -171,7 +171,7 @@ specifications. Let's use this now for the analysis we just performed.
 
 First we create a data directory for `cascadeR`.
 
-```{r eval=FALSE}
+```{r create_dir, eval=FALSE}
 dir.create('~/cascader/data', recursive=TRUE)
 ```
 
@@ -179,7 +179,7 @@ Next, we run `add_cascade_analysis` with the RDS file and marker table path
 specified. By default, this function prints out the commands to be run -
 to actually run them, we use `execute = TRUE`.
 
-```{r eval=FALSE}
+```{r add_analysis, eval=FALSE}
 add_cascade_analysis(
   obj_path='seurat_pbmc_small.Rds',
   data_dir='~/cascader/data',
@@ -198,3 +198,8 @@ Load the `cascadeR` package.
 library(cascadeR)
 ```
 
+# sessionInfo
+
+```{r}
+sessionInfo()
+```
