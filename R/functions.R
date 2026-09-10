@@ -2002,6 +2002,13 @@ add_cascade_analysis <- function(
     )
   }
 
+  if(!file.exists(obj_path)){
+    stop(
+      'Object file: "', obj_path, '" does not exist!'
+    )
+  }
+  obj_path <- normalizePath(obj_path, mustWork=TRUE)
+
   # check to see if project directory exists, if not create it
   proj_path <- file.path(data_dir, project)
   if(!dir.exists(proj_path)){
@@ -2056,32 +2063,35 @@ add_cascade_analysis <- function(
            c('ln', '-s', obj_path, file.path(analysis_path, obj_file))
          )
 
-  if(!missing(cluster_markers)){
+  if(!is.null(cluster_markers)){
     if(!file.exists(cluster_markers)){
       stop(
         'Cluster marker file: "', cluster_markers, '" does not exist!'
       )
     }
+    cluster_markers <- normalizePath(cluster_markers, mustWork=TRUE)
     cmd <- c(cmd, list(c('ln', '-s', cluster_markers,
                          file.path(analysis_path, 'allmarkers.tsv'))))
   }
 
-  if(!missing(de_markers)){
+  if(!is.null(de_markers)){
     if(!file.exists(de_markers)){
       stop(
         'DE marker file: "', de_markers, '" does not exist!'
       )
     }
+    de_markers <- normalizePath(de_markers, mustWork=TRUE)
     cmd <- c(cmd, list(c('ln', '-s', de_markers,
                          file.path(analysis_path, 'demarkers.tsv'))))
   }
 
-  if(!missing(conserved_markers)){
+  if(!is.null(conserved_markers)){
     if(!file.exists(conserved_markers)){
       stop(
         'Conserved marker file: "', conserved_markers, '" does not exist!'
       )
     }
+    conserved_markers <- normalizePath(conserved_markers, mustWork=TRUE)
     cmd <- c(cmd, list(c('ln', '-s', conserved_markers,
                          file.path(analysis_path, 'consmarkers.tsv'))))
   }
