@@ -48,6 +48,22 @@ test_that("add_cascade_analysis errors when data directory is missing", {
   )
 })
 
+test_that("add_cascade_analysis errors when object file is missing", {
+  data_dir <- tempfile("cascade-data-")
+  dir.create(data_dir)
+  on.exit(unlink(data_dir, recursive = TRUE), add = TRUE)
+
+  expect_error(
+    suppressMessages(add_cascade_analysis(
+      obj_path = file.path(data_dir, "object.rds"),
+      data_dir = data_dir,
+      project = "project1",
+      analysis = "analysis1"
+    )),
+    "Object file"
+  )
+})
+
 test_that("add_cascade_analysis errors when analysis directory exists without overwrite", {
   fixture <- make_add_cascade_fixture()
   on.exit(unlink(c(fixture$data_dir, fixture$obj_path), recursive = TRUE), add = TRUE)
@@ -166,4 +182,43 @@ test_that("add_cascade_analysis execute creates analysis directory and object sy
   expect_equal(getwd(), old_wd)
   expect_true(dir.exists(analysis_path))
   expect_true(file.exists(linked_obj))
+})
+
+test_that("add_cascade_analysis execute resolves relative input paths", {
+  skip_on_os("windows")
+
+  data_dir <- tempfile("cascade-data-")
+  source_dir <- tempfile("cascade-source-")
+  dir.create(data_dir)
+  dir.create(source_dir)
+  on.exit(unlink(c(data_dir, source_dir), recursive = TRUE), add = TRUE)
+
+  file.create(file.path(source_dir, "object.rds"))
+  file.create(file.path(source_dir, "cluster.tsv"))
+  file.create(file.path(source_dir, "de.tsv"))
+  file.create(file.path(source_dir, "conserved.tsv"))
+
+  old_wd <- getwd()
+  on.exit(setwd(old_wd), add = TRUE)
+  setwd(source_dir)
+
+  capture_add_cascade_messages(
+    add_cascade_analysis(
+      obj_path = "object.rds",
+      data_dir = data_dir,
+      project = "project1",
+      analysis = "analysis1",
+      cluster_markers = "cluster.tsv",
+      de_markers = "de.tsv",
+      conserved_markers = "conserved.tsv",
+      execute = TRUE
+    )
+  )
+
+  analysis_path <- file.path(data_dir, "project1", "analysis1")
+
+  expect_true(file.exists(file.path(analysis_path, "object.rds")))
+  expect_true(file.exists(file.path(analysis_path, "allmarkers.tsv")))
+  expect_true(file.exists(file.path(analysis_path, "demarkers.tsv")))
+  expect_true(file.exists(file.path(analysis_path, "consmarkers.tsv")))
 })
