@@ -204,7 +204,7 @@ dotPlotServer <- function(id, app_object, filtered, genes_to_plot,
         g <- genes_to_plot()
 
         if(any(g != '')){
-          choices <- list(gene_scratchpad=g, other=setdiff(gene_choices(), g))
+          choices <- list(gene_scratchpad=list(g), other=setdiff(gene_choices(), g))
 
           ## NOTE: default returned value for selectizeInput with *multiple=TRUE*
           ##       is NULL, not ''
