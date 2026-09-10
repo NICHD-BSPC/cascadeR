@@ -200,6 +200,6 @@ library(cascadeR)
 
 # sessionInfo
 
-```{r}
+```{r sessionInfo}
 sessionInfo()
 ```
