@@ -214,7 +214,7 @@ get_limits <- function(gq,
 #' @return sanitized string vector
 #'
 sanitize_colnames <- function(cnames,
-                              bad_char='(\\-|\\+|\\/|\\*|\\:|\\-|\\.)',
+                              bad_char='\\W+',
                               repl='_'){
 
   sanitized_names <- vapply(seq_len(length(cnames)),
