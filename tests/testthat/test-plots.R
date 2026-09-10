@@ -185,7 +185,7 @@ test_that("umap_ly returns a plotly object with axis annotations", {
   expect_false(isTRUE(built$x$layout$yaxis$showticklabels))
 })
 
-test_that("umap_ly sanitizes plotted column names", {
+test_that("umap_ly shows original column names", {
   df <- make_plot_df(reduction=TRUE)
   names(df)[names(df) == "UMAP_1"] <- "UMAP-1"
   names(df)[names(df) == "UMAP_2"] <- "UMAP.2"
@@ -202,7 +202,7 @@ test_that("umap_ly sanitizes plotted column names", {
   )
 
   expect_true(inherits(p, "plotly"))
-  expect_equal(plotly_annotation_text(p), c("UMAP_1", "UMAP_2"))
+  expect_equal(plotly_annotation_text(p), c("UMAP-1", "UMAP.2"))
 })
 
 test_that("umap_ly supports split subplots", {
@@ -267,7 +267,7 @@ test_that("feature_ly sanitizes numeric-leading feature names", {
   )
 
   expect_true(inherits(p, "plotly"))
-  expect_equal(plotly_annotation_text(p), "<b> X1_gene <b>")
+  expect_equal(plotly_annotation_text(p), "<b> X1-gene <b>")
 })
 
 test_that("feature_ly supports split subplots", {
