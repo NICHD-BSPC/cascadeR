@@ -290,9 +290,17 @@ umap_ly <- function(df, xcol, ycol,
   new_xcol <- sanitize_colnames(xcol)
   new_ycol <- sanitize_colnames(ycol)
   new_color <- sanitize_colnames(color)
+
+  # save original names
+  orig_names <- colnames(df)
+
+  # set df columns to new names
   colnames(df)[colnames(df) == xcol] <- new_xcol
   colnames(df)[colnames(df) == ycol] <- new_ycol
   colnames(df)[colnames(df) == color] <- new_color
+
+  # set names of original to new names
+  names(orig_names) <- colnames(df)
 
   if(!is.null(label_cols)){
     label_cols[label_cols == xcol] <- new_xcol
@@ -331,7 +339,7 @@ umap_ly <- function(df, xcol, ycol,
                          yanchor='bottom',
                          showarrow=FALSE,
                          font=list(size=17),
-                         text=xcol),
+                         text=orig_names[xcol]),
                     list(x=-1.2*margin,
                          y=0.5,
                          xref='paper',
@@ -341,7 +349,7 @@ umap_ly <- function(df, xcol, ycol,
                          textangle=-90,
                          showarrow=FALSE,
                          font=list(size=17),
-                         text=ycol)
+                         text=orig_names[ycol])
                  )
 
   # build hover text
@@ -1105,12 +1113,17 @@ feature_ly <- function(df, xcol, ycol,
   }
 
   # sanitize plotting column names
+  orig_names <- colnames(df)
+
   new_xcol <- sanitize_colnames(xcol)
   new_ycol <- sanitize_colnames(ycol)
   new_color <- sanitize_colnames(color)
   colnames(df)[colnames(df) == xcol] <- new_xcol
   colnames(df)[colnames(df) == ycol] <- new_ycol
   colnames(df)[colnames(df) == color] <- new_color
+
+  # set names of orig_names to new names
+  names(orig_names) <- colnames(df)
 
   if(!is.null(label_cols)){
     label_cols[label_cols == xcol] <- new_xcol
@@ -1128,8 +1141,8 @@ feature_ly <- function(df, xcol, ycol,
       xtitle <- ''
       ytitle <- ''
     } else if(title_mode == 'xy'){
-      xtitle <- xcol
-      ytitle <- ycol
+      xtitle <- orig_names[xcol]
+      ytitle <- orig_names[ycol]
     }
 
     p <- plot_ly(df,
@@ -1177,7 +1190,7 @@ feature_ly <- function(df, xcol, ycol,
                              textangle=-90,
                              showarrow=FALSE,
                              font=list(size=17),
-                             text=paste('<b>', color,'<b>'))
+                             text=paste('<b>', orig_names[color],'<b>'))
                      )
 
       p <- p %>% layout(annotations=axis_titles)
@@ -1305,7 +1318,7 @@ feature_ly <- function(df, xcol, ycol,
                            textangle=-90,
                            showarrow=FALSE,
                            font=list(size=17),
-                           text=paste('<b>', color,'<b>'))
+                           text=paste('<b>', orig_names[color],'<b>'))
                    )
 
     p <- p %>% layout(annotations=c(axis_titles, subplt_titles),
