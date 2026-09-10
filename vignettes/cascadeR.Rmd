@@ -1,0 +1,200 @@
+---
+title: "cascadeR"
+author: "Apratim Mitra"
+date: "`r format(Sys.Date(), '%m/%d/%Y')`"
+abstract: >
+  `cascadeR` is an interactive & modular Shiny app that simplifies and transforms
+  complex single-cell RNA-Seq and spatial transcriptomics data using numerous
+  interactive features. Designed for both computational and experimental
+  biologists, `cascadeR` supports both R and python ecosystems, making data exploration
+  and accessible, while also providing a platform to manage multiple datasets either
+  locally or on a server to share with collaborators (package version:
+  `r packageVersion("cascadeR")`).
+output:
+  BiocStyle::html_document:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{cascadeR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r opts, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Install cascadeR
+
+Install cascadeR from Bioconductor using `BiocManager::install`.
+
+```{r pkg_install, eval=FALSE}
+# first check to see if BiocManager is available
+if(!requireNamespace('BiocManager', quietly=TRUE)){
+  install.packages('BiocManager')
+}
+
+BiocManager::install('cascadeR')
+```
+
+## Get example data
+
+Now we load a small dataset with 230 cells. It contains
+two dimension reductions: *pca* and *tsne*.
+
+```{r}
+library(Seurat)
+
+data("pbmc_small", package="SeuratObject")
+
+pbmc_small
+```
+
+## Inspect the metadata
+
+Next, let's take a look at the metadata of this object.
+
+```{r}
+head(pbmc_small@meta.data)
+```
+
+There are two columns with standard quality control metrics:
+
+- *nCount_RNA*
+- *nFeature_RNA*
+
+In addition, there are two columns with cell clusters calculated
+at two resolutions. Higher resolutions correspond to more/smaller
+cell clusters.
+
+- *RNA_snn_res.0.8*: resolution = 0.8, 2 clusters
+- *RNA_snn_res.1*: resolution = 1, 3 clusters
+
+We visualize the resolution = `1.0` clustering using `Seurat::DimPlot`:
+
+```{r}
+Seurat::DimPlot(pbmc_small, group.by='RNA_snn_res.1')
+```
+
+## Marker detection
+
+Next, we calculate gene markers to characterize individual
+clusters for one of the resolutions using the `Seurat::FindAllMarkers`
+function. Setting `Idents()` here to `RNA_snn_res.0.8` sets the
+cell groups to clusters at resolution = `0.8`.
+
+```{r}
+Idents(pbmc_small) <- pbmc_small@meta.data$RNA_snn_res.0.8
+df <- FindAllMarkers(pbmc_small)
+```
+
+Now we have marker genes for each of the clusters at this resolution.
+
+```{r}
+head(df)
+```
+
+We often like to compare different resolutions, so let's do the
+same for resolution = `1.0`.
+
+```{r warning=FALSE}
+Idents(pbmc_small) <- pbmc_small@meta.data$RNA_snn_res.1
+df2 <- FindAllMarkers(pbmc_small)
+```
+
+You can combine multiple such marker gene tables for use with `cascadeR`
+to compare, e.g. different resolutions, "assays" or arbitrary "groups".
+To do this, we concatenate our two marker gene sets and add a
+"resolution" column.
+
+```{r}
+df$resolution <- '0.8'
+df2$resolution <- '1.0'
+
+marker_df <- rbind(df, df2)
+```
+
+
+## Save results
+
+Next, we save our results.
+
+```{r}
+saveRDS(pbmc_small, 'seurat_pbmc_small.Rds', compress=FALSE)
+write.table(marker_df, 'allmarkers_combined.tsv', sep='\t', row.names=FALSE, quote=FALSE)
+```
+
+## Data Organization
+
+Next, we need to organize your data in a directory structure that `cascadeR`
+can easily navigate, e.g. in a folder `cascader/data` in your home directory.
+The folder should look something like this:
+
+```
+~/cascader/data/
+  └─ my-project
+     └─ pbmc_small
+        ├─ clustered.Rds
+        └─ allmarkers.tsv
+```
+
+Two things to note here:
+
+- *Projects* are subfolders in the data area, while *analyses* are
+  subfolders within projects. For instance, in the above example,
+  `my-project` is the project name and `pbmc_small` is the analysis name.
+  This 2-level hierarchy allows us to have multiple analysis using, e.g
+  different analysis parameters, within a single project.
+
+- `cascadeR` looks for exact filenames, e.g. `clustered.Rds`, when figuring
+  out what data to read. Here is a list currently supported:
+
+  - Single-cell object: `clustered.Rds` (Seurat) or `clustered.h5ad` (anndata)
+  - `allmarkers.tsv`: Marker genes for a cluster (compared to everything else).
+    Output from Seurat's `FindMarkers` or `FindAllMarkers` or scanpy's
+    `sc.tl.rank_genes_groups` are supported.
+  - `consmarkers.tsv`: Conserved marker genes across samples, output from
+    Seurat's `FindConservedMarkers`.
+  - `demarkers.tsv`: Differential expression analysis, e.g. from comparing
+    cell clusters between samples. Output from Seurat's `FindMarkers` or
+    output from pseudo-bulk DE analysis from `DESeq2`, `edgeR`, `limma`
+    supported.
+
+  As mentioned above, each of the marker gene tables supports special columns,
+  "resolution", "assay", "group" to combine multiple sets of results
+  for joint viewing.
+
+We provide a helper function to set up a dataset while following the above
+specifications. Let's use this now for the analysis we just performed.
+
+First we create a data directory for `cascadeR`.
+
+```{r eval=FALSE}
+dir.create('~/cascader/data', recursive=TRUE)
+```
+
+Next, we run `add_cascade_analysis` with the RDS file and marker table path
+specified. By default, this function prints out the commands to be run -
+to actually run them, we use `execute = TRUE`.
+
+```{r eval=FALSE}
+add_cascade_analysis(
+  obj_path='seurat_pbmc_small.Rds',
+  data_dir='~/cascader/data',
+  project='my-project',
+  analysis='pbmc_small',
+  cluster_markers='allmarkers_combined.tsv',
+  execute=TRUE
+)
+```
+
+## First Run
+
+Load the `cascadeR` package.
+
+```{r first_load, eval=FALSE}
+library(cascadeR)
+```
+
