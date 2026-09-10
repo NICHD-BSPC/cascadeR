@@ -34,3 +34,6 @@ dependencies:
   - plotly
   - python-kaleido
 
+  - bioconductor-biocstyle
+  - r-rmarkdown
+

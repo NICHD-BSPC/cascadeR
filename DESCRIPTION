@@ -52,8 +52,12 @@ Imports:
     viridis,
     yaml
 Suggests:
+    BiocStyle,
+    knitr,
+    rmarkdown,
     shinymanager,
     testthat
+VignetteBuilder: knitr
 BugReports: https://github.com/NICHD-BSPC/cascadeR/issues
 biocViews:
     Software, SingleCell, Spatial, Transcriptomics, GeneExpression,
