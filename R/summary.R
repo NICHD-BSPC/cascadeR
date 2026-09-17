@@ -115,12 +115,22 @@ summaryServer <- function(id, obj, args){
           # get dimension reductions
           dimred <- names(app_object()$rds@reductions)
         } else if(obj_type == 'SingleCellExperiment'){
-          # all assays have same set of features
-          summ2 <- paste0(length(rownames(app_object()$rds)), ' features')
+          # first get main expt features
+          main <- setNames(as.list(paste0(nrow(app_object()$rds), ' features')),
+                           mainExpName(app_object()$rds))
+
+          # then get altexp if any
+          altexp_names <- altExpNames(app_object()$rds)
+          if(length(altexp_names) > 0){
+            alt <- lapply(altexp_names, function(x) paste(nrow(altExp(app_object()$rds, x)), 'features'))
+            names(alt) <- altexp_names
+          }
+          summ <- do.call('rbind', c(main, alt))
+          summ2 <- paste0(rownames(summ), ': ', summ)
 
           # get reductions from all assays
           dimred <- reducedDimNames(app_object()$rds)
-          if(length(altExpNames(app_object()$rds)) > 0){
+          if(length(altexp_names) > 0){
             altexp_dimred <- lapply(altExpNames(app_object()$rds),
                                function(x) reducedDimNames(altExp(app_object()$rds, x))
                              )
