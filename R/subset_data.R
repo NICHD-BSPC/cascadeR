@@ -225,7 +225,7 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
 
       }
 
-      observeEvent(c(app_object()$rds, args()), {
+      observeEvent(c(app_object()$metadata, args()), {
         reset_data()
 
         validate(
@@ -268,6 +268,21 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
           obj_details$assay <- 'X'
 
           obj_details$slot <- 'none'
+        } else if(obj_type == 'SingleCellExperiment'){
+          # SingleCellExperiment 'altExps' and 'mainExpName' are equivalent to Seurat 'assays'
+          obj_details$assay <- args()$assay
+
+          # update assay menu
+          if(obj_details$assay == mainExpName(app_object()$rds)){
+            slot_names <- assayNames(app_object()$rds)
+          } else {
+            slot_names <- assayNames(altExp(app_object()$rds, obj_details$assay))
+          }
+
+          if('counts' %in% slot_names)
+            slot_names <- c(setdiff(slot_names, 'counts'), 'counts')
+
+          obj_details$slot <- slot_names[1]
         }
 
         filter_levels$metadata$full <- metadata_args()$factor_levels
@@ -295,6 +310,8 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
           } else {
             choices <- c('umap')
           }
+        } else if(obj_type == 'SingleCellExperiment'){
+          choices <- c('umap')
         }
         updateSelectInput(session, 'select_var',
                           choices=choices)
@@ -369,6 +386,13 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
               g <- app_object()$rds[[ obj_details$assay ]][,input$filter_gene]
 
               # get data for gene from current selection
+              gc <- g[cell_info$after]
+            } else if(obj_type == 'SingleCellExperiment'){
+              if(obj_details$assay == mainExpName(app_object()$rds))
+                g <- assay(app_object()$rds, obj_details$slot)[input$filter_gene, ]
+              else
+                g <- assay(altExp(app_object()$rds, obj_details$assay), obj_details$slot)[input$filter_gene, ]
+
               gc <- g[cell_info$after]
             }
 
@@ -649,6 +673,11 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
               }
             } else if(obj_type == 'anndata'){
               g <- app_object()$rds[[ obj_details$assay ]][, key]
+            } else if(obj_type == 'SingleCellExperiment'){
+              if(obj_details$assay == mainExpName(app_object()$rds))
+                g <- assay(app_object()$rds, obj_details$slot)[key, ]
+              else
+                g <- assay(altExp(app_object()$rds, obj_details$assay), obj_details$slot)[key, ]
             }
 
             # save distribution
@@ -999,6 +1028,11 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
                 }
               } else if(obj_type == 'anndata'){
                 gcol <- app_object()$rds[[ obj_details$assay ]][, col]
+              } else if(obj_type == 'SingleCellExperiment'){
+                if(obj_details$assay == mainExpName(app_object()$rds))
+                  gcol <- assay(app_object()$rds, obj_details$slot)[col, ]
+                else
+                  gcol <- assay(altExp(app_object()$rds, obj_details$assay), obj_details$slot)[col, ]
               }
 
               tmp_idx <- gcol >= tmp[1] & gcol <= tmp[2]
@@ -1037,7 +1071,7 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
                  'No cells left! Please change filter criteria')
           )
 
-          if(obj_type == 'seurat'){
+          if(obj_type == 'seurat' | obj_type == 'SingleCellExperiment'){
             cell_info$after <- colnames(obj)[idx]
           } else if(obj_type == 'anndata'){
             cell_info$after <- rownames(obj)[idx]
@@ -1087,6 +1121,13 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
                   pretmp <- slot(app_object()$rds@assays[[ obj_details$assay ]], 'data')[col, ]
                   tmp <- pretmp[bc]
                 }
+              } else if(obj_type == 'SingleCellExperiment'){
+                if(obj_details$assay == mainExpName(app_object()$rds))
+                  pretmp <- assay(app_object()$rds, obj_details$slot)[col, ]
+                else
+                  pretmp <- assay(altExp(app_object()$rds, obj_details$assay), obj_details$slot)[col, ]
+                tmp <- pretmp[bc]
+
               } else if(obj_type == 'anndata'){
                 pretmp <- app_object()$rds[[ obj_details$assay ]][, col]
                 tmp <- pretmp[bc]
