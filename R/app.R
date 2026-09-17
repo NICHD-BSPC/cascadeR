@@ -1540,6 +1540,10 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     ############################## Gene scratchpad #######################################
 
     gene_scratchpad <- reactive({
+      validate(
+        need(!is.null(all_genes$choices), 'data not loaded')
+      )
+
       g <- input$gene.to.plot
       if(!all(g %in% all_genes$choices)){
         g.diff <- g[!g %in% all_genes$choices]
