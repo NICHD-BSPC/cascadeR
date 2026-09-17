@@ -209,6 +209,16 @@ clustreeUI <- function(id, panel){
                           choices=c('no', 'x-side', 'y-side')
               ) # selectInput
             ) # column
+          ), # fluidRow
+
+          fluidRow(
+            column(6, 'Aspect ratio'),
+            column(6,
+              selectInput(ns('aspect'),
+                          label=NULL,
+                          choices=c('narrow', 'wide')
+              ) # selectInput
+            ) # column
           ) # fluidRow
 
         ), # conditionalPanel
@@ -778,7 +788,7 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
         clust_tree_obj$overlay <- p_list
       })
 
-      clust_overlay <- eventReactive(clust_tree_obj$overlay, {
+      clust_overlay <- eventReactive(c(clust_tree_obj$overlay, input$aspect), {
 
         p_list <- clust_tree_obj$overlay
         if(input$clust_tree_side == 'no'){
@@ -796,6 +806,9 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
                 axis.title.y=element_text(size=15, face='bold'),
                 legend.title=element_text(size=15, face='bold'),
                 legend.text=element_text(size=12))
+
+        if(input$aspect == 'narrow') p <- p + coord_fixed(ratio=0.4)
+
         p
       })
 
