@@ -714,6 +714,21 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
             obj_info$slice_choices <- 'slice'
           }
 
+        } else if(app_object()$obj_type == 'SingleCellExperiment'){
+          # assume 'SingleCellExperiment' never has spatial data
+          obj_info$slot <- 'none'
+
+          hideTab(inputId='ftrplt_type', target='Spatial')
+
+          sel_plt <- input$cell_counts
+          # make sure something is selected
+          updateTabsetPanel(session, inputId='cell_counts',
+                            selected=sel_plt)
+
+          updateTabsetPanel(session, inputId='ftrplt_type',
+                            selected='UMAP')
+          #updateTabsetPanel(session, inputId='coexplt_type',
+          #                  selected='UMAP')
         }
 
         showNotification(
@@ -934,7 +949,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
 
       #################### Count table ####################
 
-      get_cluster_counts <- eventReactive(c(app_object()$rds,
+      get_cluster_counts <- eventReactive(c(app_object()$metadata,
                                             obj_info$filtered,
                                             reload_global(),
                                             input$plt_do), {
@@ -1170,7 +1185,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
 
       ######################### Heatmap #########################
 
-      get_cluster_heatmap <- eventReactive(c(app_object()$rds,
+      get_cluster_heatmap <- eventReactive(c(app_object()$metadata,
                                              obj_info$filtered,
                                              input$plt_do), {
 
@@ -1297,6 +1312,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
         # extract reduction data if needed
         if(reduction){
           if(obj_type == 'seurat'){
+            # this can happen for sketched object
             if(nrow(mdata) != nrow(app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings)){
               didx <- which(rownames(app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings) %in% df$rn)
               midx <- which(df$rn %in% rownames(app_object()$rds@reductions[[ args()$dimred ]]@cell.embeddings))
@@ -1310,6 +1326,18 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
 
             label <- sub('X_', '', args()$dimred)
             colnames(dimred) <- paste0(label, seq_len(2))
+          } else if(obj_type == 'SingleCellExperiment'){
+            # find dimred from possible options
+            if(args()$dimred %in% reducedDimNames(app_object()$rds)){
+              dimred <- reducedDim(app_object()$rds, args()$dimred)[idx,]
+            } else {
+              for(altexp in altExpNames(app_object()$rds)){
+                if(args()$dimred %in% reducedDimNames(altExp(app_object()$rds, altexp))){
+                  dimred <- reducedDim(altExp(app_object()$rds, altexp), args()$dimred)[idx,]
+                  break
+                }
+              }
+            }
           }
 
           # if using sketch reductions, the dimensions might not match
@@ -1336,7 +1364,7 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
 
       ##################### Feature Plot ########################
 
-      get_feature_plot <- eventReactive(c(app_object()$rds,
+      get_feature_plot <- eventReactive(c(app_object()$metadata,
                                           obj_info$filtered,
                                           input$featureplt_do,
                                           input$plt_do), {
@@ -1551,6 +1579,11 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
           validate(
             need('spatial' %in% names(app_object()$rds$obsm),
                  'Spatial analysis not available')
+          )
+        } else if(obj_type == 'SingleCellExperiment'){
+          validate(
+            need(obj_type != 'SingleCellExperiment',
+                 'Spatial analysis not supported for SingleCellExperiment object')
           )
         }
 
