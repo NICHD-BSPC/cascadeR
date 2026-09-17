@@ -334,7 +334,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
 
       #################### Main plotting function ####################
 
-      get_feature_plot <- eventReactive(c(app_object()$rds,
+      get_feature_plot <- eventReactive(c(app_object()$metadata,
                                           filtered(),
                                           input$plt_do,
                                           refresh()), {
@@ -586,7 +586,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
       observeEvent(show_selection(), {
 
         isolate({
-          flag <- is.null(app_object()$rds)
+          flag <- is.null(app_object()$metadata)
         })
 
         validate(
@@ -662,7 +662,7 @@ featurePlotServer <- function(id, app_object, filtered, genes_to_plot,
 
       observeEvent(get_selected(), {
         validate(
-          need(!is.null(app_object()$rds), '')
+          need(!is.null(app_object()$metadata), '')
         )
 
         df <- get_selected()

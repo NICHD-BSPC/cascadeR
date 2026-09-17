@@ -390,7 +390,7 @@ coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
 
       #################### Main plotting function ####################
 
-      get_coexpression_plot <- eventReactive(c(app_object()$rds,
+      get_coexpression_plot <- eventReactive(c(app_object()$metadata,
                                                filtered(),
                                                input$plt_do,
                                                refresh()), {
@@ -692,7 +692,7 @@ coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
       observeEvent(show_selection(), {
 
         validate(
-          need(!is.null(app_object()$rds), '')
+          need(!is.null(app_object()$metadata), '')
         )
         validate(
           need(!is.null(plot_obj$df), '')
@@ -760,7 +760,7 @@ coexpressionPlotServer <- function(id, app_object, filtered, genes_to_plot,
 
       observeEvent(get_selected(), {
         validate(
-          need(!is.null(app_object()$rds), '')
+          need(!is.null(app_object()$metadata), '')
         )
 
         df <- get_selected()

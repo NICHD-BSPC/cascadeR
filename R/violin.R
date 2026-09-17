@@ -266,7 +266,7 @@ violinServer <- function(id, app_object, filtered, genes_to_plot,
 
       #################### Main plotting function ####################
 
-      get_violin_plot <- eventReactive(c(app_object()$rds,
+      get_violin_plot <- eventReactive(c(app_object()$metadata,
                                          filtered(),
                                          input$plt_do,
                                          refresh()), {
@@ -373,7 +373,7 @@ violinServer <- function(id, app_object, filtered, genes_to_plot,
       })
 
       output$vlnplt <- renderPlot(
-        height = eventReactive(c(app_object()$rds,
+        height = eventReactive(c(app_object()$metadata,
                                  input$plt_do,
                                  refresh()), {
 

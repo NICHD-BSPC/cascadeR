@@ -205,7 +205,7 @@ linePlotServer <- function(id, app_object, filtered, genes_to_plot,
 
       #################### Main plotting function ####################
 
-      get_line_plot <- eventReactive(c(app_object()$rds,
+      get_line_plot <- eventReactive(c(app_object()$metadata,
                                        filtered(),
                                        input$plt_do,
                                        refresh()), {

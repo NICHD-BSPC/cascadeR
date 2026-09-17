@@ -383,7 +383,7 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
         selected_points$current <- list()
 
         obj_type <- app_object()$obj_type
-        if(obj_type == 'seurat'){
+        if(obj_type == 'seurat' | obj_type == 'SingleCellExperiment'){
 
           shinyjs::show(id='assay_menu')
 
@@ -442,7 +442,7 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
 
       #################### Main plotting function ####################
 
-      get_scatter_plot <- eventReactive(c(app_object()$rds,
+      get_scatter_plot <- eventReactive(c(app_object()$metadata,
                                           filtered(),
                                           input$plt_do,
                                           refresh()), {
@@ -783,7 +783,7 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
       observeEvent(show_selection(), {
 
         validate(
-          need(!is.null(app_object()$rds), '')
+          need(!is.null(app_object()$metadata), '')
         )
         validate(
           need(!is.null(active_plot_type()), '')
@@ -855,7 +855,7 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
 
       get_selected <- reactive({
         validate(
-          need(!is.null(app_object()$rds), '')
+          need(!is.null(app_object()$metadata), '')
         )
 
         plot_type <- active_plot_type()
@@ -868,7 +868,7 @@ scatterPlotServer <- function(id, app_object, filtered, genes_to_plot,
 
       observeEvent(get_selected(), {
         validate(
-          need(!is.null(app_object()$rds), '')
+          need(!is.null(app_object()$metadata), '')
         )
 
         df <- get_selected()
