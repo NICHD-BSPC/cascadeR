@@ -239,41 +239,6 @@ scatterPlotUI <- function(id, panel){
       ) # fluidRow
 
     ) # tagList
-  } else if(panel == 'selection'){
-    tagList(
-      fluidRow(
-        column(6,
-          strong('Point selection')
-        ), # column
-        column(6, align='right',
-          helpButtonUI(ns('umap_ptselect_help'))
-        ) # column
-      ), # fluidRow
-
-      uiOutput(ns('pt_selected')),
-
-      fluidRow(
-        column(12,
-          align='center',
-          style='margin-bottom: 10px;',
-          actionButton(ns('show_selection'),
-                       label='Show selection')
-        ),
-        column(12,
-          align='center',
-          style='margin-bottom: 10px;',
-          downloadButton(ns('dload_clicks'),
-                         label='Download selection')
-        ),
-        column(12,
-          align='center',
-          style='margin-bottom: 10px;',
-          actionButton(ns('reset_clicks'),
-                       label='Reset selection',
-                       class='btn-primary')
-        )
-      ) # fluidRow
-    )
   } else if(panel == 'main'){
     tabPanel('Gene-gene Scatter',
       br(),
