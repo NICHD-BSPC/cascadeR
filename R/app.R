@@ -1557,6 +1557,8 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                              choices=all_genes$choices,
                              selected=g,
                              server=TRUE)
+      } else if(is.null(g)){
+        g <- ''
       }
       g
     })
