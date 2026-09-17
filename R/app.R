@@ -1396,7 +1396,11 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
         }
         all_genes$choices <- unique(tmp_genes)
       } else if(app_object$obj_type == 'SingleCellExperiment'){
-        all_genes$choices <- rownames(app_object$rds)
+        tmp_genes <- rownames(app_object$rds)
+        for(altexp in altExpNames(app_object$rds)){
+          tmp_genes <- c(tmp_genes, rownames(altExp(app_object$rds, altexp)))
+        }
+        all_genes$choices <- unique(tmp_genes)
       } else if(app_object$obj_type == 'anndata'){
         all_genes$choices <- rownames(app_object$rds$var)
       }
