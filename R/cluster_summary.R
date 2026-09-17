@@ -676,12 +676,8 @@ clustSummaryServer <- function(id, obj, filtered, args, reload_global, config){
 
             updateTabsetPanel(session, inputId='ftrplt_type',
                               selected='UMAP')
-            updateTabsetPanel(session, inputId='coexplt_type',
-                              selected='UMAP')
           } else {
             showTab(inputId='ftrplt_type', target='Spatial',
-                    select=TRUE)
-            showTab(inputId='coexplt_type', target='Spatial',
                     select=TRUE)
 
             slice_choices <- intersect(unique(app_object()$spatial_coords$slice),
