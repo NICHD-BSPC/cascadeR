@@ -632,7 +632,17 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
         # in which the tree is rendered, top to bottom
         #
         # TODO: add checks for column existence, or that is handled already?
-        mdata <- mdata[, tree_col()]
+        mdata <- mdata[, tree_col(), drop=FALSE]
+
+        # stop if too few columns selected
+        if(length(tree_col()) < 2){
+          showNotification(
+            'Must choose at least 2 columns to compare',
+            type='error'
+          )
+
+          validate(need(length(tree_col()) >= 2, 'too few columns selected'))
+        }
 
         # remove column prefix and replace with clust_col_rep
         rep <- 'res.'
@@ -728,7 +738,17 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
         mdata <- as.data.frame(mdata)
 
         # only keep selected columns in metadata
-        mdata <- mdata[, tree_col()]
+        mdata <- mdata[, tree_col(), drop=FALSE]
+
+        # stop if too few columns selected
+        if(length(tree_col()) < 2){
+          showNotification(
+            'Must choose at least 2 columns to compare',
+            type='error'
+          )
+
+          validate(need(length(tree_col()) >= 2, 'too few columns selected'))
+        }
 
         # remove column prefix and replace with clust_col_rep
         rep <- 'res.'
