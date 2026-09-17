@@ -344,16 +344,18 @@ spatialCoexpressionPlotServer <- function(id, app_object, filtered, genes_to_plo
           if(length(g) > 1)
             choices <- list(gene_scratchpad=g, other=setdiff(gene_choices(), g))
           else choices <- c(g, setdiff(gene_choices(), g))
-
-          ## NOTE: default returned value for selectizeInput with *multiple=TRUE*
-          ##       is NULL, not ''
-          if(!is.null(input$plt_genes)) selected <- input$plt_genes
-          else selected <- ''
-          updateSelectizeInput(session, 'plt_genes',
-                               choices=choices,
-                               selected=selected,
-                               server=TRUE)
+        } else {
+          choices <- gene_choices()
         }
+
+        ## NOTE: default returned value for selectizeInput with *multiple=TRUE*
+        ##       is NULL, not ''
+        if(!is.null(input$plt_genes)) selected <- input$plt_genes
+        else selected <- ''
+        updateSelectizeInput(session, 'plt_genes',
+                             choices=choices,
+                             selected=selected,
+                             server=TRUE)
       })
 
       observeEvent(app_object()$metadata_levels, {
