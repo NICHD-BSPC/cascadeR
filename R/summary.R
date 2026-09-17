@@ -102,6 +102,9 @@ summaryServer <- function(id, obj, args){
           )
         }
 
+        # get number of cells
+        ncells <- nrow(app_object()$metadata)
+
         if(obj_type == 'seurat'){
           # get summary of assays
           summ <- do.call('rbind', lapply(app_object()$rds@assays, function(x){
@@ -109,14 +112,27 @@ summaryServer <- function(id, obj, args){
                          }))
           summ2 <- paste0(rownames(summ), ': ', summ)
 
-          # get number of cells
-          ncells <- nrow(app_object()$metadata)
-
           # get dimension reductions
           dimred <- names(app_object()$rds@reductions)
-        } else {
-          ncells <- nrow(app_object()$metadata)
+        } else if(obj_type == 'SingleCellExperiment'){
+          # all assays have same set of features
+          summ2 <- paste0(length(rownames(app_object()$rds)), ' features')
 
+          # get reductions from all assays
+          dimred <- reducedDimNames(app_object()$rds)
+          if(length(altExpNames(app_object()$rds)) > 0){
+            altexp_dimred <- lapply(altExpNames(app_object()$rds),
+                               function(x) reducedDimNames(altExp(app_object()$rds, x))
+                             )
+            names(altexp_dimred) <- altExpNames(app_object()$rds)
+
+            tmp_dimred <- c(dimred,
+                            unlist(unname(altexp_dimred)))
+
+            dimred <- unique(tmp_dimred)
+          }
+
+        } else if(obj_type == 'anndata'){
           # TODO: support for multiple assays?
           summ2 <- paste0(nrow(app_object()$rds$var), ' features')
 
