@@ -322,7 +322,7 @@ markerPlotServer <- function(id, obj, filtered, genes_to_plot,
       observeEvent(app_object()$rds, {
 
         obj_type <- app_object()$obj_type
-        if(obj_type == 'seurat'){
+        if(obj_type == 'seurat' | obj_type == 'SingleCellExperiment'){
 
           shinyjs::show(id='assay_menu')
 
@@ -453,6 +453,51 @@ markerPlotServer <- function(id, obj, filtered, genes_to_plot,
           updateSelectInput(session, 'assay',
                             choices=NULL,
                             selected=NULL)
+        } else if(app_object()$obj_type == 'SingleCellExperiment'){
+          # assume no spatial info in SingleCellExperiment
+          hideTab(inputId='ftrplt_type', target='Spatial')
+          hideTab(inputId='coexplt_type', target='Spatial')
+
+          sel_plt <- input$markerplt_type
+          # make sure something is selected
+          updateTabsetPanel(session, inputId='markerplt_type',
+                            selected=sel_plt)
+
+          updateTabsetPanel(session, inputId='ftrplt_type',
+                            selected='UMAP')
+          updateTabsetPanel(session, inputId='coexplt_type',
+                            selected='UMAP')
+
+          # update assay menu
+          # SingleCellExperiment 'altExps' and 'mainExpName' are equivalent to Seurat 'assays'
+          assay_names <- mainExpName(app_object()$rds)
+          slot_list <- setNames(as.list(assayNames(app_object()$rds)), assay_names)
+          if(length(altExpNames(app_object()$rds)) > 0){
+            altexp_names <- altExpNames(app_object()$rds)
+
+            altexp_slot_list <- lapply(altexp_names, function(x)
+                                  assayNames(altExp(app_object()$rds, x))
+                                )
+            names(altexp_slot_list) <- altexp_names
+
+            slot_list <- c(slot_list, altexp_slot_list)
+            assay_names <- c(assay_names, altexp_names)
+          }
+
+          # update with selection and exit
+          updateSelectInput(session, 'assay',
+                            choices=assay_names,
+                            selected=assay_names[1])
+
+          # move 'counts' to end of slot list
+          slot_list <- lapply(slot_list, function(x){
+                         if('counts' %in% x) x <- c(setdiff(x, 'counts'), 'counts')
+                         x
+                       })
+
+          obj_info$assay_list <- slot_list
+          obj_info$slot <- slot_list[[ assay_names[1] ]][1]
+
         }
 
         showNotification(
@@ -751,6 +796,26 @@ get_marker_plot_data <- function(g, app_object, filtered, args,
 
       label <- sub('X_', '', args()$dimred)
       colnames(dimred) <- paste0(label, seq_len(2))
+    }
+  } else if(obj_type == 'SingleCellExperiment'){
+    ridx <- which(rownames(app_object()$rds) %in% g)
+
+    # if selected assay is the main one, get gdat from slot directly
+    # otherwise get it from an altExp (assay)
+    if(assay == mainExpName(app_object()$rds))
+      gdat <- assay(app_object()$rds, selected_slot)[ridx, which(idx)]
+    else {
+      gdat <- assay(altExp(app_object()$rds, assay), selected_slot)[ridx, which(idx)]
+    }
+
+    if(length(g) > 1) gdat <- t(gdat)
+
+    if(reduction){
+      if(assay == mainExpName(app_object()$rds))
+        dimred <- reducedDim(app_object()$rds, args()$dimred)[which(idx),seq_len(2)]
+      else {
+        dimred <- reducedDim(altExp(app_object()$rds, assay), args()$dimred)[which(idx), seq_len(2)]
+      }
     }
   }
 

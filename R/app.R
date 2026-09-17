@@ -883,7 +883,23 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
       # only show assay menu for seurat objects
       if(regexpr('\\.(R|r)ds$', input$analysis) > 0){
-        app_object$obj_type <- 'seurat'
+        obj<- readRDS(input$analysis)
+        if(inherits(obj, 'Seurat')) app_object$obj_type <- 'seurat'
+        else if(inherits(obj, 'SingleCellExperiment')) app_object$obj_type <- 'SingleCellExperiment'
+        else {
+          showModal(
+            modalDialog(
+              paste('This does not appear to be a Seurat or SingleCellExperiment object.',
+                    'Please choose different analysis'),
+              easyClose=TRUE
+            )
+          )
+
+          validate(
+            need(inherits(obj, 'Seurat') | inherits(obj, 'SingleCellExperiment'),
+                 'Not a Seurat or SingleCellExperiment object')
+          )
+        }
         shinyjs::show('assay_menu')
       } else {
         app_object$obj_type <- 'anndata'
@@ -891,20 +907,6 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
       }
 
       if(app_object$obj_type == 'seurat'){
-        obj<- readRDS(input$analysis)
-
-        if(!inherits(obj, 'Seurat')){
-          showModal(
-            modalDialog(
-              'This does not appear to be a Seurat object. Please choose different analysis',
-              easyClose=TRUE
-            )
-          )
-
-          validate(
-            need(inherits(obj, 'Seurat'), 'Not a Seurat object')
-          )
-        }
 
         all_assays <- names(obj@assays)
         if('SCT' %in% all_assays) selected <- 'SCT'
@@ -995,6 +997,66 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                          })
           app_object$spatial_coords <- data.table::rbindlist(coords_list)
         }
+      } else if(app_object$obj_type == 'SingleCellExperiment'){
+        mdata <- colData(obj)
+
+        # SingleCellExperiment 'altExps' and 'mainExpName' are equivalent to Seurat 'assays'
+        assay_names <- mainExpName(obj)
+        if(length(altExpNames(obj)) > 0){
+          assay_names <- c(assay_names, altExpNames(obj))
+        }
+
+        if(length(assay_names) == 0){
+          showNotification(
+            'No experiments found in SingleCellExperiment object! Please choose different dataset and retry',
+            type='error'
+          )
+
+          validate(
+            need(length(assay_names) > 0, 'no assays in sce object')
+          )
+        }
+
+        updateSelectInput(session, 'assay',
+                          choices=assay_names,
+                          selected=assay_names[1])
+
+        # get reductions from all assays
+        dimred <- reducedDimNames(obj)
+        if(length(altExpNames(obj)) > 0){
+          altexp_dimred <- lapply(altExpNames(obj),
+                             function(x) reducedDimNames(altExp(obj, x))
+                           )
+          names(altexp_dimred) <- altExpNames(obj)
+
+          tmp_dimred <- c(dimred,
+                          unlist(unname(altexp_dimred)))
+
+          # if any reducedDimNames are non-unique show warning and keep one
+          if(any(duplicated(tmp_dimred))){
+            showNotification(
+              'No dimension reductions found in SingleCellExperiment object',
+              type='warning'
+            )
+          }
+          dimred <- unique(tmp_dimred)
+        }
+
+        if(length(dimred) > 0){
+          idx <- grep('umap', tolower(dimred))
+          if(length(idx) > 0) selected <- dimred[idx[1]]
+          else selected <- dimred[1]
+        } else {
+          showNotification(
+            'No dimension reductions found in SingleCellExperiment object',
+            type='warning'
+          )
+          selected <- dimred
+        }
+
+        updateSelectInput(session, 'dimred',
+                          choices=dimred,
+                          selected=selected)
 
       } else if(app_object$obj_type == 'anndata'){
         obj <- read_h5ad(input$analysis, backed='r')
@@ -1095,6 +1157,9 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
           if(length(lvls) < 2){
             dropped$toosmall <- c(dropped$toosmall, mc)
+          } else if(length(lvls) == nrow(mdata)){
+            # this handles 'barcode' or 'cellid' columns
+            dropped$toobig <- c(dropped$toobig, mc)
           } else {
             factor_cols <- c(factor_cols, mc)
             app_object$metadata_levels$all[[ mc ]] <- lvls
@@ -1149,7 +1214,10 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
         )
       }
 
+      # convert to data frame if SingleCellExperiment object
+      if(app_object$obj_type == 'SingleCellExperiment') mdata <- as.data.frame(mdata)
       app_object$metadata <- mdata
+
       meta_cols <- colnames(mdata)
 
       f <- file.path(assay_base, 'allmarkers.tsv')
@@ -1321,9 +1389,12 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
           }
         }
         all_genes$choices <- unique(tmp_genes)
+      } else if(app_object$obj_type == 'SingleCellExperiment'){
+        all_genes$choices <- rownames(app_object$rds)
       } else if(app_object$obj_type == 'anndata'){
         all_genes$choices <- rownames(app_object$rds$var)
       }
+
     }) # observeEvent
 
     reload_global <- reactive({
@@ -1350,7 +1421,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
         need(!stop_flow(), '')
       )
 
-      if(app_object$obj_type == 'seurat'){
+      if(app_object$obj_type == 'seurat' | app_object$obj_type == 'SingleCellExperiment'){
         validate(
           need(input$assay != '', '')
         )

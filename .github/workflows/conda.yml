@@ -73,8 +73,8 @@ jobs:
           cd .. && mkdir tmp && cd tmp
 
           # build, check
-          R CMD build --no-build-vignettes --no-manual ../cascadeR
-          R CMD check --as-cran --no-manual --no-build-vignettes cascadeR_${VERSION}.tar.gz
+          time R CMD build --no-manual ../cascadeR
+          time R CMD check --no-manual --no-vignettes --timings --as-cran  cascadeR_${VERSION}.tar.gz
 
           mv cascadeR_${VERSION}.tar.gz ${WORKDIR}/cascadeR.tar.gz
           tar cvf rcmdcheck.tar.gz cascadeR.Rcheck

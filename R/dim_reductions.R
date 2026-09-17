@@ -507,6 +507,11 @@ dimredServer <- function(id, obj,
             spatial_info$slice <- 'slice'
           }
 
+        } else if(obj_type == 'SingleCellExperiment'){
+
+          # assume no spatial plots for SingleCellExperiment
+          hideTab(inputId='dimplt_type', target='Spatial Plot')
+          updateTabsetPanel(session, 'dimplt_type', selected='UMAP')
         }
 
         global_args$grp_by <- args()$grp_by
@@ -594,6 +599,12 @@ dimredServer <- function(id, obj,
         } else if(obj_type == 'anndata'){
           all_dimred <- names(app_object()$rds$obsm)
           all_dimred <- setdiff(all_dimred, 'spatial')
+        } else if(obj_type == 'SingleCellExperiment'){
+          all_dimred <- reducedDimNames(app_object()$rds)
+          altexp_names <- altExpNames(app_object()$rds)
+          for(altexp in altexp_names){
+            all_dimred <- c(all_dimred, reducedDimNames(altExp(app_object()$rds, altexp)))
+          }
         }
 
         validate(
@@ -637,6 +648,28 @@ dimredServer <- function(id, obj,
           label <- sub('X_', '', dimred)
           colnames(df) <- paste0(label, seq_len(2))
 
+        } else if(obj_type == 'SingleCellExperiment'){
+
+          if(dimred %in% reducedDimNames(app_object()$rds))
+            df <- reducedDim(app_object()$rds, dimred)
+          else if(length(altexp_names) > 0){
+            for(altexp in altexp_names){
+              if(dimred %in% reducedDimNames(altExp(app_object()$rds, altexp))){
+                df <- reducedDim(altExp(app_object()$rds, altexp), dimred)
+                break
+              }
+            }
+          } else {
+            showNotification(
+              paste0('Dimension reduction: "', dimred, '" not found in object!'),
+              type='error'
+            )
+
+            validate(
+              need(dimred %in% reducedDimNames(app_object()$rds), 'dimred not in object')
+            )
+          }
+          df <- df[idx, seq_len(2)]
         }
 
         df <- as.data.frame(df)
@@ -985,6 +1018,11 @@ dimredServer <- function(id, obj,
         } else if(obj_type == 'anndata'){
           validate(
             need('spatial' %in% names(app_object()$rds$obsm),
+                 'Spatial analysis not available')
+          )
+        } else if(obj_type == 'SingleCellExperiment'){
+          validate(
+            need(obj_type != 'SingleCellExperiment',
                  'Spatial analysis not available')
           )
         }
