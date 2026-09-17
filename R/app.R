@@ -1013,9 +1013,12 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
         }
 
         if(length(assay_names) == 0){
-          showNotification(
-            'No experiments found in SingleCellExperiment object! Please choose different dataset and retry',
-            type='error'
+          showModal(
+            modalDialog(
+              paste('No experiments found in SingleCellExperiment object.',
+                    'Please choose different dataset and retry'),
+              easyClose=TRUE
+            )
           )
 
           validate(
