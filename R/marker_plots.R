@@ -798,7 +798,22 @@ get_marker_plot_data <- function(g, app_object, filtered, args,
       colnames(dimred) <- paste0(label, seq_len(2))
     }
   } else if(obj_type == 'SingleCellExperiment'){
-    ridx <- which(rownames(app_object()$rds) %in% g)
+    # get all genes from current expt
+    if(assay == mainExpName(app_object()$rds))
+      all_g <- rownames(app_object()$rds, assay)
+    else
+      all_g <- rownames(altExp(app_object()$rds, assay))
+
+    validate(
+      need(all(g %in% all_g),
+           paste0('Input genes (',
+                  paste(setdiff(g, all_g), collapse=', '),
+                  ') not found in "',
+                  assay,
+                  '" assay. Please remove or choose different assay and retry')
+      )
+    )
+    ridx <- which(all_g %in% g)
 
     # if selected assay is the main one, get gdat from slot directly
     # otherwise get it from an altExp (assay)
@@ -811,10 +826,15 @@ get_marker_plot_data <- function(g, app_object, filtered, args,
     if(length(g) > 1) gdat <- t(gdat)
 
     if(reduction){
-      if(assay == mainExpName(app_object()$rds))
+      if(args()$dimred %in% reducedDimNames(app_object()$rds))
         dimred <- reducedDim(app_object()$rds, args()$dimred)[which(idx),seq_len(2)]
       else {
-        dimred <- reducedDim(altExp(app_object()$rds, assay), args()$dimred)[which(idx), seq_len(2)]
+        for(altexp in altExpNames(app_object()$rds)){
+          if(args()$dimred %in% reducedDimNames(altExp(app_object()$rds, altexp))){
+            dimred <- reducedDim(altExp(app_object()$rds, altexp), args()$dimred)[which(idx), seq_len(2)]
+            break
+          }
+        }
       }
     }
   }
