@@ -346,7 +346,7 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
         obj_info$cluster_columns$all <- NULL
         obj_info$cluster_columns$selected <- NULL
 
-        if(app_object()$obj_type == 'seurat'){
+        if(app_object()$obj_type == 'seurat' | app_object()$obj_type == 'SingleCellExperiment'){
 
           shinyjs::show(id='assay_menu')
 
@@ -402,6 +402,28 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
 
           # get names of reductions
           dr_choices <- names(app_object()$rds$obsm)
+        } else if(obj_type == 'SingleCellExperiment'){
+          # SingleCellExperiment 'altExps' and 'mainExpName' are equivalent to Seurat 'assays'
+          assay_names <- mainExpName(app_object()$rds)
+          if(length(altExpNames(app_object()$rds)) > 0){
+            assay_names <- c(assay_names, altExpNames(app_object()$rds))
+          }
+
+          updateSelectInput(session, 'clust_assay',
+                            choices=assay_names,
+                            selected=assay_names[1])
+
+          # get names of reductions
+          dr_choices <- reducedDimNames(app_object()$rds)
+          if(length(altExpNames(app_object()$rds)) > 0){
+            altexp_dimred <- lapply(altExpNames(app_object()$rds),
+                               function(x) reducedDimNames(altExp(app_object()$rds, x))
+                             )
+            names(altexp_dimred) <- altExpNames(app_object()$rds)
+
+            tmp_dimred <- c(dr_choices, unlist(unname(altexp_dimred)))
+          }
+          dr_choices <- unique(tmp_dimred)
         }
 
         col_choices <- app_object()$grouping_vars
@@ -412,7 +434,7 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
                           selected=clust_sel)
 
         # pick a umap reduction by default (if available)
-        umap_idx <- grep('umap', dr_choices)
+        umap_idx <- grep('umap', tolower(dr_choices))
 
         if(length(umap_idx) >= 1) selected <- dr_choices[ umap_idx[1] ]
         else selected <- dr_choices[1]
@@ -469,6 +491,16 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
           idx <- rownames(mdata) %in% bc
           obj <- app_object()$rds[idx,]
           mdata <- mdata[idx,]
+        } else if(obj_type == 'SingleCellExperiment'){
+
+          showNotification(
+            'Single cluster tree not available for SingleCellExperiment objects',
+            type='error'
+          )
+
+          validate(
+            need(obj_type != 'SingleCellExperiment', 'single cluster tree not supported for sce')
+          )
         }
 
         # get most variable genes
@@ -635,6 +667,18 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
           dr_choices_all <- names(app_object()$rds@reductions)
         } else if(app_object()$obj_type == 'anndata'){
           dr_choices_all <- names(app_object()$rds$obsm)
+        } else if(app_object()$obj_type == 'SingleCellExperiment'){
+
+          dr_choices_all <- reducedDimNames(app_object()$rds)
+          if(length(altExpNames(app_object()$rds)) > 0){
+            altexp_dimred <- lapply(altExpNames(app_object()$rds),
+                               function(x) reducedDimNames(altExp(app_object()$rds, x))
+                             )
+            names(altexp_dimred) <- altExpNames(app_object()$rds)
+
+            tmp_dimred <- c(dr_choices_all, unlist(unname(altexp_dimred)))
+          }
+          dr_choices_all <- unique(tmp_dimred)
         }
 
         if(length(dr_choices_all) == 0){
@@ -652,7 +696,7 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
         names(dr_choices) <- sub('X_', '', dr_choices)
 
         # pick a umap reduction by default (if available)
-        umap_idx <- grep('umap', dr_choices)
+        umap_idx <- grep('umap', tolower(dr_choices))
 
         if(length(umap_idx) >= 1) selected <- dr_choices[ umap_idx[1] ]
         else selected <- dr_choices[1]
@@ -689,6 +733,18 @@ clustreeServer <- function(id, obj, filtered, args, reload_global, config){
           df <- app_object()$rds@reductions[[ red_dim ]]@cell.embeddings[idx, ]
         } else if(app_object()$obj_type == 'anndata'){
           df <- app_object()$rds$obsm[[ red_dim ]][idx,]
+        } else if(app_object()$obj_type == 'SingleCellExperiment'){
+          # find dimred from possible options
+          if(red_dim %in% reducedDimNames(app_object()$rds)){
+            df <- reducedDim(app_object()$rds, red_dim)[idx,]
+          } else {
+            for(altexp in altExpNames(app_object()$rds)){
+              if(red_dim %in% reducedDimNames(altExp(app_object()$rds, altexp))){
+                df <- reducedDim(altExp(app_object()$rds, altexp), red_dim)[idx,]
+                break
+              }
+            }
+          }
         }
 
         label <- sub('X_', '', red_dim)
