@@ -1226,34 +1226,102 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
       meta_cols <- colnames(mdata)
 
-      f <- file.path(assay_base, 'allmarkers.tsv')
-      if(file.exists(f)){
-          df <- readr::read_tsv(f)
+      # read marker tables
+      for(marker_type in c('allmarkers', 'consmarkers', 'demarkers')){
+        # search in dataset root for marker tsvs
+        f <- list.files(assay_base,
+                        pattern=paste0(marker_type, '.*\\.(t|c)sv$'),
+                        full.names=TRUE, ignore.case=TRUE)
 
-          # add dummy 'cluster' column if no cluster column present
-          if(!'cluster' %in% colnames(df)) df[['cluster']] <- 'none'
+        if(length(f) > 0){
+            # if only one found, read it
+            if(length(f) == 1)
+              df <- readr::read_tsv(f)
+            else {
+              showNotification(
+                paste('Multiple "', marker_type, '" files found!',
+                      'Attempting to combine using "group" column'),
+                type='warning'
+              )
+              # if multiple found, concatenate after adding additional 'group' column
+              df_list <- lapply(f, function(x){
+                           label <- tolower(basename(x))
+                           if(grepl('\\.tsv$', label)) df <- readr::read_tsv(x)
+                           else if(grepl('\\.csv$', label)) df <- readr::read_csv(x)
 
-          app_object$allmarkers <- df
-      }
+                           df$group <- sub('\\.(t|c)sv$', '', label)
+                           df
+                         })
 
-      f <- file.path(assay_base, 'consmarkers.tsv')
-      if(file.exists(f)){
-          df <- readr::read_tsv(f)
+              # handle column name mismatches
+              col_list <- lapply(df_list, colnames)
+              names(col_list) <- basename(f)
 
-          # add dummy 'cluster' column if no cluster column present
-          if(!'cluster' %in% colnames(df)) df[['cluster']] <- 'none'
+              # find common set of columns
+              common_cols <- Reduce(intersect, col_list)
 
-          app_object$consmarkers <- df
-      }
+              # if not common columns found, skip
+              if(length(common_cols) == 0){
+                showNotification(
+                  paste0('No common columns between "', marker_type, '" files! Skipping'),
+                  type='error', duration=7
+                )
+                next
+              }
 
-      f <- file.path(assay_base, 'demarkers.tsv')
-      if(file.exists(f)){
-          df <- readr::read_tsv(f)
+              # common columns must have gene, lfc, padj columns
+              all_cols <- c('gene_column', 'padj', 'lfc')
+              cols_missing <- NULL
+              for(cl in all_cols){
+                idx <- which(common_cols %in% config()$server$markers[[ cl ]])
+                if(length(idx) == 0) cols_missing <- c(cols_missing, cl)
+              }
 
-          # add dummy 'cluster' column if no cluster column present
-          if(!'cluster' %in% colnames(df)) df[['cluster']] <- 'none'
+              # if required columns missing after join, show warning and/or skip
+              # gene columns are required and must match
+              if('gene_column' %in% cols_missing){
+                showNotification(
+                  paste0('Identical gene columns not found in all "', marker_type, '" files! Skipping'),
+                  type='error', duration=7
+                )
+                next
+              } else if(length(cols_missing) > 0){
+                # show warning if some important column types are missing
+                showNotification(
+                  paste0('Required column types (', paste(cols_missing, collapse=','), ') not matching in "',
+                         marker_type, '" files!'),
+                  type='warning', duration=7
+                )
+              } else if(length(cols_missing) == 3){
+                # all required column types cannot be missing
+                showNotification(
+                  'No required column types common between "', marker_type, '" files! Skipping',
+                  type='error', duration=7
+                )
+                next
+              }
 
-          app_object$demarkers <- df
+              # check if any files have extra columns and show warning
+              extra_cols <- lapply(col_list, function(x) setdiff(x, common_cols))
+              extra_cols_num <- unlist(lapply(extra_cols, length))
+              extra_cols_uniq <- unique(unname(unlist(extra_cols)))
+              if(any(extra_cols_num > 0)){
+                showNotification(
+                  paste0('Columns are not identical between "', marker_type, '" files.',
+                        'Extra columns (', paste(extra_cols_uniq, collapse=','), ') will be dropped from: ',
+                        paste(names(extra_cols_num)[which(extra_cols_num > 0)], collapse=', ')),
+                  type='warning'
+                )
+              }
+              # join using common columns
+              df <- do.call('rbind', lapply(df_list, function(x) x[, common_cols]))
+            }
+
+            # add dummy 'cluster' column if no cluster column present
+            if(!'cluster' %in% colnames(df)) df[['cluster']] <- 'none'
+
+            app_object[[ marker_type ]] <- df
+        }
       }
 
       # hide 'Cell Markers' tab if no marker tables uploaded
