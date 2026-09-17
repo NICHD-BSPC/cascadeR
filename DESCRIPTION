@@ -38,6 +38,8 @@ Imports:
     scales,
     Seurat,
     SeuratObject,
+    SingleCellExperiment,
+    SummarizedExperiment,
     shiny,
     shinyBS,
     shinycssloaders,

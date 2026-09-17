@@ -37,3 +37,4 @@ dependencies:
   - bioconductor-biocstyle
   - r-rmarkdown
 
+  - bioconductor-singlecellexperiment
