@@ -1157,6 +1157,9 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
           if(length(lvls) < 2){
             dropped$toosmall <- c(dropped$toosmall, mc)
+          } else if(length(lvls) == nrow(mdata)){
+            # this handles 'barcode' or 'cellid' columns
+            dropped$toobig <- c(dropped$toobig, mc)
           } else {
             factor_cols <- c(factor_cols, mc)
             app_object$metadata_levels$all[[ mc ]] <- lvls
