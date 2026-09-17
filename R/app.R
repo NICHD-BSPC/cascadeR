@@ -603,6 +603,12 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
       current$proj <- NULL
       current$analysis <- NULL
 
+      # reset gene scratchpad
+      updateSelectizeInput(session,
+                           'gene.to.plot',
+                           choices=NULL,
+                           selected=NULL)
+
       removeNotification('metadata_notify')
 
     }
