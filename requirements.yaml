@@ -33,6 +33,7 @@ dependencies:
   - anndata
   - plotly
   - python-kaleido
+  - qpdf
 
   - bioconductor-biocstyle
   - r-rmarkdown
