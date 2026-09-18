@@ -184,15 +184,6 @@ Two things to note here:
       *analysis* folder, they are concatenated together with the file name encoded
       in the "group" column.
 
-We provide a helper function to set up a dataset while following the above
-specifications. Let's use this now for the analysis we just performed.
-
-First we create a data directory for `cascadeR`.
-
-```{r create_dir}
-dir.create('~/cascader/data', recursive=TRUE)
-```
-
 ## First Run
 
 Load the `cascadeR` package.
@@ -222,6 +213,32 @@ run_cascade(options=list(port=12345, launch.browser=FALSE))
 ```
 
 Then access cascadeR by opening the URL: `http://127.0.0.1:12345`
+
+## Set up cascadeR analysis
+
+We provide a helper function to set up a dataset while following cascadeR's
+specifications. Let's use this now for the analysis we just performed.
+
+First we create a data directory for `cascadeR`.
+
+```{r create_dir}
+dir.create('~/cascader/data', recursive=TRUE)
+```
+
+Next, we run `add_cascade_analysis` with the RDS file and marker table path
+specified. By default, this function prints out the commands to be run -
+to actually run them, we use `execute = TRUE`.
+
+```{r add_analysis}
+add_cascade_analysis(
+  obj_path='seurat_pbmc_small.Rds',
+  data_dir='~/cascader/data',
+  project='my-project',
+  analysis='pbmc_small',
+  cluster_markers='allmarkers_combined.tsv',
+  execute=TRUE
+)
+```
 
 
 ## Initial setup
