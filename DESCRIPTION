@@ -8,7 +8,24 @@ Authors@R:
         person("Ryan", "Dale", , "ryan.dale@nih.gov",
                role = c("fnd"), comment = c(ORCID = "0000-0003-2664-3744"))
     )
-Description: Interactive dashboard for scRNA-Seq and spatial (Visium) data.
+Description: Interactive and modular shiny app for single-cell and
+    spatial transcriptomic data exploration and management. Visualize cell
+    clusters or groups using interactive cell embeddings, e.g. UMAP or t-SNE,
+    or spatial views. Explore cell composition and quality control metrics
+    using the metadata viewer module. Investigate the effect of clustering
+    resolutions or compare annotation sources using cluster tree. Visualize
+    gene expression using cell embeddings or in spatial context with feature
+    plots and coexpression plots or in cell clusters using dotplots, violin
+    plots. Manage marker tables from single-cell or pseudo-bulk analyses and
+    track genes of interest using the gene scratchpad. Choose interesting cells
+    with lasso selection directly from interactive plots and export for
+    downstream analysis. Slice and dice datasets with custom filters based on
+    cell metadata, gene expression or lasso selections. Efficiently handle
+    large datasets using custom downsampling controls. CascadeR has
+    cross-ecosystem compatibility with support for Seurat, SingleCellExperiment
+    and AnnData objects. In addition, the app includes an integrated platform
+    to manage multiple projects and user access that can be run on a central
+    server to share with collaborators.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

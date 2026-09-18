@@ -2,64 +2,129 @@
 
 **Unleash the power of your single-cell data**
 
-Cascade is an interactive dashboard that transforms complex single-cell RNA-Seq and spatial transcriptomics data (Visium and Xenium) into beautiful, insightful visualizations. Designed for both computational and experimental biologists, Cascade makes exploring your data intuitive and exciting.
+Cascade is an interactive Shiny dashboard designed for exploring and analyzing
+single-cell RNA sequencing (scRNA-Seq) and spatial transcriptomics data. It
+provides a user-friendly interface for researchers to visualize and interpret
+complex single-cell genomics data.
+
+## General workflow
+
+- Load a pre-processed single-cell or spatial dataset and (optional) marker gene tables
+- Explore cell clusters in reduced dimensional space
+- Visualize expression patterns of genes of interest
+- Compare expression across different conditions or cell types
+- Filter and subset data for focused analysis
 
 ## Key Features
 
-- **Universal Compatibility**: Works seamlessly with Seurat (`.Rds`) and scanpy (`.h5ad`) objects
-- **Lightning-Fast Visualizations**: Interactive plots powered by `plotly` that respond in real-time
-  - Violin plots - Compare expression across clusters
-  - Dot plots - Visualize expression prevalence and intensity
-  - Feature plots - Map gene expression onto UMAP or spatial coordinates
-  - Co-expression plots - Discover genes with similar expression patterns
-  - Scatter plots - Explore relationships between genes
-  - Line plots - Track expression trends across conditions
-- **Spatial Transcriptomics**: Visualize gene expression in tissue context with Visium and Xenium support
-- **Interactive Cell Selection**: Lasso select cells of interest directly on UMAP/spatial plots and export barcodes for downstream analysis
-- **Smart Filtering**: Filter cells based on metadata and gene expression with an intuitive interface
-- **Cluster Relationships**: Visualize hierarchical relationships between cell clusters with beautiful tree plots
-- **Gene Tracking**: Keep your genes of interest at your fingertips with the "Gene scratchpad"
-- **Powerful Marker Analysis**: Interactive marker tables with advanced filtering capabilities
-- **Flexible Deployment**: Run locally for personal analysis or on a server to share with collaborators
-- **User Management**: Optional authentication system for controlled access in multi-user environments
+1. Data Support
+
+  - Compatible with `Seurat`, `SingleCellExperiment` (`.Rds` files) and
+    `AnnData` objects (`.h5ad` files) from scanpy
+  - Handles both single-cell RNA-Seq and spatial transcriptomics data
+    (including Visium and Xenium)
+
+2. User Interface
+
+  - Clean, modern interface with a tabbed layout for different analysis views
+  - Interactive tour functionality to guide new users
+  - Optional user authentication system
+  - Consistent help documentation for all modules
+
+3. Main Analysis Modules:
+
+  - *Summary*: Provides an overview of the dataset with basic statistics
+  - *Cell Embeddings*:
+    - Visualizes cells in reduced dimensional space (UMAP, t-SNE, etc.)
+    - Interactive plots with split view and selection capabilities
+    - Spatial visualization for spatial transcriptomics data
+  - *Metadata Viewer*:
+    - Displays and explores cell metadata and clustering information
+    - Summarizes cluster characteristics
+    - Visualizes metadata distributions with various plot types
+  - *Cluster Tree*:
+    - Visualizes hierarchical relationships between cell clusters
+    - Three visualization modes:
+      - Single: Hierarchical tree for a single clustering
+      - Compare resolutions (Tree): Tree diagram showing relationships between clusters at different resolutions
+      - Compare resolutions (Overlay): Overlay of cluster relationships on dimension reduction plots
+  - *Cell Markers*:
+    - Three types of marker tables:
+      - Cluster Markers: Genes that define each cluster (e.g. from `FindAllMarkers` (Seurat) or `rank_genes_groups` (scanpy).
+      - Conserved Markers: Genes conserved across groups (from `Seurat::FindConservedMarkers`)
+      - DE Markers: Differentially expressed genes between conditions (from `Seurat::FindMarkers` or pseudo-bulk analysis from `DESeq2`)
+    - Interactive tables with filtering and selection capabilities
+    - Integration with gene scratchpad for cross-module analysis
+  - *Marker Plots*:
+    - Multiple visualization options for gene expression:
+      - Violin plots
+      - Dot plots
+      - Feature plots (on UMAP or spatial coordinates)
+      - Co-expression plots (on UMAP or spatial coordinates)
+      - Scatter plots
+    - Download functionality for all plots
+  - *Settings*:
+    - Configure data directories
+    - Manage user access (if authentication is enabled)
+
+4. Interactive Features:
+
+  - Point selection in UMAP/spatial cell-embeddings or marker plots
+  - Gene selection from marker tables
+  - Filtering capabilities for cells based on metadata, gene expression or lasso selection
+  - Customizable plot parameters (colors, sizes, opacity, etc.)
+  - Download options for plots and data
+  - Gene scratchpad for tracking genes of interest across modules
 
 ## Installation
 
-### conda (recommended)
+`CascadeR` can be installed using `BiocManager::install`. First, start R (version: 4.6)
+and then run:
 
-The easiest way to get started with Cascade is through conda, which handles all dependencies automatically:
+```r
+# first check to see if BiocManager is available
+if(!requireNamespace('BiocManager', quietly=TRUE)){
+  install.packages('BiocManager')
+}
+
+BiocManager::install('cascadeR')
+```
+
+To install the 'devel' version:
+
+```r
+BiocManager::install('cascadeR', version='devel')
+```
+
+### conda
+
+An alternative way to get started with cascadeR is through conda, which handles
+all dependencies automatically:
+
+```bash
+# Create environment outside the cascadeR directory
+cd .. && conda env create -p env --file cascadeR/requirements-pinned.yaml
+conda activate ./env
+R
+```
+
+Then install the package with the `remotes` package. Here we set upgrade='never'
+to make sure the conda-installed package versions remain unchanged.
+
+```r
+remotes::install_github('NICHD-BSPC/cascadeR@r4.5', upgrade='never')
+```
+
+**Note:**
+
+Conda packages for R >= 4.6.0 may not be available yet causing installation
+using the default github branch to fail. To avoid this, use branch r4.3 which
+pins R to a lower version.
 
 ```bash
 # Create environment outside the cascadeR directory
 cd .. &&  env create -p env --file cascadeR/requirements-pinned.yaml
 conda activate ./env
-```
-
-Then install the package using one of these methods:
-
-**Option 1**: Using `remotes::install_github`
-
-Note that here we use `upgrade='never'` to leave the conda installed package versions unchanged.
-
-```r
-remotes::install_github('NICHD-BSPC/cascadeR', upgrade='never')
-```
-
-**Option 2**: Using `R CMD build` and `install.packages`:
-
-```bash
-R CMD build cascadeR/
-Rscript -e "install.packages('cascadeR_1.0.tar.gz', repos=NULL)"
-```
-
-### remotes
-
-Alternatively, install directly with `remotes`:
-
-```r
-install.packages('remotes')
-setRepositories(ind=c(1,2,3,4,5))  # Get both CRAN and Bioconductor packages
-remotes::install_github('NICHD-BSPC/cascadeR')
 ```
 
 ## Getting Started
@@ -94,7 +159,9 @@ install_cascade()  # Installs plotly and kaleido for interactive plots
 run_cascade()      # Launch the app!
 ```
 
-The first time you run Cascade, you'll be prompted to choose a data directory. Point it to your data location (e.g., `/cascade/data`), and you're ready to explore!
+The first time you run Cascade, you'll be prompted to choose a data directory.
+Point it to your data location (e.g., `/cascade/data`), and you're ready to
+explore!
 
 ### Remote Access
 
@@ -105,42 +172,6 @@ run_cascade(options=list(port=12345, launch.browser=FALSE))
 ```
 
 Then access the app at `http://127.0.0.1:12345` through your SSH tunnel.
-
-## Server Mode with Authentication
-
-For multi-user environments, Cascade supports authentication:
-
-```r
-# Create user database
-credentials <- data.frame(
-  user = c('shinymanager'),
-  password = c('12345'),
-  admin = c(TRUE),
-  stringsAsFactors = FALSE
-)
-
-# Initialize the database
-shinymanager::create_db(
-  credentials_data = credentials,
-  sqlite_path = 'credentials.sqlite',
-  passphrase = 'admin_passphrase'
-)
-
-# Run with authentication
-run_cascade(credentials='credentials.sqlite', passphrase='admin_passphrase')
-```
-
-## Exploring Your Data
-
-Once your data is loaded, Cascade offers multiple ways to explore:
-
-- **Summary Tab**: Get a quick overview of your dataset
-- **Cell Embeddings**: Visualize cells in UMAP or spatial context
-- **Metadata Viewer**: Explore cell metadata and cluster characteristics
-- **Cluster Tree**: Understand relationships between cell clusters
-- **Cell Markers**: Identify and filter marker genes for each cluster
-- **Marker Plots**: Create beautiful visualizations of gene expression
-- **Settings**: Configure data directories and user access
 
 ## Documentation
 
