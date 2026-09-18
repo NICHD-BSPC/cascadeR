@@ -270,15 +270,14 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                 fluidRow(
                   column(12,
                     align='center',
-                    style='margin-bottom: 10px;',
+                    style='margin-bottom: 10px; margin-top: 10px;',
                     actionButton('show_selection',
                                  label='Show/Hide selection')
                   ),
                   column(12,
                     align='center',
                     style='margin-bottom: 10px;',
-                    downloadButton('dload_clicks',
-                                   label='Download selection')
+                    selectionUI('dload_clicks_ui')
                   ),
                   column(12,
                     align='center',
@@ -299,7 +298,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
               ) # conditionalPanel
             ), # tagList
 
-            icon = icon("hand-pointer", class='fa-solid'), width = "300px",
+            icon = icon("hand-pointer", class='fa-solid'), width = "400px",
 
             size='sm',
             tooltip = tooltipOptions(title = "Selection settings")
@@ -1720,32 +1719,35 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
       }
 
       if(!all(all_sel %in% selected_points$bc)){
-        delta <- setdiff(all_sel, selected_points$bc)
+        delta <- setdiff(names(all_sel), names(selected_points$bc))
 
-        selected_points$bc <- c(selected_points$bc, delta)
+        selected_points$bc <- c(selected_points$bc, all_sel[ delta ])
       }
 
     })
 
-    output$dload_clicks <- downloadHandler(
-      filename = function(){
-        paste0('clicked-points.tsv')
-      },
-      content = function(file){
-        bc <- unique(unlist(selected_points$bc))
+    # summary table showing current selections
+    output$sel_df <- renderDT({
+      sel_list <- selected_points$bc
 
-        # only output unique barcodes
-        mdata <- data.table::as.data.table(app_object$metadata, keep.rownames=TRUE)
-        idx <- mdata$rn %in% bc
+      req(length(sel_list) > 0)
 
-        mdata_sel <- as.data.frame(mdata[idx,])
-        rn_idx <- which(colnames(mdata_sel) == 'rn')
-        colnames(mdata_sel)[rn_idx] <- 'barcodes'
+      sel_list_summary <- unlist(lapply(sel_list, length))
+      sel_df <- data.frame(
+                  selection_id=names(sel_list),
+                  num_pts=unname(sel_list_summary)
+                )
+      datatable(sel_df,
+                rownames=FALSE,
+                selection='none',
+                options=list(dom='tp', pageLength=5))
 
-        write.table(mdata_sel, file=file, sep='\t', quote=FALSE,
-                    row.names=FALSE)
-      }
-    )
+    })
+
+    # module for downloading selections
+    selectionServer('dload_clicks_ui',
+                    reactive({ selected_points$bc }),
+                    app_object)
 
     # show modal first when resetting
     observeEvent(input$reset_clicks, {
@@ -1782,12 +1784,16 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     })
 
     output$pt_selected <- renderUI({
+      validate(
+        need(length(selected_points$bc) > 0, 'No current selections')
+      )
+
       np <- length(unique(unlist(selected_points$bc)))
 
       tagList(
         fluidRow(
-          column(12, style='margin-bottom: 10px;',
-
+          column(12, DTOutput('sel_df')),
+          column(12, style='margin-top: 10px;',
             paste(np, 'points selected')
           )
         )
