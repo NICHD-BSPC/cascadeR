@@ -189,7 +189,7 @@ specifications. Let's use this now for the analysis we just performed.
 
 First we create a data directory for `cascadeR`.
 
-```{r create_dir, eval=FALSE}
+```{r create_dir}
 dir.create('~/cascader/data', recursive=TRUE)
 ```
 
@@ -197,7 +197,7 @@ Next, we run `add_cascade_analysis` with the RDS file and marker table path
 specified. By default, this function prints out the commands to be run -
 to actually run them, we use `execute = TRUE`.
 
-```{r add_analysis, eval=FALSE}
+```{r add_analysis}
 add_cascade_analysis(
   obj_path='seurat_pbmc_small.Rds',
   data_dir='~/cascader/data',
@@ -212,7 +212,7 @@ add_cascade_analysis(
 
 Load the `cascadeR` package.
 
-```{r first_load, eval=FALSE}
+```{r first_load}
 library(cascadeR)
 ```
 
