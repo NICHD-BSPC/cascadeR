@@ -10,7 +10,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/NICHD-BSPC/cascadeR/blob/main/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/NICHD-BSPC/cascadeR/blob/devel/DESCRIPTION)
 
 Mitra A (2026). *cascadeR: Shiny App to Explore Single-Cell Analysis*. R
 package version 0.99.0, <https://nichd-bspc.github.io/cascadeR/>.
