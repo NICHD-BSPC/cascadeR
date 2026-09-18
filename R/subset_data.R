@@ -85,11 +85,12 @@ subsetUI <- function(id){
           conditionalPanel(
             paste0('input["', ns('filter_type'), '"] == "selection"'),
             fluidRow(
-              column(6, 'Choose plot'),
-              column(6,
+              column(5, 'Choose selection(s)'),
+              column(7,
                 selectInput(ns('select_var'),
                             label=NULL,
-                            choices=c('umap', 'spatial'))
+                            choices=NULL,
+                            multiple=TRUE)
               ) # column
             ), # fluidRow
 
@@ -147,12 +148,13 @@ subsetUI <- function(id){
 #'        categorical metadata & 'numeric_dist' that has distributions of numeric
 #'        metadata
 #' @param gene_choices reactive list with all genes present in object
+#' @param selected_points reactive list with cell selections
 #'
 #' @return reactive expression containing filtered cell barcodes
 #'
 #' @export
 #'
-subsetServer <- function(id, obj, args, metadata_args, gene_choices){
+subsetServer <- function(id, obj, args, metadata_args, gene_choices, selected_points){
   moduleServer(
     id,
 
@@ -169,10 +171,6 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
           obj_type=obj$obj_type,
           metadata=obj$metadata
         )
-      })
-
-      selected_points <- reactive({
-        obj$selected_points
       })
 
       # reactive values to keep track of stuff
@@ -296,30 +294,19 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
                                     c(names(filter_levels$metadata$full),
                                       names(filter_levels$metadata$dist$full))))
 
-        # update selection var menu
-        if(obj_type == 'seurat'){
-          if(any(grepl('Spatial', names(app_object()$rds))) |
-             any(grepl('Xenium', names(app_object()$rds)))){
-            choices <- c('spatial', 'umap')
-          } else {
-            choices <- c('umap')
-          }
-        } else if(obj_type == 'anndata'){
-          if('spatial' %in% names(app_object()$rds$obsm)){
-            choices <- c('spatial', 'umap')
-          } else {
-            choices <- c('umap')
-          }
-        } else if(obj_type == 'SingleCellExperiment'){
-          choices <- c('umap')
-        }
-        updateSelectInput(session, 'select_var',
-                          choices=choices)
         data_loaded$flag <- data_loaded$flag + 1
 
         showNotification(
           'Loaded filter module ...'
         )
+      })
+
+      observeEvent(selected_points(), {
+        # update selection var menu
+        choices <- c('Choose one or more'='', names(selected_points()))
+        updateSelectInput(session, 'select_var',
+                          choices=choices, selected=choices[1])
+
       })
 
       observeEvent(gene_choices(), {
@@ -480,11 +467,12 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
 
       output$select_var_menu <- renderUI({
         validate(
-          need(input$select_var != 'none', '')
+          need(length(selected_points()) > 0, 'No current selections')
         )
-        np <- length(selected_points()[[ input$select_var ]])
+        ns <- length(selected_points())
+        np <- unname(unlist(lapply(selected_points(), length)))
         tagList(
-          paste(np, 'cells'),
+          paste(ns, 'selections, ', sum(np), 'cells'),
         )
       })
 
@@ -943,11 +931,12 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
         } else if(input$filter_type == 'selection'){
           # current number of selections
           nsel <- length(filter_list$selection)
-          key <- paste(input$select_var, 'selection', nsel + 1)
+          key <- paste('selection', nsel + 1, ':',
+                   paste(input$select_var, collapse=','))
 
           # if filter is new, add to filter_list
           if(!key %in% filter_list$selection){
-            bc <- selected_points()[[ input$select_var ]]
+            bc <- unique(unlist(selected_points()[ input$select_var ]))
             filter_levels$selection[[ key ]] <- bc
 
             filter_list$selection[[ key ]] <- c(key, paste(length(bc), 'cells'))

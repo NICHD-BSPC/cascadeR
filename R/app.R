@@ -1523,7 +1523,8 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                                   app_object,
                                   subset_args,
                                   metadata_args,
-                                  reactive({ all_genes$choices }))
+                                  reactive({ all_genes$choices }),
+                                  reactive({ selected_points$bc }))
 
     observeEvent(apply_filters(), {
       bc <- apply_filters()
