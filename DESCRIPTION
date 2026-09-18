@@ -1,14 +1,34 @@
 Package: cascadeR
 Title: Shiny App to Explore Single-Cell Analysis
-Version: 1.1
+Version: 0.99.0
 Authors@R:
-    person("Apratim", "Mitra", , "apratim.mitra@nih.gov", role = c("aut", "cre"),
-           comment = c(ORCID = "0000-0003-3279-0054"))
-Description: Interactive dashboard for scRNA-Seq and spatial (Visium) data.
+    c(
+        person("Apratim", "Mitra", , "apratim.mitra@gmail.com",
+               role = c("aut", "cre"), comment = c(ORCID = "0000-0003-3279-0054")),
+        person("Ryan", "Dale", , "ryan.dale@nih.gov",
+               role = c("fnd"), comment = c(ORCID = "0000-0003-2664-3744"))
+    )
+Description: Interactive and modular shiny app for single-cell and
+    spatial transcriptomic data exploration and management. Visualize cell
+    clusters or groups using interactive cell embeddings, e.g. UMAP or t-SNE,
+    or spatial views. Explore cell composition and quality control metrics
+    using the metadata viewer module. Investigate the effect of clustering
+    resolutions or compare annotation sources using cluster tree. Visualize
+    gene expression using cell embeddings or in spatial context with feature
+    plots and coexpression plots or in cell clusters using dotplots, violin
+    plots. Manage marker tables from single-cell or pseudo-bulk analyses and
+    track genes of interest using the gene scratchpad. Choose interesting cells
+    with lasso selection directly from interactive plots and export for
+    downstream analysis. Slice and dice datasets with custom filters based on
+    cell metadata, gene expression or lasso selections. Efficiently handle
+    large datasets using custom downsampling controls. CascadeR has
+    cross-ecosystem compatibility with support for Seurat, SingleCellExperiment
+    and AnnData objects. In addition, the app includes an integrated platform
+    to manage multiple projects and user access that can be run on a central
+    server to share with collaborators.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
 Imports:
     anndata,
     ape,
@@ -34,6 +54,8 @@ Imports:
     scales,
     Seurat,
     SeuratObject,
+    SingleCellExperiment,
+    SummarizedExperiment,
     shiny,
     shinyBS,
     shinycssloaders,
@@ -48,4 +70,15 @@ Imports:
     viridis,
     yaml
 Suggests:
-    shinymanager
+    BiocStyle,
+    knitr,
+    rmarkdown,
+    shinymanager,
+    testthat
+VignetteBuilder: knitr
+BugReports: https://github.com/NICHD-BSPC/cascadeR/issues
+biocViews:
+    Software, SingleCell, Spatial, Transcriptomics, GeneExpression,
+    Visualization, DifferentialExpression, ShinyApps, GUI
+URL: https://nichd-bspc.github.io/cascadeR/
+Config/roxygen2/version: 8.1.0

@@ -8,6 +8,13 @@
 #'        if credentials have sqlite backend.
 #' @param ... parameters passed to shinyApp() call
 #'
+#' @return Shiny app object
+#'
+#' @examplesIf interactive()
+#' shiny::runApp(
+#'   run_cascade()
+#' )
+#'
 #' @export
 run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ...){
 
@@ -23,14 +30,14 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     # check to see if shinymanager is available
     if(!requireNamespace('shinymanager', quietly=TRUE)){
       stop(
-        paste('Login functionality using SQL/sqlite credentials requires "shinymanager".',
-              'Please install using "install.packages(\'shinymanager\')"'),
+        'Login functionality using SQL/sqlite credentials requires "shinymanager".',
+        'Please install using "install.packages(\'shinymanager\')"',
         .call=FALSE
       )
     } else if(!file.exists(credentials)){
       stop(
-        paste0('Credentials specified, but file not found: "',
-               credentials, '"')
+        'Credentials specified, but file not found: "',
+        credentials, '"'
       )
     }
   }
@@ -263,15 +270,14 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                 fluidRow(
                   column(12,
                     align='center',
-                    style='margin-bottom: 10px;',
+                    style='margin-bottom: 10px; margin-top: 10px;',
                     actionButton('show_selection',
                                  label='Show/Hide selection')
                   ),
                   column(12,
                     align='center',
                     style='margin-bottom: 10px;',
-                    downloadButton('dload_clicks',
-                                   label='Download selection')
+                    selectionUI('dload_clicks_ui')
                   ),
                   column(12,
                     align='center',
@@ -292,7 +298,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
               ) # conditionalPanel
             ), # tagList
 
-            icon = icon("hand-pointer", class='fa-solid'), width = "300px",
+            icon = icon("hand-pointer", class='fa-solid'), width = "400px",
 
             size='sm',
             tooltip = tooltipOptions(title = "Selection settings")
@@ -311,7 +317,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
         tabPanel('Load data',
           fluidRow(
-            column(3,
+            column(2, style='margin-top: 20px',
               introBox(
                 selectizeInput('proj',
                                label=h5('Available projects'),
@@ -338,7 +344,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
               br(), br(),
               uiOutput('current_obj')
             ), # column
-            column(9, style='margin-top: 20px',
+            column(10, style='margin-top: 20px',
               fluidRow(
                 column(6,
                   tags$div(
@@ -595,6 +601,12 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
       # reset current loaded dataset display
       current$proj <- NULL
       current$analysis <- NULL
+
+      # reset gene scratchpad
+      updateSelectizeInput(session,
+                           'gene.to.plot',
+                           choices=NULL,
+                           selected=NULL)
 
       removeNotification('metadata_notify')
 
@@ -876,7 +888,23 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
       # only show assay menu for seurat objects
       if(regexpr('\\.(R|r)ds$', input$analysis) > 0){
-        app_object$obj_type <- 'seurat'
+        obj<- readRDS(input$analysis)
+        if(inherits(obj, 'Seurat')) app_object$obj_type <- 'seurat'
+        else if(inherits(obj, 'SingleCellExperiment')) app_object$obj_type <- 'SingleCellExperiment'
+        else {
+          showModal(
+            modalDialog(
+              paste('This does not appear to be a Seurat or SingleCellExperiment object.',
+                    'Please choose different analysis'),
+              easyClose=TRUE
+            )
+          )
+
+          validate(
+            need(inherits(obj, 'Seurat') | inherits(obj, 'SingleCellExperiment'),
+                 'Not a Seurat or SingleCellExperiment object')
+          )
+        }
         shinyjs::show('assay_menu')
       } else {
         app_object$obj_type <- 'anndata'
@@ -884,20 +912,6 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
       }
 
       if(app_object$obj_type == 'seurat'){
-        obj<- readRDS(input$analysis)
-
-        if(!inherits(obj, 'Seurat')){
-          showModal(
-            modalDialog(
-              'This does not appear to be a Seurat object. Please choose different analysis',
-              easyClose=TRUE
-            )
-          )
-
-          validate(
-            need(inherits(obj, 'Seurat'), 'Not a Seurat object')
-          )
-        }
 
         all_assays <- names(obj@assays)
         if('SCT' %in% all_assays) selected <- 'SCT'
@@ -965,7 +979,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                                         })
             coords_list <- lapply(names(obj@images), function(x){
                              coords <- obj@images[[ x ]]@coordinates
-                             tmp <- data.table::as.data.table(coords, keep.rownames=T)
+                             tmp <- data.table::as.data.table(coords, keep.rownames=TRUE)
                              tmp$slice <- x
                              tmp
                            })
@@ -988,9 +1002,72 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                          })
           app_object$spatial_coords <- data.table::rbindlist(coords_list)
         }
+      } else if(app_object$obj_type == 'SingleCellExperiment'){
+        mdata <- colData(obj)
+
+        # SingleCellExperiment 'altExps' and 'mainExpName' are equivalent to Seurat 'assays'
+        assay_names <- mainExpName(obj)
+        if(length(altExpNames(obj)) > 0){
+          assay_names <- c(assay_names, altExpNames(obj))
+        }
+
+        if(length(assay_names) == 0){
+          showModal(
+            modalDialog(
+              paste('No experiments found in SingleCellExperiment object.',
+                    'Please choose different dataset and retry'),
+              easyClose=TRUE
+            )
+          )
+
+          validate(
+            need(length(assay_names) > 0, 'no assays in sce object')
+          )
+        }
+
+        updateSelectInput(session, 'assay',
+                          choices=assay_names,
+                          selected=assay_names[1])
+
+        # get reductions from all assays
+        dimred <- reducedDimNames(obj)
+        if(length(altExpNames(obj)) > 0){
+          altexp_dimred <- lapply(altExpNames(obj),
+                             function(x) reducedDimNames(altExp(obj, x))
+                           )
+          names(altexp_dimred) <- altExpNames(obj)
+
+          tmp_dimred <- c(dimred,
+                          unlist(unname(altexp_dimred)))
+
+          # if any reducedDimNames are non-unique show warning and keep one
+          if(any(duplicated(tmp_dimred))){
+            showNotification(
+              'No dimension reductions found in SingleCellExperiment object',
+              type='warning'
+            )
+          }
+          dimred <- unique(tmp_dimred)
+        }
+
+        if(length(dimred) > 0){
+          idx <- grep('umap', tolower(dimred))
+          if(length(idx) > 0) selected <- dimred[idx[1]]
+          else selected <- dimred[1]
+        } else {
+          showNotification(
+            'No dimension reductions found in SingleCellExperiment object',
+            type='warning'
+          )
+          selected <- dimred
+        }
+
+        updateSelectInput(session, 'dimred',
+                          choices=dimred,
+                          selected=selected)
 
       } else if(app_object$obj_type == 'anndata'){
-        obj <- read_h5ad(input$analysis)
+        obj <- read_h5ad(input$analysis, backed='r')
 
         if(!inherits(obj, 'AnnDataR6')){
           showModal(
@@ -1077,7 +1154,8 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
             lvls <- unique(tmp[!is.na(tmp)])
             lvls <- lvls[order(lvls)]
             if(any(is.na(tmp))){
-              lvls <- c(lvls, 'NA')
+              # add 'NA' level if not already present
+              if(!'NA' %in% lvls) lvls <- c(lvls, 'NA')
               na_idx <- is.na(tmp)
               tmp[na_idx] <- 'NA'
 
@@ -1087,6 +1165,9 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
           if(length(lvls) < 2){
             dropped$toosmall <- c(dropped$toosmall, mc)
+          } else if(length(lvls) == nrow(mdata)){
+            # this handles 'barcode' or 'cellid' columns
+            dropped$toobig <- c(dropped$toobig, mc)
           } else {
             factor_cols <- c(factor_cols, mc)
             app_object$metadata_levels$all[[ mc ]] <- lvls
@@ -1141,37 +1222,108 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
         )
       }
 
+      # convert to data frame if SingleCellExperiment object
+      if(app_object$obj_type == 'SingleCellExperiment') mdata <- as.data.frame(mdata)
       app_object$metadata <- mdata
+
       meta_cols <- colnames(mdata)
 
-      f <- file.path(assay_base, 'allmarkers.tsv')
-      if(file.exists(f)){
-          df <- readr::read_tsv(f)
+      # read marker tables
+      for(marker_type in c('allmarkers', 'consmarkers', 'demarkers')){
+        # search in dataset root for marker tsvs
+        f <- list.files(assay_base,
+                        pattern=paste0(marker_type, '.*\\.(t|c)sv$'),
+                        full.names=TRUE, ignore.case=TRUE)
 
-          # add dummy 'cluster' column if no cluster column present
-          if(!'cluster' %in% colnames(df)) df[['cluster']] <- 'none'
+        if(length(f) > 0){
+            # if only one found, read it
+            if(length(f) == 1)
+              df <- readr::read_tsv(f)
+            else {
+              showNotification(
+                paste('Multiple "', marker_type, '" files found!',
+                      'Attempting to combine using "group" column'),
+                type='warning'
+              )
+              # if multiple found, concatenate after adding additional 'group' column
+              df_list <- lapply(f, function(x){
+                           label <- tolower(basename(x))
+                           if(grepl('\\.tsv$', label)) df <- readr::read_tsv(x)
+                           else if(grepl('\\.csv$', label)) df <- readr::read_csv(x)
 
-          app_object$allmarkers <- df
-      }
+                           df$group <- sub('\\.(t|c)sv$', '', label)
+                           df
+                         })
 
-      f <- file.path(assay_base, 'consmarkers.tsv')
-      if(file.exists(f)){
-          df <- readr::read_tsv(f)
+              # handle column name mismatches
+              col_list <- lapply(df_list, colnames)
+              names(col_list) <- basename(f)
 
-          # add dummy 'cluster' column if no cluster column present
-          if(!'cluster' %in% colnames(df)) df[['cluster']] <- 'none'
+              # find common set of columns
+              common_cols <- Reduce(intersect, col_list)
 
-          app_object$consmarkers <- df
-      }
+              # if not common columns found, skip
+              if(length(common_cols) == 0){
+                showNotification(
+                  paste0('No common columns between "', marker_type, '" files! Skipping'),
+                  type='error', duration=7
+                )
+                next
+              }
 
-      f <- file.path(assay_base, 'demarkers.tsv')
-      if(file.exists(f)){
-          df <- readr::read_tsv(f)
+              # common columns must have gene, lfc, padj columns
+              all_cols <- c('gene_column', 'padj', 'lfc')
+              cols_missing <- NULL
+              for(cl in all_cols){
+                idx <- which(common_cols %in% config()$server$markers[[ cl ]])
+                if(length(idx) == 0) cols_missing <- c(cols_missing, cl)
+              }
 
-          # add dummy 'cluster' column if no cluster column present
-          if(!'cluster' %in% colnames(df)) df[['cluster']] <- 'none'
+              # if required columns missing after join, show warning and/or skip
+              # gene columns are required and must match
+              if('gene_column' %in% cols_missing){
+                showNotification(
+                  paste0('Identical gene columns not found in all "', marker_type, '" files! Skipping'),
+                  type='error', duration=7
+                )
+                next
+              } else if(length(cols_missing) > 0){
+                # show warning if some important column types are missing
+                showNotification(
+                  paste0('Required column types (', paste(cols_missing, collapse=','), ') not matching in "',
+                         marker_type, '" files!'),
+                  type='warning', duration=7
+                )
+              } else if(length(cols_missing) == 3){
+                # all required column types cannot be missing
+                showNotification(
+                  'No required column types common between "', marker_type, '" files! Skipping',
+                  type='error', duration=7
+                )
+                next
+              }
 
-          app_object$demarkers <- df
+              # check if any files have extra columns and show warning
+              extra_cols <- lapply(col_list, function(x) setdiff(x, common_cols))
+              extra_cols_num <- unlist(lapply(extra_cols, length))
+              extra_cols_uniq <- unique(unname(unlist(extra_cols)))
+              if(any(extra_cols_num > 0)){
+                showNotification(
+                  paste0('Columns are not identical between "', marker_type, '" files.',
+                        'Extra columns (', paste(extra_cols_uniq, collapse=','), ') will be dropped from: ',
+                        paste(names(extra_cols_num)[which(extra_cols_num > 0)], collapse=', ')),
+                  type='warning'
+                )
+              }
+              # join using common columns
+              df <- do.call('rbind', lapply(df_list, function(x) x[, common_cols]))
+            }
+
+            # add dummy 'cluster' column if no cluster column present
+            if(!'cluster' %in% colnames(df)) df[['cluster']] <- 'none'
+
+            app_object[[ marker_type ]] <- df
+        }
       }
 
       # hide 'Cell Markers' tab if no marker tables uploaded
@@ -1258,9 +1410,9 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                                            tmp <- as.vector(col2rgb(x))
                                            rgb(tmp[1], tmp[2], tmp[3], maxColorValue=255)
                                          }))
-                              cols <- c(cols, grayhex[1:sum(idx)])
+                              cols <- c(cols, grayhex[seq_len(sum(idx))])
 
-                              if(sum(idx) > 1) names(cols) <- c(nona, paste0('NA', seq(1:sum(idx))))
+                              if(sum(idx) > 1) names(cols) <- c(nona, paste0('NA', seq_len(sum(idx))))
                               else names(cols) <- c(nona, 'NA')
                             } else {
                               cols <- scales::hue_pal()(length(lvls))
@@ -1313,9 +1465,16 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
           }
         }
         all_genes$choices <- unique(tmp_genes)
+      } else if(app_object$obj_type == 'SingleCellExperiment'){
+        tmp_genes <- rownames(app_object$rds)
+        for(altexp in altExpNames(app_object$rds)){
+          tmp_genes <- c(tmp_genes, rownames(altExp(app_object$rds, altexp)))
+        }
+        all_genes$choices <- unique(tmp_genes)
       } else if(app_object$obj_type == 'anndata'){
         all_genes$choices <- rownames(app_object$rds$var)
       }
+
     }) # observeEvent
 
     reload_global <- reactive({
@@ -1342,7 +1501,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
         need(!stop_flow(), '')
       )
 
-      if(app_object$obj_type == 'seurat'){
+      if(app_object$obj_type == 'seurat' | app_object$obj_type == 'SingleCellExperiment'){
         validate(
           need(input$assay != '', '')
         )
@@ -1364,7 +1523,8 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                                   app_object,
                                   subset_args,
                                   metadata_args,
-                                  reactive({ all_genes$choices }))
+                                  reactive({ all_genes$choices }),
+                                  reactive({ selected_points$bc }))
 
     observeEvent(apply_filters(), {
       bc <- apply_filters()
@@ -1375,7 +1535,7 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
 
       # subset metadata levels
       idx <- which(rownames(app_object$metadata) %in% bc)
-      mdata.dt <- data.table::as.data.table(app_object$metadata, keep.rownames=T)
+      mdata.dt <- data.table::as.data.table(app_object$metadata, keep.rownames=TRUE)
       mdata.dt <- mdata.dt[idx,]
       for(mc in names(app_object$metadata_levels$all)){
         lvls <- t(unique(mdata.dt[[ mc ]]))
@@ -1455,6 +1615,10 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     ############################## Gene scratchpad #######################################
 
     gene_scratchpad <- reactive({
+      validate(
+        need(!is.null(all_genes$choices), 'data not loaded')
+      )
+
       g <- input$gene.to.plot
       if(!all(g %in% all_genes$choices)){
         g.diff <- g[!g %in% all_genes$choices]
@@ -1472,6 +1636,8 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
                              choices=all_genes$choices,
                              selected=g,
                              server=TRUE)
+      } else if(is.null(g)){
+        g <- ''
       }
       g
     })
@@ -1554,32 +1720,35 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
       }
 
       if(!all(all_sel %in% selected_points$bc)){
-        delta <- setdiff(all_sel, selected_points$bc)
+        delta <- setdiff(names(all_sel), names(selected_points$bc))
 
-        selected_points$bc <- c(selected_points$bc, delta)
+        selected_points$bc <- c(selected_points$bc, all_sel[ delta ])
       }
 
     })
 
-    output$dload_clicks <- downloadHandler(
-      filename = function(){
-        paste0('clicked-points.tsv')
-      },
-      content = function(file){
-        bc <- unique(unlist(selected_points$bc))
+    # summary table showing current selections
+    output$sel_df <- renderDT({
+      sel_list <- selected_points$bc
 
-        # only output unique barcodes
-        mdata <- data.table::as.data.table(app_object$metadata, keep.rownames=T)
-        idx <- mdata$rn %in% bc
+      req(length(sel_list) > 0)
 
-        mdata_sel <- as.data.frame(mdata[idx,])
-        rn_idx <- which(colnames(mdata_sel) == 'rn')
-        colnames(mdata_sel)[rn_idx] <- 'barcodes'
+      sel_list_summary <- unlist(lapply(sel_list, length))
+      sel_df <- data.frame(
+                  selection_id=names(sel_list),
+                  num_pts=unname(sel_list_summary)
+                )
+      datatable(sel_df,
+                rownames=FALSE,
+                selection='none',
+                options=list(dom='tp', pageLength=5))
 
-        write.table(mdata_sel, file=file, sep='\t', quote=FALSE,
-                    row.names=FALSE)
-      }
-    )
+    })
+
+    # module for downloading selections
+    selectionServer('dload_clicks_ui',
+                    reactive({ selected_points$bc }),
+                    app_object)
 
     # show modal first when resetting
     observeEvent(input$reset_clicks, {
@@ -1616,12 +1785,16 @@ run_cascade <- function(credentials=NULL, passphrase=NULL, enable_admin=TRUE, ..
     })
 
     output$pt_selected <- renderUI({
+      validate(
+        need(length(selected_points$bc) > 0, 'No current selections')
+      )
+
       np <- length(unique(unlist(selected_points$bc)))
 
       tagList(
         fluidRow(
-          column(12, style='margin-bottom: 10px;',
-
+          column(12, DTOutput('sel_df')),
+          column(12, style='margin-top: 10px;',
             paste(np, 'points selected')
           )
         )

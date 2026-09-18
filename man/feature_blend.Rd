@@ -80,3 +80,24 @@ This is a wrapper around umap_ly
 that uses four colors for four categories
 instead of a blend matrix.
 }
+\examples{
+\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
+df <- data.frame(
+  UMAP_1 = c(-1, 0, 1, 2),
+  UMAP_2 = c(0, 1, 0, -1),
+  GeneA = c(0, 5, 0, 10),
+  GeneB = c(0, 0, 8, 10)
+)
+
+blended <- feature_blend(
+  df,
+  xcol = "UMAP_1",
+  ycol = "UMAP_2",
+  blend_cols = c("GeneA", "GeneB"),
+  colors = c("#ff0000", "#0000ff", "#ff00ff"),
+  n = 10
+)
+names(blended)
+blended$data
+\dontshow{\}) # examplesIf}
+}

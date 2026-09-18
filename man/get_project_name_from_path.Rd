@@ -35,3 +35,18 @@ So if the path is: /path/to/project/test/clustered.Rds
 and depth=2 & end_offset=0
 this returns: project/test
 }
+\examples{
+get_project_name_from_path(
+  "/path/to/project/test/clustered.Rds",
+  depth = 2,
+  fsep = "/"
+)
+
+get_project_name_from_path(
+  "/path/project/staged/test/clustered.Rds",
+  depth = 2,
+  staging_dir = "staged",
+  fsep = "/"
+)
+
+}

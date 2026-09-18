@@ -2,6 +2,8 @@
 #'
 #' @param id Input id
 #'
+#' @return Shiny UI elements for the filter settings module
+#'
 #' @export
 #'
 subsetUI <- function(id){
@@ -25,8 +27,8 @@ subsetUI <- function(id){
         bsCollapsePanel('Add/edit filter',
 
           fluidRow(
-            column(6, 'Type of filter'),
-            column(6,
+            column(5, 'Type of filter'),
+            column(7,
               selectInput(ns('filter_type'),
                           label=NULL,
                           choices=c('metadata', 'gene', 'selection'),
@@ -37,8 +39,8 @@ subsetUI <- function(id){
           conditionalPanel(
             paste0('input["', ns('filter_type'), '"] == "metadata"'),
             fluidRow(
-              column(6, 'Choose variable'),
-              column(6,
+              column(5, 'Choose variable'),
+              column(7,
                 selectInput(ns('filter_var'),
                             label=NULL,
                             choices=NULL,
@@ -53,8 +55,8 @@ subsetUI <- function(id){
           conditionalPanel(
             paste0('input["', ns('filter_type'), '"] == "gene"'),
             fluidRow(
-              column(6, 'Choose gene'),
-              column(6,
+              column(5, 'Choose gene'),
+              column(7,
                 selectInput(ns('filter_gene'),
                             label=NULL,
                             choices=NULL,
@@ -83,11 +85,12 @@ subsetUI <- function(id){
           conditionalPanel(
             paste0('input["', ns('filter_type'), '"] == "selection"'),
             fluidRow(
-              column(6, 'Choose plot'),
-              column(6,
+              column(5, 'Choose selection(s)'),
+              column(7,
                 selectInput(ns('select_var'),
                             label=NULL,
-                            choices=c('umap', 'spatial'))
+                            choices=NULL,
+                            multiple=TRUE)
               ) # column
             ), # fluidRow
 
@@ -105,7 +108,11 @@ subsetUI <- function(id){
             ) # column
           ) # fluidRow
 
-        ) # bsCollapsePanel
+        ), # bsCollapsePanel
+
+        bsCollapsePanel('Delete filter',
+          uiOutput(ns('filter_delete'))
+        )
       ), # bsCollapse
 
       fluidRow(
@@ -145,10 +152,13 @@ subsetUI <- function(id){
 #'        categorical metadata & 'numeric_dist' that has distributions of numeric
 #'        metadata
 #' @param gene_choices reactive list with all genes present in object
+#' @param selected_points reactive list with cell selections
+#'
+#' @return reactive expression containing filtered cell barcodes
 #'
 #' @export
 #'
-subsetServer <- function(id, obj, args, metadata_args, gene_choices){
+subsetServer <- function(id, obj, args, metadata_args, gene_choices, selected_points){
   moduleServer(
     id,
 
@@ -165,10 +175,6 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
           obj_type=obj$obj_type,
           metadata=obj$metadata
         )
-      })
-
-      selected_points <- reactive({
-        obj$selected_points
       })
 
       # reactive values to keep track of stuff
@@ -193,6 +199,7 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
                        )
       saved_filters <- reactiveValues(all=list())
       data_loaded <- reactiveValues(flag=0)
+      filter_delete <- reactiveVal(0)
 
       reset_data <- function(){
 
@@ -221,7 +228,7 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
 
       }
 
-      observeEvent(c(app_object()$rds, args()), {
+      observeEvent(c(app_object()$metadata, args()), {
         reset_data()
 
         validate(
@@ -264,6 +271,21 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
           obj_details$assay <- 'X'
 
           obj_details$slot <- 'none'
+        } else if(obj_type == 'SingleCellExperiment'){
+          # SingleCellExperiment 'altExps' and 'mainExpName' are equivalent to Seurat 'assays'
+          obj_details$assay <- args()$assay
+
+          # update assay menu
+          if(obj_details$assay == mainExpName(app_object()$rds)){
+            slot_names <- assayNames(app_object()$rds)
+          } else {
+            slot_names <- assayNames(altExp(app_object()$rds, obj_details$assay))
+          }
+
+          if('counts' %in% slot_names)
+            slot_names <- c(setdiff(slot_names, 'counts'), 'counts')
+
+          obj_details$slot <- slot_names[1]
         }
 
         filter_levels$metadata$full <- metadata_args()$factor_levels
@@ -277,28 +299,19 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
                                     c(names(filter_levels$metadata$full),
                                       names(filter_levels$metadata$dist$full))))
 
-        # update selection var menu
-        if(obj_type == 'seurat'){
-          if(any(grepl('Spatial', names(app_object()$rds))) |
-             any(grepl('Xenium', names(app_object()$rds)))){
-            choices=c('spatial', 'umap')
-          } else {
-            choices=c('umap')
-          }
-        } else if(obj_type == 'anndata'){
-          if('spatial' %in% names(app_object()$rds$obsm)){
-            choices <- c('spatial', 'umap')
-          } else {
-            choices <- c('umap')
-          }
-        }
-        updateSelectInput(session, 'select_var',
-                          choices=choices)
         data_loaded$flag <- data_loaded$flag + 1
 
         showNotification(
           'Loaded filter module ...'
         )
+      })
+
+      observeEvent(selected_points(), {
+        # update selection var menu
+        choices <- c('Choose one or more'='', names(selected_points()))
+        updateSelectInput(session, 'select_var',
+                          choices=choices, selected=choices[1])
+
       })
 
       observeEvent(gene_choices(), {
@@ -365,6 +378,13 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
               g <- app_object()$rds[[ obj_details$assay ]][,input$filter_gene]
 
               # get data for gene from current selection
+              gc <- g[cell_info$after]
+            } else if(obj_type == 'SingleCellExperiment'){
+              if(obj_details$assay == mainExpName(app_object()$rds))
+                g <- assay(app_object()$rds, obj_details$slot)[input$filter_gene, ]
+              else
+                g <- assay(altExp(app_object()$rds, obj_details$assay), obj_details$slot)[input$filter_gene, ]
+
               gc <- g[cell_info$after]
             }
 
@@ -452,11 +472,12 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
 
       output$select_var_menu <- renderUI({
         validate(
-          need(input$select_var != 'none', '')
+          need(length(selected_points()) > 0, 'No current selections')
         )
-        np <- length(selected_points()[[ input$select_var ]])
+        ns <- length(selected_points())
+        np <- unname(unlist(lapply(selected_points(), length)))
         tagList(
-          paste(np, 'cells'),
+          paste(ns, 'selections, ', sum(np), 'cells'),
         )
       })
 
@@ -645,6 +666,11 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
               }
             } else if(obj_type == 'anndata'){
               g <- app_object()$rds[[ obj_details$assay ]][, key]
+            } else if(obj_type == 'SingleCellExperiment'){
+              if(obj_details$assay == mainExpName(app_object()$rds))
+                g <- assay(app_object()$rds, obj_details$slot)[key, ]
+              else
+                g <- assay(altExp(app_object()$rds, obj_details$assay), obj_details$slot)[key, ]
             }
 
             # save distribution
@@ -910,11 +936,12 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
         } else if(input$filter_type == 'selection'){
           # current number of selections
           nsel <- length(filter_list$selection)
-          key <- paste(input$select_var, 'selection', nsel + 1)
+          key <- paste('selection', nsel + 1, ':',
+                   paste(input$select_var, collapse=','))
 
           # if filter is new, add to filter_list
           if(!key %in% filter_list$selection){
-            bc <- selected_points()[[ input$select_var ]]
+            bc <- unique(unlist(selected_points()[ input$select_var ]))
             filter_levels$selection[[ key ]] <- bc
 
             filter_list$selection[[ key ]] <- c(key, paste(length(bc), 'cells'))
@@ -937,7 +964,8 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
       apply_filters <- eventReactive(c(data_loaded$flag,
                                        all_genes$choices,
                                        input$reset_filter_levels,
-                                       input$apply_filter), {
+                                       input$apply_filter,
+                                       filter_delete()), {
 
         validate(
           need(!is.null(app_object()$rds), 'Waiting for selection')
@@ -951,13 +979,13 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
         obj_type <- app_object()$obj_type
 
         mdata <- app_object()$metadata
-        mdata <- data.table::as.data.table(mdata, keep.rownames=T)
+        mdata <- data.table::as.data.table(mdata, keep.rownames=TRUE)
         mdata_orig <- mdata
 
         if(length(filter_list$order) > 0){
           for(col in filter_list$order){
 
-            idx <- 1:nrow(mdata)
+            idx <- seq_len(nrow(mdata))
             if(col %in% names(filter_list$metadata)){
               mcol <- mdata[[ col ]]
 
@@ -995,6 +1023,11 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
                 }
               } else if(obj_type == 'anndata'){
                 gcol <- app_object()$rds[[ obj_details$assay ]][, col]
+              } else if(obj_type == 'SingleCellExperiment'){
+                if(obj_details$assay == mainExpName(app_object()$rds))
+                  gcol <- assay(app_object()$rds, obj_details$slot)[col, ]
+                else
+                  gcol <- assay(altExp(app_object()$rds, obj_details$assay), obj_details$slot)[col, ]
               }
 
               tmp_idx <- gcol >= tmp[1] & gcol <= tmp[2]
@@ -1033,7 +1066,7 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
                  'No cells left! Please change filter criteria')
           )
 
-          if(obj_type == 'seurat'){
+          if(obj_type == 'seurat' | obj_type == 'SingleCellExperiment'){
             cell_info$after <- colnames(obj)[idx]
           } else if(obj_type == 'anndata'){
             cell_info$after <- rownames(obj)[idx]
@@ -1083,6 +1116,13 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
                   pretmp <- slot(app_object()$rds@assays[[ obj_details$assay ]], 'data')[col, ]
                   tmp <- pretmp[bc]
                 }
+              } else if(obj_type == 'SingleCellExperiment'){
+                if(obj_details$assay == mainExpName(app_object()$rds))
+                  pretmp <- assay(app_object()$rds, obj_details$slot)[col, ]
+                else
+                  pretmp <- assay(altExp(app_object()$rds, obj_details$assay), obj_details$slot)[col, ]
+                tmp <- pretmp[bc]
+
               } else if(obj_type == 'anndata'){
                 pretmp <- app_object()$rds[[ obj_details$assay ]][, col]
                 tmp <- pretmp[bc]
@@ -1231,6 +1271,65 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices){
 
         )
       })
+
+      # delete filters menu
+      output$filter_delete <- renderUI({
+        current_filters <- filter_list$order
+
+        tagList(
+          'Choose filter to delete',
+          fluidRow(
+            column(12,
+              selectizeInput(ns('filter_rm'), label=NULL,
+                             choices=c('choose one'='', current_filters))
+            ), # column
+            column(12, align='center',
+              actionButton(ns('filter_rm_ask'),
+                           label='Delete', class='btn-primary')
+            ) # column
+          ) # fluidRow
+        ) # tagList
+      }) # observeEvent
+
+      # ask before actually deleting
+      observeEvent(input$filter_rm_ask, {
+        showModal(
+          modalDialog(
+            span(
+              paste0('Are you sure you want to delete filter: "',
+                     input$filter_rm, '"? This action cannot be undone'),
+              style='font-weight: bold; color: red;'),
+            footer=tagList(
+                     actionButton(ns('filter_rm_do'), 'Delete',
+                                  class='btn-primary'),
+                     modalButton('Cancel')
+                   )
+          ) # modalDialog
+        ) # showModal
+      }) # observeEvent
+
+      observeEvent(input$filter_rm_do, {
+        # filter to delete
+        del_filt <- input$filter_rm
+
+        # remove from order
+        filter_list$order <- setdiff(filter_list$order, del_filt)
+
+        # remove from the filter type
+        for(filter_type in c('metadata', 'gene', 'selection')){
+          if(del_filt %in% names(filter_list[[ filter_type ]])){
+            keep_names <- setdiff(names(filter_list[[ filter_type ]]), del_filt)
+            filter_list[[ filter_type ]] <- filter_list[[ filter_type ]][ keep_names ]
+            break
+          }
+        }
+
+        filter_delete(filter_delete() + 1)
+        removeModal()
+
+      }) # observeEvent
+
+      ######################### help #########################
 
       helpButtonServer('subset_help', size='l')
 

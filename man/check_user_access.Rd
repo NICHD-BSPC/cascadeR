@@ -13,6 +13,9 @@ check_user_access(al, u, admin = "admin")
 
 \item{admin}{Admin user group}
 }
+\value{
+list with user_group and data_area entries, or NULL if no access is found
+}
 \description{
 This function takes a username and returns a
 list with two elements:
@@ -20,4 +23,22 @@ list with two elements:
 \details{
 user_group: one element vector
 data_area: vector of data areas
+}
+\examples{
+# save access details to file
+home <- Sys.getenv('HOME')
+
+# create carnation data area if it doesn't exist
+cascade_home <- file.path(home, 'cascade/data')
+if(!dir.exists(cascade_home)) dir.create(cascade_home)
+
+create_access_yaml(user = 'admin',
+                   user_group = 'admin',
+                   data_area = cascade_home)
+
+# get current user access details
+al <- read_access_yaml()
+
+lst <- check_user_access(al, u='admin')
+
 }

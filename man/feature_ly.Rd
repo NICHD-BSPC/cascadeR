@@ -79,3 +79,21 @@ plotly handle
 \description{
 Interactive feature plot
 }
+\examples{
+\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
+df <- data.frame(
+  UMAP_1 = c(-1, 0, 1, 2),
+  UMAP_2 = c(0, 1, 0, -1),
+  GeneA = c(0, 2, 4, 8)
+)
+
+feature_ly(
+  df,
+  xcol = "UMAP_1",
+  ycol = "UMAP_2",
+  color = "GeneA",
+  colors = "Viridis",
+  crange = c(0, 8)
+)
+\dontshow{\}) # examplesIf}
+}

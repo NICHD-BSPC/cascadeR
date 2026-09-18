@@ -36,3 +36,15 @@ plotly handle
 This interactive legend is shown in the sidebar to help
 visually select coexpression blend threshold.
 }
+\examples{
+\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
+get_coexp_legend(
+  colors = c("#ff0000", "#0000ff", "#ff00ff"),
+  dimnames = c("GeneA", "GeneB"),
+  xline = 0.25,
+  yline = 0.75,
+  n = 20,
+  neutral_color = "#eeeeee"
+)
+\dontshow{\}) # examplesIf}
+}

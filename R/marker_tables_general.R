@@ -1,10 +1,90 @@
-#' Generalized marker tables module UI
+#' Generalized marker table module
 #'
 #' @param id Input id
-#' @param panel string, can be 'sidebar' or 'main'
+#' @param panel string, can be 'sidebar', 'selection' or 'main'
 #' @param type string, used to define type of table
 #' @param label string, label for table
+#' @param obj reactive list with marker tables
+#' @param genes_to_plot reactive list of genes to plot
+#' @param reset_genes reactive to trigger gene selection reset
+#' @param global_args reactive list with global settings
+#' @param args reactive list with 'max_padj', 'max_lfc'
+#' @param reload_global reactive to trigger global args reload
+#' @param config reactive list with config settings
 #'
+#' @returns
+#' UI returns sidebar/selection/main panel UI elements for a marker table
+#' Server returns reactive expression containing marker filters and selected genes
+#'
+#' @examplesIf interactive()
+#' marker_tbl <- data.frame(
+#'   gene = c("GeneA", "GeneB", "GeneC", "GeneD"),
+#'   cluster = c("A", "A", "B", "B"),
+#'   avg_log2FC = c(1.2, 0.7, 1.1, 0.8),
+#'   pct.1 = c(0.9, 0.8, 0.85, 0.75),
+#'   pct.2 = c(0.2, 0.3, 0.25, 0.35),
+#'   p_val_adj = c(0.001, 0.02, 0.005, 0.03)
+#' )
+#'
+#' config <- get_config()
+#'
+#' ui <- shiny::fluidPage(
+#'   shinyjs::useShinyjs(),
+#'   shiny::sidebarLayout(
+#'     shiny::sidebarPanel(
+#'       markerTableGeneralUI(
+#'         "allmarkers",
+#'         panel = "sidebar",
+#'         type = "allmarkers",
+#'         label = "Cluster Markers"
+#'       ),
+#'       markerTableGeneralUI(
+#'         "allmarkers",
+#'         panel = "selection",
+#'         type = "allmarkers",
+#'         label = "Cluster Markers"
+#'       )
+#'     ),
+#'     shiny::mainPanel(
+#'       shiny::tabsetPanel(
+#'         markerTableGeneralUI(
+#'           "allmarkers",
+#'           panel = "main",
+#'           type = "allmarkers",
+#'           label = "Cluster Markers"
+#'         )
+#'       ),
+#'       shiny::verbatimTextOutput("selected")
+#'     )
+#'   )
+#' )
+#'
+#' server <- function(input, output, session) {
+#'   selected <- markerTableGeneralServer(
+#'     "allmarkers",
+#'     obj = shiny::reactive({ list(markers = marker_tbl) }),
+#'     type = "allmarkers",
+#'     genes_to_plot = shiny::reactive({ character() }),
+#'     reset_genes = shiny::reactive({ NULL }),
+#'     global_args = shiny::reactive({ list() }),
+#'     args = shiny::reactive({ list(max_padj = 0.1, min_lfc = 0) }),
+#'     reload_global = shiny::reactiveVal(0),
+#'     config = shiny::reactive({ config })
+#'   )
+#'
+#'   output$selected <- shiny::renderPrint({
+#'     selected()
+#'   })
+#' }
+#'
+#' shiny::shinyApp(ui, server)
+#'
+#' @name markertablegeneralmod
+#' @rdname markertablegeneralmod
+#'
+NULL
+
+#' @rdname markertablegeneralmod
 #' @export
 #'
 markerTableGeneralUI <- function(id, panel, type, label=NULL){
@@ -184,18 +264,7 @@ markerTableGeneralUI <- function(id, panel, type, label=NULL){
 } # ui
 
 
-#' Generalize marker table module server
-#'
-#' @param id Input id
-#' @param obj reactive list with marker tables
-#' @param type string, can be 'allmarkers', 'consmarkers' or 'demarkers'
-#' @param genes_to_plot reactive list of genes to plot
-#' @param reset_genes reactive to trigger gene selection reset
-#' @param global_args reactive list with global settings
-#' @param args reactive list with 'max_padj', 'max_lfc'
-#' @param reload_global reactive to trigger global args reload
-#' @param config reactive list with config settings
-#'
+#' @rdname markertablegeneralmod
 #' @export
 #'
 markerTableGeneralServer <- function(id, obj, type,
@@ -400,7 +469,7 @@ markerTableGeneralServer <- function(id, obj, type,
         )
 
         for(col in marker_info$filter_cols){
-          if(col %in% colnames(df)){
+          if(col %in% colnames(app_object()$markers)){
             validate(
               need(!is.null(filters[[ col ]]), '')
             )
@@ -580,7 +649,7 @@ markerTableGeneralServer <- function(id, obj, type,
             # make sure no other cols are to the right of sample cols
             # NOTE: here we reorder columns, putting the sample columns
             #       to the right-most position
-            df <- df[, c(setdiff(1:ncol(df), unique(unlist(samp.idx))), 
+            df <- df[, c(setdiff(seq_len(ncol(df)), unique(unlist(samp.idx))),
                          unique(unlist(samp.idx)))]
 
             # get remaining sample column indices
@@ -594,7 +663,7 @@ markerTableGeneralServer <- function(id, obj, type,
                                colnames(df)[samp.idx[[1]]])
 
             # get non-sample column names
-            nonsamp.idx <- setdiff(1:ncol(df), unique(unlist(samp.idx)))
+            nonsamp.idx <- setdiff(seq_len(ncol(df)), unique(unlist(samp.idx)))
             nonsamp.names <- colnames(df)[nonsamp.idx]
 
             # build container for table

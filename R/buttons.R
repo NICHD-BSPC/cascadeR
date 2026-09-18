@@ -1,9 +1,35 @@
-#' Help button module ui
+#' Help button module
 #'
-#' UI for help button module
+#' @description
+#' Module UI & server for help buttons.
 #'
-#' @param id Input id
+#' @param id Module id. This also doubles as prefixes for help text files.
+#' @param ... other params passed to helpModal()
 #'
+#' @returns
+#' UI returns tagList with help button UI.
+#' Server invisibly returns NULL (used for side effects).
+#'
+#' @examples
+#' library(shiny)
+#'
+#' # app with a single help button to show DE summary table details
+#' if(interactive()){
+#'   shinyApp(
+#'     ui = fluidPage(
+#'            helpButtonUI('dimred_help')
+#'          ),
+#'     server = function(input, output, session){
+#'                helpButtonServer('dimred_help')
+#'              }
+#'   )
+#' }
+#'
+#' @rdname helpmod
+#' @name helpmod
+NULL
+
+#' @rdname helpmod
 #' @export
 helpButtonUI <- function(id){
   ns <- NS(id)
@@ -14,13 +40,7 @@ helpButtonUI <- function(id){
                class='help-buttons')
 }
 
-#' Help button module server
-#'
-#' Server for help button module
-#'
-#' @param id Input id
-#' @param ... other params passed to helpModal()
-#'
+#' @rdname helpmod
 #' @export
 helpButtonServer <- function(id, ...){
   moduleServer(
@@ -55,7 +75,8 @@ helpButtonServer <- function(id, ...){
 #' @param title Title of modal dialog
 #' @param ... other params passed to modalDialog()
 #'
-#' @export
+#' @return Shiny modal dialog
+#'
 helpModal <- function(mdfile, title=NULL, ...){
   modalDialog(
       title=title,
@@ -68,12 +89,20 @@ helpModal <- function(mdfile, title=NULL, ...){
   )
 }
 
-#' Download button module ui
-#'
-#' UI for download button module
+#' Download button module
 #'
 #' @param id Input id
+#' @param outplot reactive plot handle
+#' @param plot_type reactive/static value used for output filename
+#' @param direction direction of phylogenetic tree
 #'
+#' @return Shiny UI & server element for the plot download button module
+#'
+#' @rdname dlmod
+#' @name dlmod
+NULL
+
+#' @rdname dlmod
 #' @export
 downloadPlotUI <- function(id){
   ns <- NS(id)
@@ -84,15 +113,7 @@ downloadPlotUI <- function(id){
                class='dload-buttons')
 }
 
-#' Download button module server
-#'
-#' Server for download button module
-#'
-#' @param id Input id
-#' @param outplot reactive plot handle
-#' @param plot_type reactive/static value used for output filename
-#' @param direction direction of phylogenetic tree
-#'
+#' @rdname dlmod
 #' @export
 downloadPlotServer <- function(id, outplot, plot_type, direction=NULL){
   moduleServer(
@@ -224,12 +245,22 @@ downloadPlotServer <- function(id, outplot, plot_type, direction=NULL){
   ) # moduleServer
 }
 
-#' Download file module ui
+#' Download file module
 #'
-#' UI for download file module
+#' UI & server for download file module
 #'
 #' @param id Input id
+#' @param data reactive w data frame
+#' @param file_type reactive/static value used for output filename
 #'
+#' @return Shiny UI & server for the file download button module
+#'
+#' @rdname dlfilemod
+#' @name dlfilemod
+#'
+NULL
+
+#' @rdname dlfilemod
 #' @export
 downloadFileUI <- function(id){
   ns <- NS(id)
@@ -247,14 +278,7 @@ downloadFileUI <- function(id){
                  style=style)
 }
 
-#' Download file module server
-#'
-#' Server for download file module
-#'
-#' @param id Input id
-#' @param data reactive w data frame
-#' @param file_type reactive/static value used for output filename
-#'
+#' @rdname dlfilemod
 #' @export
 downloadFileServer <- function(id, data, file_type){
   moduleServer(
@@ -300,4 +324,3 @@ downloadFileServer <- function(id, data, file_type){
     }   # function
   ) # moduleServer
 }
-

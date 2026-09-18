@@ -14,6 +14,12 @@ cascade <- "r-cascade"
 #' @param envname name of the python environment
 #' @param ... parameters passed to reticulate::py_install
 #'
+#' @return Return value from reticulate::py_install(); called for the side effect of installing Python packages.
+#'
+#' @examplesIf interactive()
+#'
+#' install_cascade()
+#'
 #' @export
 install_cascade <- function(envname, ...) {
   if(missing(envname)) envname <- cascade

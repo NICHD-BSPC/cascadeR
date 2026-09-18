@@ -9,6 +9,9 @@ subsetUI(id)
 \arguments{
 \item{id}{Input id}
 }
+\value{
+Shiny UI elements for the filter settings module
+}
 \description{
 Filter settings module ui
 }

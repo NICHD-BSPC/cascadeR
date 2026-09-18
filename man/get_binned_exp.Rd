@@ -17,5 +17,7 @@ get_binned_exp(df, bins = 100, mode = "range")
 data.frame
 }
 \description{
-Bin gene expression in columns of a data frame
+The expression of a gene present in columns of a data frame
+are binned based either on the range of observed
+expression ('range') or quantiles of cells where the gene is expressed.
 }

@@ -29,8 +29,10 @@
 #' @importFrom shinyjs useShinyjs show hide
 #' @importFrom shinythemes shinytheme
 #' @importFrom shinyWidgets dropdownButton tooltipOptions
+#' @importFrom SingleCellExperiment altExp altExpNames mainExpName reducedDims reducedDim reducedDimNames
 #' @importFrom sortable bucket_list add_rank_list rank_list
 #' @importFrom stats as.formula prcomp setNames dist hclust quantile median
+#' @importFrom SummarizedExperiment colData assays assay assayNames
 #' @importFrom tidyr spread
 #' @importFrom UpSetR upset
 #' @importFrom utils read.table packageName write.table

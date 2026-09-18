@@ -1,10 +1,51 @@
-#' Summary tab module UI
+#' Summary tab module
 #'
 #' @param id Input id
 #' @param panel string, can be 'sidebar' or 'main'
+#' @param obj Cascade app object
+#' @param args reactive with global arguments, 'project' & 'analysis'
 #'
+#' @returns
+#' UI returns sidebar and main panel UI elements for summary module
+#' Server called for the side effect of rendering summary output.
+#'
+#' @examplesIf interactive()
+#' obj <- make_example_seurat_object()
+#'
+#' app_object <- list(
+#'   rds = obj,
+#'   obj_type = "seurat",
+#'   metadata = obj[[]],
+#'   qc = NULL
+#' )
+#'
+#' ui <- shiny::fluidPage(
+#'   shiny::sidebarPanel(summaryUI("summary", "sidebar")),
+#'   shiny::mainPanel(summaryUI("summary", "main"))
+#' )
+#'
+#' server <- function(input, output, session) {
+#'   summaryServer(
+#'     "summary",
+#'     obj = app_object,
+#'     args = shiny::reactive({
+#'       list(
+#'         project = file.path(tempdir(), "project1"),
+#'         analysis = file.path(tempdir(), "project1", "analysis1", "object.rds")
+#'       )
+#'     })
+#'   )
+#' }
+#'
+#' shiny::shinyApp(ui, server)
+#'
+#' @name summarymod
+#' @rdname summarymod
+#'
+NULL
+
+#' @rdname summarymod
 #' @export
-#'
 summaryUI <- function(id, panel){
   ns <- NS(id)
 
@@ -27,14 +68,8 @@ summaryUI <- function(id, panel){
 } # summaryUI
 
 
-#' Summary tab module server
-#'
-#' @param id Input id
-#' @param obj Cascade app object
-#' @param args reactive with global arguments, 'project' & 'analysis'
-#'
+#' @rdname summarymod
 #' @export
-#'
 summaryServer <- function(id, obj, args){
   moduleServer(
     id,
@@ -67,6 +102,9 @@ summaryServer <- function(id, obj, args){
           )
         }
 
+        # get number of cells
+        ncells <- nrow(app_object()$metadata)
+
         if(obj_type == 'seurat'){
           # get summary of assays
           summ <- do.call('rbind', lapply(app_object()$rds@assays, function(x){
@@ -74,14 +112,37 @@ summaryServer <- function(id, obj, args){
                          }))
           summ2 <- paste0(rownames(summ), ': ', summ)
 
-          # get number of cells
-          ncells <- nrow(app_object()$metadata)
-
           # get dimension reductions
           dimred <- names(app_object()$rds@reductions)
-        } else {
-          ncells <- nrow(app_object()$metadata)
+        } else if(obj_type == 'SingleCellExperiment'){
+          # first get main expt features
+          main <- setNames(as.list(paste0(nrow(app_object()$rds), ' features')),
+                           mainExpName(app_object()$rds))
 
+          # then get altexp if any
+          altexp_names <- altExpNames(app_object()$rds)
+          if(length(altexp_names) > 0){
+            alt <- lapply(altexp_names, function(x) paste(nrow(altExp(app_object()$rds, x)), 'features'))
+            names(alt) <- altexp_names
+          }
+          summ <- do.call('rbind', c(main, alt))
+          summ2 <- paste0(rownames(summ), ': ', summ)
+
+          # get reductions from all assays
+          dimred <- reducedDimNames(app_object()$rds)
+          if(length(altexp_names) > 0){
+            altexp_dimred <- lapply(altExpNames(app_object()$rds),
+                               function(x) reducedDimNames(altExp(app_object()$rds, x))
+                             )
+            names(altexp_dimred) <- altExpNames(app_object()$rds)
+
+            tmp_dimred <- c(dimred,
+                            unlist(unname(altexp_dimred)))
+
+            dimred <- unique(tmp_dimred)
+          }
+
+        } else if(obj_type == 'anndata'){
           # TODO: support for multiple assays?
           summ2 <- paste0(nrow(app_object()$rds$var), ' features')
 

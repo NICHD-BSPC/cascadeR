@@ -4,7 +4,7 @@
 \alias{subsetServer}
 \title{Filter settings module server}
 \usage{
-subsetServer(id, obj, args, metadata_args, gene_choices)
+subsetServer(id, obj, args, metadata_args, gene_choices, selected_points)
 }
 \arguments{
 \item{id}{Input id}
@@ -18,6 +18,11 @@ categorical metadata & 'numeric_dist' that has distributions of numeric
 metadata}
 
 \item{gene_choices}{reactive list with all genes present in object}
+
+\item{selected_points}{reactive list with cell selections}
+}
+\value{
+reactive expression containing filtered cell barcodes
 }
 \description{
 Filter settings module server

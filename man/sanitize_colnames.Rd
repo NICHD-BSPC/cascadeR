@@ -4,11 +4,7 @@
 \alias{sanitize_colnames}
 \title{Sanitize strings}
 \usage{
-sanitize_colnames(
-  cnames,
-  bad_char = "(\\\\-|\\\\+|\\\\/|\\\\*|\\\\:|\\\\-|\\\\.)",
-  repl = "_"
-)
+sanitize_colnames(cnames, bad_char = "\\\\W+", repl = "_")
 }
 \arguments{
 \item{cnames}{column names to sanitize}

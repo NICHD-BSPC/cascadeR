@@ -25,18 +25,42 @@ add_cascade_analysis(
 
 \item{analysis}{analysis label. Creates a subfolder with this name inside data_dir/project}
 
-\item{cluster_markers}{(optional) path to tab-delimited file containing cluster markers. Output from Seurat's FindAllMarkers
+\item{cluster_markers}{(optional) path(s) to tab-delimited file(s) containing cluster markers. Output from Seurat's FindAllMarkers
 and scanpy's rank_genes_groups are supported.}
 
-\item{de_markers}{(optional) path to tab-delimited file containing differentially expressed markers from Seurat's FindMarkers or scanpy's
+\item{de_markers}{(optional) path(s) to tab-delimited file(s) containing differentially expressed markers from Seurat's FindMarkers or scanpy's
 rank_genes_groups.}
 
-\item{conserved_markers}{(optional) path to tab-delimited file containing conserved markers from Seurat's FindConservedMarkers function.}
+\item{conserved_markers}{(optional) path(s) to tab-delimited file(s) containing conserved markers from Seurat's FindConservedMarkers function.}
 
 \item{overwrite}{boolean, if TRUE, existing analysis folder will be overwritten (default=FALSE)}
 
 \item{execute}{boolean, set this to TRUE to actually run the commands (default=FALSE)}
 }
+\value{
+Invisibly returns NULL; called for the side effect of printing or executing setup commands.
+}
 \description{
 Add new cascade analysis
+}
+\examples{
+\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
+local({
+  data_dir <- tempfile("cascade-data-")
+  dir.create(data_dir)
+
+  obj_path <- tempfile("object-", fileext = ".rds")
+  file.create(obj_path)
+
+  on.exit(unlink(c(data_dir, obj_path), recursive = TRUE))
+
+  add_cascade_analysis(
+    obj_path = obj_path,
+    data_dir = data_dir,
+    project = "project1",
+    analysis = "analysis1",
+    execute = FALSE
+  )
+})
+\dontshow{\}) # examplesIf}
 }
