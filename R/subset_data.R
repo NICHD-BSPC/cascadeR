@@ -108,7 +108,11 @@ subsetUI <- function(id){
             ) # column
           ) # fluidRow
 
-        ) # bsCollapsePanel
+        ), # bsCollapsePanel
+
+        bsCollapsePanel('Delete filter',
+          uiOutput(ns('filter_delete'))
+        )
       ), # bsCollapse
 
       fluidRow(
@@ -195,6 +199,7 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices, selected_po
                        )
       saved_filters <- reactiveValues(all=list())
       data_loaded <- reactiveValues(flag=0)
+      filter_delete <- reactiveVal(0)
 
       reset_data <- function(){
 
@@ -959,7 +964,8 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices, selected_po
       apply_filters <- eventReactive(c(data_loaded$flag,
                                        all_genes$choices,
                                        input$reset_filter_levels,
-                                       input$apply_filter), {
+                                       input$apply_filter,
+                                       filter_delete()), {
 
         validate(
           need(!is.null(app_object()$rds), 'Waiting for selection')
@@ -1265,6 +1271,65 @@ subsetServer <- function(id, obj, args, metadata_args, gene_choices, selected_po
 
         )
       })
+
+      # delete filters menu
+      output$filter_delete <- renderUI({
+        current_filters <- filter_list$order
+
+        tagList(
+          'Choose filter to delete',
+          fluidRow(
+            column(12,
+              selectizeInput(ns('filter_rm'), label=NULL,
+                             choices=c('choose one'='', current_filters))
+            ), # column
+            column(12, align='center',
+              actionButton(ns('filter_rm_ask'),
+                           label='Delete', class='btn-primary')
+            ) # column
+          ) # fluidRow
+        ) # tagList
+      }) # observeEvent
+
+      # ask before actually deleting
+      observeEvent(input$filter_rm_ask, {
+        showModal(
+          modalDialog(
+            span(
+              paste0('Are you sure you want to delete filter: "',
+                     input$filter_rm, '"? This action cannot be undone'),
+              style='font-weight: bold; color: red;'),
+            footer=tagList(
+                     actionButton(ns('filter_rm_do'), 'Delete',
+                                  class='btn-primary'),
+                     modalButton('Cancel')
+                   )
+          ) # modalDialog
+        ) # showModal
+      }) # observeEvent
+
+      observeEvent(input$filter_rm_do, {
+        # filter to delete
+        del_filt <- input$filter_rm
+
+        # remove from order
+        filter_list$order <- setdiff(filter_list$order, del_filt)
+
+        # remove from the filter type
+        for(filter_type in c('metadata', 'gene', 'selection')){
+          if(del_filt %in% names(filter_list[[ filter_type ]])){
+            keep_names <- setdiff(names(filter_list[[ filter_type ]]), del_filt)
+            filter_list[[ filter_type ]] <- filter_list[[ filter_type ]][ keep_names ]
+            break
+          }
+        }
+
+        filter_delete(filter_delete() + 1)
+        removeModal()
+
+      }) # observeEvent
+
+      ######################### help #########################
 
       helpButtonServer('subset_help', size='l')
 
