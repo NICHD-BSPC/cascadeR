@@ -193,21 +193,6 @@ First we create a data directory for `cascadeR`.
 dir.create('~/cascader/data', recursive=TRUE)
 ```
 
-Next, we run `add_cascade_analysis` with the RDS file and marker table path
-specified. By default, this function prints out the commands to be run -
-to actually run them, we use `execute = TRUE`.
-
-```{r add_analysis}
-add_cascade_analysis(
-  obj_path='seurat_pbmc_small.Rds',
-  data_dir='~/cascader/data',
-  project='my-project',
-  analysis='pbmc_small',
-  cluster_markers='allmarkers_combined.tsv',
-  execute=TRUE
-)
-```
-
 ## First Run
 
 Load the `cascadeR` package.
@@ -296,7 +281,7 @@ of single-cell datasets.
 
 For multi-user environments, CascadeR also supports authentication:
 
-```r
+```{r user_db}
 # Create user database
 credentials <- data.frame(
   user = c('shinymanager'),
@@ -311,7 +296,9 @@ shinymanager::create_db(
   sqlite_path = 'credentials.sqlite',
   passphrase = 'admin_passphrase'
 )
+```
 
+```{r run_auth, eval=FALSE)
 # Run with authentication
 run_cascade(credentials='credentials.sqlite', passphrase='admin_passphrase')
 ```
