@@ -1,0 +1,69 @@
+# Summary tab module
+
+Summary tab module
+
+## Usage
+
+``` r
+summaryUI(id, panel)
+
+summaryServer(id, obj, args)
+```
+
+## Arguments
+
+- id:
+
+  Input id
+
+- panel:
+
+  string, can be 'sidebar' or 'main'
+
+- obj:
+
+  Cascade app object
+
+- args:
+
+  reactive with global arguments, 'project' & 'analysis'
+
+## Value
+
+UI returns sidebar and main panel UI elements for summary module Server
+called for the side effect of rendering summary output.
+
+## Examples
+
+``` r
+if (FALSE) { # interactive()
+obj <- make_example_seurat_object()
+
+app_object <- list(
+  rds = obj,
+  obj_type = "seurat",
+  metadata = obj[[]],
+  qc = NULL
+)
+
+ui <- shiny::fluidPage(
+  shiny::sidebarPanel(summaryUI("summary", "sidebar")),
+  shiny::mainPanel(summaryUI("summary", "main"))
+)
+
+server <- function(input, output, session) {
+  summaryServer(
+    "summary",
+    obj = app_object,
+    args = shiny::reactive({
+      list(
+        project = file.path(tempdir(), "project1"),
+        analysis = file.path(tempdir(), "project1", "analysis1", "object.rds")
+      )
+    })
+  )
+}
+
+shiny::shinyApp(ui, server)
+}
+```
