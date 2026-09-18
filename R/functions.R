@@ -1954,11 +1954,11 @@ PseudoBulkExpression2 <- function(
 #' @param data_dir output data directory. For convenience use the same data directory for all cascade projects.
 #' @param project project name. Creates a subfolder with this name inside data_dir if it doesn't exist.
 #' @param analysis analysis label. Creates a subfolder with this name inside data_dir/project
-#' @param cluster_markers (optional) path to tab-delimited file containing cluster markers. Output from Seurat's FindAllMarkers
+#' @param cluster_markers (optional) path(s) to tab-delimited file(s) containing cluster markers. Output from Seurat's FindAllMarkers
 #'        and scanpy's rank_genes_groups are supported.
-#' @param de_markers (optional) path to tab-delimited file containing differentially expressed markers from Seurat's FindMarkers or scanpy's
+#' @param de_markers (optional) path(s) to tab-delimited file(s) containing differentially expressed markers from Seurat's FindMarkers or scanpy's
 #'        rank_genes_groups.
-#' @param conserved_markers (optional) path to tab-delimited file containing conserved markers from Seurat's FindConservedMarkers function.
+#' @param conserved_markers (optional) path(s) to tab-delimited file(s) containing conserved markers from Seurat's FindConservedMarkers function.
 #' @param overwrite boolean, if TRUE, existing analysis folder will be overwritten (default=FALSE)
 #' @param execute boolean, set this to TRUE to actually run the commands (default=FALSE)
 #'
@@ -2077,36 +2077,60 @@ add_cascade_analysis <- function(
          )
 
   if(!is.null(cluster_markers)){
-    if(!file.exists(cluster_markers)){
+    missing_markers <- cluster_markers[!file.exists(cluster_markers)]
+    if(length(missing_markers) > 0){
       stop(
-        'Cluster marker file: "', cluster_markers, '" does not exist!'
+        'Cluster marker file: "', paste(missing_markers, collapse='", "'), '" does not exist!'
       )
     }
     cluster_markers <- normalizePath(cluster_markers, mustWork=TRUE)
-    cmd <- c(cmd, list(c('ln', '-s', cluster_markers,
-                         file.path(analysis_path, 'allmarkers.tsv'))))
+    if(length(cluster_markers) == 1){
+      cmd <- c(cmd, list(c('ln', '-s', cluster_markers,
+                           file.path(analysis_path, 'allmarkers.tsv'))))
+    } else {
+      for(i in seq_along(cluster_markers)){
+        dest <- file.path(analysis_path, paste0('allmarkers_', basename(cluster_markers[i])))
+        cmd <- c(cmd, list(c('ln', '-s', cluster_markers[i], dest)))
+      }
+    }
   }
 
   if(!is.null(de_markers)){
-    if(!file.exists(de_markers)){
+    missing_markers <- de_markers[!file.exists(de_markers)]
+    if(length(missing_markers) > 0){
       stop(
-        'DE marker file: "', de_markers, '" does not exist!'
+        'DE marker file: "', paste(missing_markers, collapse='", "'), '" does not exist!'
       )
     }
     de_markers <- normalizePath(de_markers, mustWork=TRUE)
-    cmd <- c(cmd, list(c('ln', '-s', de_markers,
-                         file.path(analysis_path, 'demarkers.tsv'))))
+    if(length(de_markers) == 1){
+      cmd <- c(cmd, list(c('ln', '-s', de_markers,
+                           file.path(analysis_path, 'demarkers.tsv'))))
+    } else {
+      for(i in seq_along(de_markers)){
+        dest <- file.path(analysis_path, paste0('demarkers_', basename(de_markers[i])))
+        cmd <- c(cmd, list(c('ln', '-s', de_markers[i], dest)))
+      }
+    }
   }
 
   if(!is.null(conserved_markers)){
-    if(!file.exists(conserved_markers)){
+    missing_markers <- conserved_markers[!file.exists(conserved_markers)]
+    if(length(missing_markers) > 0){
       stop(
-        'Conserved marker file: "', conserved_markers, '" does not exist!'
+        'Conserved marker file: "', paste(missing_markers, collapse='", "'), '" does not exist!'
       )
     }
     conserved_markers <- normalizePath(conserved_markers, mustWork=TRUE)
-    cmd <- c(cmd, list(c('ln', '-s', conserved_markers,
-                         file.path(analysis_path, 'consmarkers.tsv'))))
+    if(length(conserved_markers) == 1){
+      cmd <- c(cmd, list(c('ln', '-s', conserved_markers,
+                           file.path(analysis_path, 'consmarkers.tsv'))))
+    } else {
+      for(i in seq_along(conserved_markers)){
+        dest <- file.path(analysis_path, paste0('consmarkers_', basename(conserved_markers[i])))
+        cmd <- c(cmd, list(c('ln', '-s', conserved_markers[i], dest)))
+      }
+    }
   }
 
   # print command or execute

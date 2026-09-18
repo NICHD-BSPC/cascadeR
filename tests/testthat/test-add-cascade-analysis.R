@@ -86,6 +86,9 @@ test_that("add_cascade_analysis errors when optional marker files are missing", 
   on.exit(unlink(c(fixture$data_dir, fixture$obj_path), recursive = TRUE), add = TRUE)
 
   missing_marker <- file.path(fixture$data_dir, "missing.tsv")
+  existing_marker <- tempfile("marker-", fileext = ".tsv")
+  file.create(existing_marker)
+  on.exit(unlink(existing_marker), add = TRUE)
 
   expect_error(
     suppressMessages(add_cascade_analysis(
@@ -107,6 +110,13 @@ test_that("add_cascade_analysis errors when optional marker files are missing", 
       conserved_markers = missing_marker
     )),
     "Conserved marker file"
+  )
+  expect_error(
+    suppressMessages(add_cascade_analysis(
+      fixture$obj_path, fixture$data_dir, "project1", "analysis1",
+      cluster_markers = c(existing_marker, missing_marker)
+    )),
+    "Cluster marker file"
   )
 })
 
@@ -133,6 +143,40 @@ test_that("add_cascade_analysis dry run reports setup commands without creating 
   expect_true(any(grepl("mkdir -p", messages, fixed = TRUE)))
   expect_true(any(grepl("allmarkers.tsv", messages, fixed = TRUE)))
   expect_true(any(grepl("execute=TRUE", messages, fixed = TRUE)))
+})
+
+test_that("add_cascade_analysis dry run reports multi-file marker symlinks", {
+  fixture <- make_add_cascade_fixture()
+  on.exit(unlink(c(fixture$data_dir, fixture$obj_path), recursive = TRUE), add = TRUE)
+
+  marker_dir <- tempfile("markers-")
+  dir.create(marker_dir)
+  on.exit(unlink(marker_dir, recursive = TRUE), add = TRUE)
+
+  cluster_markers <- file.path(marker_dir, c("cluster_a.tsv", "cluster_b.tsv"))
+  de_markers <- file.path(marker_dir, c("de_a.tsv", "de_b.tsv"))
+  conserved_markers <- file.path(marker_dir, c("conserved_a.tsv", "conserved_b.tsv"))
+  file.create(cluster_markers, de_markers, conserved_markers)
+
+  messages <- capture_add_cascade_messages(
+    add_cascade_analysis(
+      obj_path = fixture$obj_path,
+      data_dir = fixture$data_dir,
+      project = "project1",
+      analysis = "analysis1",
+      cluster_markers = cluster_markers,
+      de_markers = de_markers,
+      conserved_markers = conserved_markers,
+      execute = FALSE
+    )
+  )
+
+  expect_true(any(grepl("allmarkers_cluster_a.tsv", messages, fixed = TRUE)))
+  expect_true(any(grepl("allmarkers_cluster_b.tsv", messages, fixed = TRUE)))
+  expect_true(any(grepl("demarkers_de_a.tsv", messages, fixed = TRUE)))
+  expect_true(any(grepl("demarkers_de_b.tsv", messages, fixed = TRUE)))
+  expect_true(any(grepl("consmarkers_conserved_a.tsv", messages, fixed = TRUE)))
+  expect_true(any(grepl("consmarkers_conserved_b.tsv", messages, fixed = TRUE)))
 })
 
 test_that("add_cascade_analysis overwrite dry run preserves existing files", {
@@ -221,4 +265,42 @@ test_that("add_cascade_analysis execute resolves relative input paths", {
   expect_true(file.exists(file.path(analysis_path, "allmarkers.tsv")))
   expect_true(file.exists(file.path(analysis_path, "demarkers.tsv")))
   expect_true(file.exists(file.path(analysis_path, "consmarkers.tsv")))
+})
+
+test_that("add_cascade_analysis execute creates multi-file marker symlinks", {
+  skip_on_os("windows")
+
+  fixture <- make_add_cascade_fixture()
+  on.exit(unlink(c(fixture$data_dir, fixture$obj_path), recursive = TRUE), add = TRUE)
+
+  marker_dir <- tempfile("markers-")
+  dir.create(marker_dir)
+  on.exit(unlink(marker_dir, recursive = TRUE), add = TRUE)
+
+  cluster_markers <- file.path(marker_dir, c("cluster_a.tsv", "cluster_b.tsv"))
+  de_markers <- file.path(marker_dir, c("de_a.tsv", "de_b.tsv"))
+  conserved_markers <- file.path(marker_dir, c("conserved_a.tsv", "conserved_b.tsv"))
+  file.create(cluster_markers, de_markers, conserved_markers)
+
+  capture_add_cascade_messages(
+    add_cascade_analysis(
+      obj_path = fixture$obj_path,
+      data_dir = fixture$data_dir,
+      project = "project1",
+      analysis = "analysis1",
+      cluster_markers = cluster_markers,
+      de_markers = de_markers,
+      conserved_markers = conserved_markers,
+      execute = TRUE
+    )
+  )
+
+  analysis_path <- file.path(fixture$data_dir, "project1", "analysis1")
+
+  expect_true(file.exists(file.path(analysis_path, "allmarkers_cluster_a.tsv")))
+  expect_true(file.exists(file.path(analysis_path, "allmarkers_cluster_b.tsv")))
+  expect_true(file.exists(file.path(analysis_path, "demarkers_de_a.tsv")))
+  expect_true(file.exists(file.path(analysis_path, "demarkers_de_b.tsv")))
+  expect_true(file.exists(file.path(analysis_path, "consmarkers_conserved_a.tsv")))
+  expect_true(file.exists(file.path(analysis_path, "consmarkers_conserved_b.tsv")))
 })

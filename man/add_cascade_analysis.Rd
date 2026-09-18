@@ -25,13 +25,13 @@ add_cascade_analysis(
 
 \item{analysis}{analysis label. Creates a subfolder with this name inside data_dir/project}
 
-\item{cluster_markers}{(optional) path to tab-delimited file containing cluster markers. Output from Seurat's FindAllMarkers
+\item{cluster_markers}{(optional) path(s) to tab-delimited file(s) containing cluster markers. Output from Seurat's FindAllMarkers
 and scanpy's rank_genes_groups are supported.}
 
-\item{de_markers}{(optional) path to tab-delimited file containing differentially expressed markers from Seurat's FindMarkers or scanpy's
+\item{de_markers}{(optional) path(s) to tab-delimited file(s) containing differentially expressed markers from Seurat's FindMarkers or scanpy's
 rank_genes_groups.}
 
-\item{conserved_markers}{(optional) path to tab-delimited file containing conserved markers from Seurat's FindConservedMarkers function.}
+\item{conserved_markers}{(optional) path(s) to tab-delimited file(s) containing conserved markers from Seurat's FindConservedMarkers function.}
 
 \item{overwrite}{boolean, if TRUE, existing analysis folder will be overwritten (default=FALSE)}
 
