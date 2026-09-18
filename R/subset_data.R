@@ -27,8 +27,8 @@ subsetUI <- function(id){
         bsCollapsePanel('Add/edit filter',
 
           fluidRow(
-            column(6, 'Type of filter'),
-            column(6,
+            column(5, 'Type of filter'),
+            column(7,
               selectInput(ns('filter_type'),
                           label=NULL,
                           choices=c('metadata', 'gene', 'selection'),
@@ -39,8 +39,8 @@ subsetUI <- function(id){
           conditionalPanel(
             paste0('input["', ns('filter_type'), '"] == "metadata"'),
             fluidRow(
-              column(6, 'Choose variable'),
-              column(6,
+              column(5, 'Choose variable'),
+              column(7,
                 selectInput(ns('filter_var'),
                             label=NULL,
                             choices=NULL,
@@ -55,8 +55,8 @@ subsetUI <- function(id){
           conditionalPanel(
             paste0('input["', ns('filter_type'), '"] == "gene"'),
             fluidRow(
-              column(6, 'Choose gene'),
-              column(6,
+              column(5, 'Choose gene'),
+              column(7,
                 selectInput(ns('filter_gene'),
                             label=NULL,
                             choices=NULL,
