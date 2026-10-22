@@ -22,7 +22,7 @@
 #' # default username
 #' username <- reactive({ NULL })
 #'
-#' # internal carnation config
+#' # internal cascade config
 #' config <- reactiveVal(get_config())
 #'
 #' # regex to find carnation files
