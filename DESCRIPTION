@@ -1,6 +1,6 @@
 Package: cascadeR
 Title: Shiny App to Explore Single-Cell Analysis
-Version: 0.99.0
+Version: 0.99.1
 Authors@R:
     c(
         person("Apratim", "Mitra", , "apratim.mitra@gmail.com",
@@ -79,6 +79,7 @@ VignetteBuilder: knitr
 BugReports: https://github.com/NICHD-BSPC/cascadeR/issues
 biocViews:
     Software, SingleCell, Spatial, Transcriptomics, GeneExpression,
-    Visualization, DifferentialExpression, ShinyApps, GUI
+    Visualization, DifferentialExpression, ShinyApps, GUI,
+    QualityControl, Clustering
 URL: https://nichd-bspc.github.io/cascadeR/
 Config/roxygen2/version: 8.1.0
