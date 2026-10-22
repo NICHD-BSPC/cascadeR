@@ -113,19 +113,7 @@ Then install the package with the `remotes` package. Here we set upgrade='never'
 to make sure the conda-installed package versions remain unchanged.
 
 ```r
-remotes::install_github('NICHD-BSPC/cascadeR@r4.5', upgrade='never')
-```
-
-**Note:**
-
-Conda packages for R >= 4.6.0 may not be available yet causing installation
-using the default github branch to fail. To avoid this, use branch r4.3 which
-pins R to a lower version.
-
-```bash
-# Create environment outside the cascadeR directory
-cd .. &&  env create -p env --file cascadeR/requirements-pinned.yaml
-conda activate ./env
+remotes::install_github('NICHD-BSPC/cascadeR', upgrade='never')
 ```
 
 ## Getting Started
