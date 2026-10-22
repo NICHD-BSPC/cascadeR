@@ -1,11 +1,12 @@
 # Cascade
 
-**Unleash the power of your single-cell data**
+**Interactive cross-platform exploration of single-cell & spatial transcriptomics**
 
-Cascade is an interactive Shiny dashboard designed for exploring and analyzing
+Cascade is an interactive Shiny app designed for exploring and analyzing
 single-cell RNA sequencing (scRNA-Seq) and spatial transcriptomics data. It
 provides a user-friendly interface for researchers to visualize and interpret
-complex single-cell genomics data.
+complex single-cell genomics data, supporting analysis results across both
+R (`Seurat` & `SingleCellExperiment`) and python (`Anndata`) ecosystems.
 
 ## General workflow
 
