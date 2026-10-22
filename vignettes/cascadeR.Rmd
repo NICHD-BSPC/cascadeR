@@ -126,64 +126,6 @@ saveRDS(pbmc_small, 'seurat_pbmc_small.Rds', compress=FALSE)
 write.table(marker_df, 'allmarkers_combined.tsv', sep='\t', row.names=FALSE, quote=FALSE)
 ```
 
-## Data Organization
-
-Next, we need to organize your data in a directory structure that `cascadeR`
-can easily navigate, e.g. in a folder `cascader/data` in your home directory.
-The folder should look something like this:
-
-```
-~/cascader/data/
-  └─ my-project
-     └─ pbmc_small
-        ├─ clustered.Rds
-        └─ allmarkers.tsv
-```
-
-Two things to note here:
-
-- *Projects* are subfolders in the data area, while *analyses* are
-  subfolders within projects. For instance, in the above example,
-  `my-project` is the project name and `pbmc_small` is the analysis name.
-  This 2-level hierarchy allows us to have multiple analyses using, e.g
-  different analysis parameters, within a single project.
-
-- `cascadeR` uses file extensions, e.g. `.Rds` or `.h5ad`, to figure
-  out what data to read. You can have two kinds of files in an *analysis*
-  folder:
-
-  - Pre-processed single-cell/spatial object
-
-    - `.Rds` (Seurat or SingleCellExperiment)
-    - `.h5ad` (anndata)
-
-  - Marker tables: `.tsv` or `.csv`
-
-    - Marker genes for a cluster (compared to everything else).
-
-      - Output from Seurat's `FindMarkers` or `FindAllMarkers` or scanpy's
-        `sc.tl.rank_genes_groups` are supported.
-      - Filenames must contain the string *allmarkers*.
-
-    - Conserved marker genes across samples.
-
-      - Output from Seurat's `FindConservedMarkers`.
-      - Filenames must contain the string *consmarkers*.
-
-    - Differential expression analysis, from comparing
-      cell clusters or from pseudo-bulk analysis.
-
-      - Output from Seurat's `FindMarkers` or pseudo-bulk analysis from `DESeq2`
-        are supported.
-      - Filenames must contain the string *demarkers*.
-
-    - Marker gene tables supports special columns,
-      "resolution", "assay", "group" to combine multiple sets of results
-      for joint viewing.
-    - If multiple marker gene tables of a particular type are found in the same
-      *analysis* folder, they are concatenated together with the file name encoded
-      in the "group" column.
-
 ## First Run
 
 Load the `cascadeR` package.
@@ -214,12 +156,69 @@ run_cascade(options=list(port=12345, launch.browser=FALSE))
 
 Then access cascadeR by opening the URL: `http://127.0.0.1:12345`
 
-## Set up cascadeR analysis
+## Data Organization
 
-We provide a helper function to set up a dataset while following cascadeR's
-specifications. Let's use this now for the analysis we just performed.
+Next, we organize the data in a directory structure that `cascadeR`
+can easily navigate, e.g. in a folder `cascader/data` in your home directory.
+You can think of this as your "CascadeR projects" space and it should look
+something like this:
 
-First we create a data directory for `cascadeR`.
+```
+~/cascader/data/
+  └─ my-project
+     └─ pbmc_small
+        ├─ clustered.Rds
+        └─ allmarkers.tsv
+```
+
+Two things to note:
+
+- *Projects* are subfolders in the data area, while *analyses* are
+  subfolders within projects. For instance, in the above example,
+  `my-project` is the project name and `pbmc_small` is the analysis name.
+  This 2-level hierarchy allows us to have multiple analyses using, e.g
+  different analysis parameters, within a single project.
+
+- `cascadeR` uses file extensions, e.g. `.Rds` or `.h5ad`, to figure
+  out what data to read. You can have two kinds of files in an *analysis*
+  folder:
+
+  - Pre-processed single-cell/spatial object
+
+    - `.Rds` (`r BiocStyle::CRANpkg('Seurat')` or `r BiocStyle::Biocpkg('SingleCellExperiment')`)
+    - `.h5ad` (`r BiocStyle::CRANpkg('anndata')`)
+
+  - Marker tables: Three types of marker tables are supported (`.tsv` or `.csv`):
+
+    - Marker genes for a cluster (compared to everything else).
+
+      - Output from Seurat's `FindMarkers` or `FindAllMarkers` or scanpy's
+        `sc.tl.rank_genes_groups` are supported.
+      - Filenames must contain the string *allmarkers*.
+
+    - Conserved marker genes across samples.
+
+      - Output from Seurat's `FindConservedMarkers`.
+      - Filenames must contain the string *consmarkers*.
+
+    - Differential expression analysis, from comparing
+      cell clusters or from pseudo-bulk analysis.
+
+      - Output from Seurat's `FindMarkers` or pseudo-bulk analysis from `r BiocStyle::Biocpkg('DESeq2')`
+        are supported.
+      - Filenames must contain the string *demarkers*.
+
+    - Marker gene tables supports special columns,
+      "resolution", "assay", "group" to combine multiple sets of results
+      for joint viewing. If any of these columns are present, corresponding
+      filters will be shown to allow filtering to show specific results subsets.
+    - If multiple marker gene tables of a particular type are found in the same
+      *analysis* folder, they are concatenated together with the file name encoded
+      in the "group" column.
+
+To make things simple, we provide a helper function `add_cascade_analysis` to
+set up projects in the cascadeR data folder. So, first we create a data
+directory for `cascadeR`.
 
 ```{r create_dir}
 dir.create('~/cascader/data', recursive=TRUE)
@@ -236,7 +235,8 @@ add_cascade_analysis(
   project='my-project',
   analysis='pbmc_small',
   cluster_markers='allmarkers_combined.tsv',
-  execute=TRUE
+  execute=TRUE,
+  overwrite=TRUE
 )
 ```
 
@@ -260,8 +260,10 @@ Now carnation will load the pbmc data and switch to the "Summary" tab.
 
 ## General layout
 
-The interface of CascadeR consists of a main central panel for content, a sidebar
-containing settings and 'Gene scratchpad' buttons.
+The interface of CascadeR consists of a clean tabbed layout to organize various
+modules, a main central panel for content, a sidebar containing varoious settings and
+'Gene scratchpad' buttons and a "Take a tour" button at the top for a quick visual
+introduction.
 
 ![ ](images/03_layout.png){width=700px}
 
@@ -287,16 +289,17 @@ and investigate gene candidates using "Cell Markers" module.
 CascadeR provides many more features to allow extensive exploration
 of single-cell datasets.
 
-- UMAP/spatial cell-embeddings or marker plots support lasso selection
+- Cell-embeddings, spatial views or marker plots support lasso selection
   to select cells of interest. These selections can be used to create
   custom filters for the data or downloaded for further analysis.
 - Marker tables can be directly clicked to select genes which can then be
   added to the gene scratchpad and tracked across the whole app.
-- Custom filters can be created for cells based on metadata, gene expression or cell selection
-  and save throughout a session.
+- Custom filters can be created for cells based on metadata, gene expression or
+  cell selection and saved throughout a session.
 - All plots can be saved to PDF and marker tables downloaded to TSVs.
 
-For multi-user environments, CascadeR also supports authentication:
+For multi-user environments, CascadeR also supports authentication using
+`r BiocStyle::CRANpkg('shinymanager')`. First create local credentials:
 
 ```{r user_db}
 # Create user database
@@ -315,10 +318,45 @@ shinymanager::create_db(
 )
 ```
 
-```{r run_auth, eval=FALSE)
+Then, supply these credentials when running the app:
+
+```{r run_auth, eval=FALSE}
 # Run with authentication
 run_cascade(credentials='credentials.sqlite', passphrase='admin_passphrase')
 ```
+
+## Summary
+
+In summary, `cascadeR` provides a modular, interactive Shiny environment for
+post-analysis exploration of single-cell and spatial transcriptomics datasets.
+Rather than focusing on a single plot type, `cascadeR` provides
+a project-oriented browser for pre-processed `Seurat`, `SingleCellExperiment`
+and `AnnData` datasets, with support for common dimensional reductions, spatial
+coordinates, metadata summaries, clustering-resolution comparisons, marker
+tables, and gene-expression visualizations.
+
+`cascadeR` focuses on interactivity and interoperability. Users can choose
+cells directly from interactive embedding or spatial plots, convert those
+selections into reusable filters, combine them with filters based on metadata
+or gene expression, and export the selected cells for downstream analysis.
+Similarly, genes selected from marker tables can be added to a session-level
+gene scratchpad and reused across feature, co-expression, dot, violin, scatter,
+and spatial plots. Its marker-table workflow is designed to work with outputs
+from common R and Python analysis pipelines, including cluster markers,
+conserved markers, and differential expression or pseudo-bulk results. Support
+for on-disk `.h5ad` data format and configurable downsampling controls enable
+exploration of large datasets locally. In addition, app defaults are easily
+configurable using local configuration files allowing easy customization of app
+behavior. All these interactive features combined with optional `shinymanager`
+authentication makes `cascadeR` useful both for local exploratory analysis and
+for centrally hosted data sharing with experimental collaborators.
+
+Future development will focus on improving scalability and interoperability,
+including support for HDF5-backed `SingleCellExperiment` objects, integration
+with `r BiocStyle::Biocpkg('igvShiny')` to support linked multiome data
+exploration, migration of AnnData interchange workflows to `r
+BiocStyle::Biocpkg('anndataR')`, and additional performance improvements for
+large datasets.
 
 # sessionInfo
 
