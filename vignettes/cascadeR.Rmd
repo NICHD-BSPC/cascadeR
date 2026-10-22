@@ -163,7 +163,7 @@ can easily navigate, e.g. in a folder `cascader/data` in your home directory.
 You can think of this as your "CascadeR projects" space and it should look
 something like this:
 
-```
+```bash
 ~/cascader/data/
   └─ my-project
      └─ pbmc_small
