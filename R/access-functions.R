@@ -43,7 +43,7 @@ get_access_path <- function(){
 #' # save access details to file
 #' home <- Sys.getenv('HOME')
 #'
-#' # create carnation data area if it doesn't exist
+#' # create cascade data area if it doesn't exist
 #' cascade_home <- file.path(home, 'cascade/data')
 #' if(!dir.exists(cascade_home)) dir.create(cascade_home)
 #'
