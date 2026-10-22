@@ -13,12 +13,12 @@ Source:
 [`DESCRIPTION`](https://github.com/NICHD-BSPC/cascadeR/blob/devel/DESCRIPTION)
 
 Mitra A (2026). *cascadeR: Shiny App to Explore Single-Cell Analysis*. R
-package version 0.99.0, <https://nichd-bspc.github.io/cascadeR/>.
+package version 0.99.1, <https://nichd-bspc.github.io/cascadeR/>.
 
     @Manual{,
       title = {cascadeR: Shiny App to Explore Single-Cell Analysis},
       author = {Apratim Mitra},
       year = {2026},
-      note = {R package version 0.99.0},
+      note = {R package version 0.99.1},
       url = {https://nichd-bspc.github.io/cascadeR/},
     }

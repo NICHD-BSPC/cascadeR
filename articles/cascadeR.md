@@ -8,7 +8,7 @@ using numerous interactive features. Designed for both computational and
 experimental biologists, `cascadeR` supports both R and python
 ecosystems, making data exploration and accessible, while also providing
 a platform to manage multiple datasets either locally or on a server to
-share with collaborators (package version: 0.99.0).
+share with collaborators (package version: 0.99.1).
 
 ### Install cascadeR
 
@@ -43,6 +43,8 @@ library(Seurat)
 #> The following objects are masked from 'package:base':
 #> 
 #>     intersect, t
+#> v5.6 adds significant improvements in speed and efficiency, particularly for large datasets.
+#> For more information, see https://satijalab.org/seurat/articles/announcements.
 
 data("pbmc_small", package="SeuratObject")
 
@@ -183,63 +185,6 @@ saveRDS(pbmc_small, 'seurat_pbmc_small.Rds', compress=FALSE)
 write.table(marker_df, 'allmarkers_combined.tsv', sep='\t', row.names=FALSE, quote=FALSE)
 ```
 
-### Data Organization
-
-Next, we need to organize your data in a directory structure that
-`cascadeR` can easily navigate, e.g. in a folder `cascader/data` in your
-home directory. The folder should look something like this:
-
-    ~/cascader/data/
-      └─ my-project
-         └─ pbmc_small
-            ├─ clustered.Rds
-            └─ allmarkers.tsv
-
-Two things to note here:
-
-- *Projects* are subfolders in the data area, while *analyses* are
-  subfolders within projects. For instance, in the above example,
-  `my-project` is the project name and `pbmc_small` is the analysis
-  name. This 2-level hierarchy allows us to have multiple analyses
-  using, e.g different analysis parameters, within a single project.
-
-- `cascadeR` uses file extensions, e.g. `.Rds` or `.h5ad`, to figure out
-  what data to read. You can have two kinds of files in an *analysis*
-  folder:
-
-  - Pre-processed single-cell/spatial object
-
-    - `.Rds` (Seurat or SingleCellExperiment)
-    - `.h5ad` (anndata)
-
-  - Marker tables: `.tsv` or `.csv`
-
-    - Marker genes for a cluster (compared to everything else).
-
-      - Output from Seurat’s `FindMarkers` or `FindAllMarkers` or
-        scanpy’s `sc.tl.rank_genes_groups` are supported.
-      - Filenames must contain the string *allmarkers*.
-
-    - Conserved marker genes across samples.
-
-      - Output from Seurat’s `FindConservedMarkers`.
-      - Filenames must contain the string *consmarkers*.
-
-    - Differential expression analysis, from comparing cell clusters or
-      from pseudo-bulk analysis.
-
-      - Output from Seurat’s `FindMarkers` or pseudo-bulk analysis from
-        `DESeq2` are supported.
-      - Filenames must contain the string *demarkers*.
-
-    - Marker gene tables supports special columns, “resolution”,
-      “assay”, “group” to combine multiple sets of results for joint
-      viewing.
-
-    - If multiple marker gene tables of a particular type are found in
-      the same *analysis* folder, they are concatenated together with
-      the file name encoded in the “group” column.
-
 ### First Run
 
 Load the `cascadeR` package.
@@ -274,13 +219,74 @@ run_cascade(options=list(port=12345, launch.browser=FALSE))
 
 Then access cascadeR by opening the URL: `http://127.0.0.1:12345`
 
-### Set up cascadeR analysis
+### Data Organization
 
-We provide a helper function to set up a dataset while following
-cascadeR’s specifications. Let’s use this now for the analysis we just
-performed.
+Next, we organize the data in a directory structure that `cascadeR` can
+easily navigate, e.g. in a folder `cascader/data` in your home
+directory. You can think of this as your “CascadeR projects” space and
+it should look something like this:
 
-First we create a data directory for `cascadeR`.
+``` bash
+~/cascader/data/
+  └─ my-project
+     └─ pbmc_small
+        ├─ clustered.Rds
+        └─ allmarkers.tsv
+```
+
+Two things to note:
+
+- *Projects* are subfolders in the data area, while *analyses* are
+  subfolders within projects. For instance, in the above example,
+  `my-project` is the project name and `pbmc_small` is the analysis
+  name. This 2-level hierarchy allows us to have multiple analyses
+  using, e.g different analysis parameters, within a single project.
+
+- `cascadeR` uses file extensions, e.g. `.Rds` or `.h5ad`, to figure out
+  what data to read. You can have two kinds of files in an *analysis*
+  folder:
+
+  - Pre-processed single-cell/spatial object
+
+    - `.Rds` (*[Seurat](https://CRAN.R-project.org/package=Seurat)* or
+      *[SingleCellExperiment](https://bioconductor.org/packages/3.23/SingleCellExperiment)*)
+    - `.h5ad` (*[anndata](https://CRAN.R-project.org/package=anndata)*)
+
+  - Marker tables: Three types of marker tables are supported (`.tsv` or
+    `.csv`):
+
+    - Marker genes for a cluster (compared to everything else).
+
+      - Output from Seurat’s `FindMarkers` or `FindAllMarkers` or
+        scanpy’s `sc.tl.rank_genes_groups` are supported.
+      - Filenames must contain the string *allmarkers*.
+
+    - Conserved marker genes across samples.
+
+      - Output from Seurat’s `FindConservedMarkers`.
+      - Filenames must contain the string *consmarkers*.
+
+    - Differential expression analysis, from comparing cell clusters or
+      from pseudo-bulk analysis.
+
+      - Output from Seurat’s `FindMarkers` or pseudo-bulk analysis from
+        *[DESeq2](https://bioconductor.org/packages/3.23/DESeq2)* are
+        supported.
+      - Filenames must contain the string *demarkers*.
+
+    - Marker gene tables supports special columns, “resolution”,
+      “assay”, “group” to combine multiple sets of results for joint
+      viewing. If any of these columns are present, corresponding
+      filters will be shown to allow filtering to show specific results
+      subsets.
+
+    - If multiple marker gene tables of a particular type are found in
+      the same *analysis* folder, they are concatenated together with
+      the file name encoded in the “group” column.
+
+To make things simple, we provide a helper function
+`add_cascade_analysis` to set up projects in the cascadeR data folder.
+So, first we create a data directory for `cascadeR`.
 
 ``` r
 
@@ -299,7 +305,8 @@ add_cascade_analysis(
   project='my-project',
   analysis='pbmc_small',
   cluster_markers='allmarkers_combined.tsv',
-  execute=TRUE
+  execute=TRUE,
+  overwrite=TRUE
 )
 #> 
 #> - Data directory:"~/cascader/data" already exists
@@ -337,8 +344,10 @@ Now carnation will load the pbmc data and switch to the “Summary” tab.
 
 ### General layout
 
-The interface of CascadeR consists of a main central panel for content,
-a sidebar containing settings and ‘Gene scratchpad’ buttons.
+The interface of CascadeR consists of a clean tabbed layout to organize
+various modules, a main central panel for content, a sidebar containing
+varoious settings and ‘Gene scratchpad’ buttons and a “Take a tour”
+button at the top for a quick visual introduction.
 
 ![](images/03_layout.png)
 
@@ -364,16 +373,18 @@ and investigate gene candidates using “Cell Markers” module.
 CascadeR provides many more features to allow extensive exploration of
 single-cell datasets.
 
-- UMAP/spatial cell-embeddings or marker plots support lasso selection
+- Cell-embeddings, spatial views or marker plots support lasso selection
   to select cells of interest. These selections can be used to create
   custom filters for the data or downloaded for further analysis.
 - Marker tables can be directly clicked to select genes which can then
   be added to the gene scratchpad and tracked across the whole app.
 - Custom filters can be created for cells based on metadata, gene
-  expression or cell selection and save throughout a session.
+  expression or cell selection and saved throughout a session.
 - All plots can be saved to PDF and marker tables downloaded to TSVs.
 
-For multi-user environments, CascadeR also supports authentication:
+For multi-user environments, CascadeR also supports authentication using
+*[shinymanager](https://CRAN.R-project.org/package=shinymanager)*. First
+create local credentials:
 
 ``` r
 
@@ -393,7 +404,50 @@ shinymanager::create_db(
 )
 ```
 
-`{r run_auth, eval=FALSE) # Run with authentication run_cascade(credentials='credentials.sqlite', passphrase='admin_passphrase')`
+Then, supply these credentials when running the app:
+
+``` r
+
+# Run with authentication
+run_cascade(credentials='credentials.sqlite', passphrase='admin_passphrase')
+```
+
+### Summary
+
+In summary, `cascadeR` provides a modular, interactive Shiny environment
+for post-analysis exploration of single-cell and spatial transcriptomics
+datasets. Rather than focusing on a single plot type, `cascadeR`
+provides a project-oriented browser for pre-processed `Seurat`,
+`SingleCellExperiment` and `AnnData` datasets, with support for common
+dimensional reductions, spatial coordinates, metadata summaries,
+clustering-resolution comparisons, marker tables, and gene-expression
+visualizations.
+
+`cascadeR` focuses on interactivity and interoperability. Users can
+choose cells directly from interactive embedding or spatial plots,
+convert those selections into reusable filters, combine them with
+filters based on metadata or gene expression, and export the selected
+cells for downstream analysis. Similarly, genes selected from marker
+tables can be added to a session-level gene scratchpad and reused across
+feature, co-expression, dot, violin, scatter, and spatial plots. Its
+marker-table workflow is designed to work with outputs from common R and
+Python analysis pipelines, including cluster markers, conserved markers,
+and differential expression or pseudo-bulk results. Support for on-disk
+`.h5ad` data format and configurable downsampling controls enable
+exploration of large datasets locally. In addition, app defaults are
+easily configurable using local configuration files allowing easy
+customization of app behavior. All these interactive features combined
+with optional `shinymanager` authentication makes `cascadeR` useful both
+for local exploratory analysis and for centrally hosted data sharing
+with experimental collaborators.
+
+Future development will focus on improving scalability and
+interoperability, including support for HDF5-backed
+`SingleCellExperiment` objects, integration with
+*[igvShiny](https://bioconductor.org/packages/3.23/igvShiny)* to support
+linked multiome data exploration, migration of AnnData interchange
+workflows to `r BiocStyle::Biocpkg('anndataR')`, and additional
+performance improvements for large datasets.
 
 ## sessionInfo
 
@@ -421,7 +475,7 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] cascadeR_0.99.0    Seurat_5.5.1       SeuratObject_5.4.0 sp_2.2-3          
+#> [1] cascadeR_0.99.1    Seurat_5.6.0       SeuratObject_5.4.0 sp_2.2-4          
 #> [5] BiocStyle_2.40.0  
 #> 
 #> loaded via a namespace (and not attached):
@@ -430,7 +484,7 @@ sessionInfo()
 #>   [5] R.oo_1.27.1                 tibble_3.3.1               
 #>   [7] polyclip_1.10-7             fastDummies_1.7.6          
 #>   [9] shinymanager_1.1.0          lifecycle_1.0.5            
-#>  [11] rprojroot_2.1.1             globals_0.19.1             
+#>  [11] rprojroot_2.1.1             globals_0.20.0             
 #>  [13] lattice_0.22-9              MASS_7.3-65                
 #>  [15] magrittr_2.0.5              plotly_4.12.1              
 #>  [17] sass_0.4.10                 rmarkdown_2.32             
@@ -445,39 +499,39 @@ sessionInfo()
 #>  [35] GenomicRanges_1.64.0        R.utils_2.13.0             
 #>  [37] purrr_1.2.2                 ggraph_2.2.2               
 #>  [39] BiocGenerics_0.58.1         tweenr_2.0.3               
-#>  [41] IRanges_2.46.0              S4Vectors_0.50.2           
-#>  [43] ggrepel_0.9.8               irlba_2.3.7                
-#>  [45] listenv_1.0.0               spatstat.utils_3.2-5       
+#>  [41] IRanges_2.46.0              S4Vectors_0.50.3           
+#>  [43] ggrepel_0.9.8               irlba_2.4.1                
+#>  [45] listenv_1.1.0               spatstat.utils_3.2-5       
 #>  [47] goftest_1.2-3               RSpectra_0.16-2            
-#>  [49] spatstat.random_3.5-1       fitdistrplus_1.2-6         
+#>  [49] spatstat.random_3.5-2       fitdistrplus_1.2-6         
 #>  [51] parallelly_1.48.0           pkgdown_2.2.1              
 #>  [53] codetools_0.2-20            DelayedArray_0.38.2        
 #>  [55] DT_0.34.0                   ggforce_0.5.0              
 #>  [57] tidyselect_1.2.1            farver_2.1.2               
 #>  [59] viridis_0.6.5               shinyWidgets_0.9.1         
 #>  [61] matrixStats_1.5.0           stats4_4.6.1               
-#>  [63] spatstat.explore_3.8-2      Seqinfo_1.2.0              
+#>  [63] spatstat.explore_3.8-3      Seqinfo_1.2.0              
 #>  [65] jsonlite_2.0.0              tidygraph_1.3.1            
-#>  [67] progressr_1.0.0             ggridges_0.5.7             
+#>  [67] progressr_1.1.0             ggridges_0.5.7             
 #>  [69] survival_3.8-6              systemfonts_1.3.2          
 #>  [71] tools_4.6.1                 ragg_1.5.2                 
 #>  [73] ica_1.0-3                   Rcpp_1.1.2                 
 #>  [75] glue_1.8.1                  gridExtra_2.3.1            
-#>  [77] SparseArray_1.12.2          xfun_0.61                  
+#>  [77] SparseArray_1.12.3          xfun_0.62                  
 #>  [79] MatrixGenerics_1.24.0       dplyr_1.2.1                
 #>  [81] withr_3.0.3                 BiocManager_1.30.27        
 #>  [83] fastmap_1.2.0               clustree_0.5.1             
 #>  [85] openssl_2.4.2               shinyjs_2.1.1              
 #>  [87] digest_0.6.39               R6_2.6.1                   
 #>  [89] mime_0.13                   textshaping_1.0.5          
-#>  [91] colorspace_2.1-3            scattermore_1.2            
+#>  [91] colorspace_2.1-4            scattermore_1.2            
 #>  [93] tensor_1.5.1                RSQLite_3.53.3             
 #>  [95] spatstat.data_3.1-9         anndata_0.8.0              
 #>  [97] R.methodsS3_1.8.2           UpSetR_1.4.1               
 #>  [99] tidyr_1.3.2                 generics_0.1.4             
 #> [101] data.table_1.18.6.1         graphlayouts_1.2.5         
 #> [103] httr_1.4.9                  htmlwidgets_1.6.4          
-#> [105] S4Arrays_1.12.0             uwot_0.2.5                 
+#> [105] S4Arrays_1.12.1             uwot_0.2.5                 
 #> [107] pkgconfig_2.0.3             gtable_0.3.6               
 #> [109] blob_1.3.0                  lmtest_0.9-40              
 #> [111] S7_0.2.2                    SingleCellExperiment_1.34.0
@@ -488,28 +542,28 @@ sessionInfo()
 #> [121] spatstat.univar_3.2-0       knitr_1.52                 
 #> [123] tzdb_0.5.0                  reshape2_1.4.5             
 #> [125] nlme_3.1-169                cachem_1.1.0               
-#> [127] zoo_1.9-0                   stringr_1.6.0              
+#> [127] zoo_1.9-1                   stringr_1.6.0              
 #> [129] KernSmooth_2.23-26          shinycssloaders_1.1.0      
 #> [131] parallel_4.6.1              miniUI_0.1.2               
 #> [133] desc_1.4.3                  pillar_1.11.1              
 #> [135] grid_4.6.1                  vctrs_0.7.3                
 #> [137] RANN_2.6.3                  promises_1.5.0             
-#> [139] billboarder_0.5.1           xtable_1.8-8               
+#> [139] billboarder_0.5.2           xtable_1.8-8               
 #> [141] cluster_2.1.8.2             evaluate_1.0.5             
 #> [143] readr_2.2.0                 cli_3.6.6                  
 #> [145] compiler_4.6.1              rlang_1.3.0                
-#> [147] sortable_0.6.0              future.apply_1.20.2        
+#> [147] sortable_0.6.0              future.apply_1.21.0        
 #> [149] labeling_0.4.3              plyr_1.8.9                 
 #> [151] fs_2.1.0                    stringi_1.8.9              
 #> [153] viridisLite_0.4.3           deldir_2.0-4               
-#> [155] assertthat_0.2.1            spatstat.geom_3.8-2        
+#> [155] assertthat_0.2.1            spatstat.geom_3.8-3        
 #> [157] Matrix_1.7-5                RcppHNSW_0.7.0             
 #> [159] scrypt_0.1.6                hms_1.1.4                  
 #> [161] patchwork_1.3.2             bit64_4.8.6                
-#> [163] future_1.75.0               learnr_0.11.6              
+#> [163] future_1.80.0               learnr_0.11.6              
 #> [165] ggplot2_4.0.3               shiny_1.14.0               
 #> [167] SummarizedExperiment_1.42.0 ROCR_1.0-12                
-#> [169] igraph_2.3.3                memoise_2.0.1              
+#> [169] igraph_2.3.4                memoise_2.0.1              
 #> [171] bslib_0.12.0                bit_4.6.0                  
 #> [173] ape_5.8-1
 ```
